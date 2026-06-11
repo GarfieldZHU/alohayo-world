@@ -13,22 +13,32 @@ pub fn classify_biome(elevation: u8, moisture: u8, temperature: u8) -> u8 {
     let moisture = moisture as f32 / 255.0;
     let temperature = temperature as f32 / 255.0;
 
-    if elevation < 0.43 {
+    if elevation < 0.20 {
         0
-    } else if elevation < 0.47 {
+    } else if elevation < 0.34 {
         1
-    } else if elevation > 0.82 && temperature < 0.42 {
-        7
-    } else if elevation > 0.78 {
-        6
-    } else if moisture > 0.70 && elevation < 0.58 {
-        5
-    } else if temperature > 0.68 && moisture < 0.42 {
-        4
-    } else if moisture > 0.57 {
-        3
-    } else {
+    } else if elevation < 0.43 {
         2
+    } else if elevation < 0.47 {
+        3
+    } else if elevation > 0.83 && temperature < 0.46 {
+        13
+    } else if elevation > 0.82 {
+        12
+    } else if elevation > 0.74 && moisture < 0.55 {
+        11
+    } else if elevation > 0.66 {
+        10
+    } else if moisture > 0.72 && elevation < 0.56 {
+        9
+    } else if temperature > 0.68 && moisture < 0.42 {
+        8
+    } else if moisture > 0.58 {
+        7
+    } else if elevation < 0.54 {
+        5
+    } else {
+        6
     }
 }
 

@@ -19,6 +19,14 @@ export interface WorldDefinition {
   chunkSize: number
   cellSize: number
   generator: 'continental-v1'
+  sizePresets?: WorldSizePreset[]
+}
+
+export interface WorldSizePreset {
+  id: string
+  name: string
+  width: number
+  height: number
 }
 
 export interface BiomeDefinition {
@@ -46,7 +54,7 @@ export interface WorldManifest {
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
-  initialWorld?: { seed?: string }
+  initialWorld?: { seed?: string; width?: number; height?: number }
 }
 
 export interface GameHandle {

@@ -15,6 +15,8 @@ workerScope.onmessage = (event: MessageEvent<GenerateWorldRequest>) => {
       world.moisture.buffer,
       world.temperature.buffer,
       world.biomes.buffer,
+      world.landmass.buffer,
+      world.waterbody.buffer,
     ],
   })
 }

@@ -3,7 +3,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 const root = new URL('../assets/', import.meta.url)
 const registry = JSON.parse(readFileSync(new URL('ATTRIBUTION.json', root)))
 const registered = new Set(registry.assets.map((asset) => asset.path))
-const files = readdirSync(root).filter((name) => name !== 'ATTRIBUTION.json')
+const metadataFiles = new Set(['AGENTS.md', 'ATTRIBUTION.json'])
+const files = readdirSync(root).filter((name) => !metadataFiles.has(name))
 const errors = []
 
 for (const file of files) {

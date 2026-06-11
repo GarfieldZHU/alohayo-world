@@ -10,13 +10,20 @@
 
 ## v0.2.0-world-foundation
 
-- Infinite chunk streaming and eviction.
-- Seam-safe coastlines, drainage, rivers, erosion, and authored overlays.
+- [x] AI-first documentation hierarchy with directory-level agent guides.
+- [x] GIS foundation and layered geography/topology model.
+- [x] Deep ocean, shallow sea, lakes, lowland, highland, bare rock, and
+      mainland/island inspection.
+- [x] Larger bounded map presets with an explicit enlarge control.
+- [x] Deterministic terrain transitions and zoom-dependent geographic detail.
+- [ ] Infinite chunk streaming and eviction.
+- [ ] Seam-safe coastlines, slope, drainage, rivers, erosion, and authored overlays.
 - Explorer entity movement, minimap, discovery, and IndexedDB saves.
 - Content-pack dependency loading and schema migrations.
 - Explicit desktop/mobile performance budgets and benchmark history.
 
-## Later
+## Staged Modules
 
-Combat and inventory; NPC and life simulation; building and economy; roads and vehicles;
-creature habitats and collection.
+Detailed independent plans now live in `docs/modules/` for characters, weather,
+settlements, economy, combat, vehicles, and creatures. The next implementation target
+is streamed chunks plus drainage; gameplay plugins wait on stable spatial queries.

@@ -3,9 +3,14 @@
   "id": "core:world",
   "name": "Alohayo Atlas",
   "defaultSeed": "alohayo",
-  "width": 128,
-  "height": 96,
+  "width": 256,
+  "height": 192,
   "chunkSize": 64,
-  "cellSize": 8,
-  "generator": "continental-v1"
+  "cellSize": 4,
+  "generator": "continental-v1",
+  "sizePresets": [
+    { "id": "large", "name": "Large", "width": 256, "height": 192 },
+    { "id": "huge", "name": "Huge", "width": 320, "height": 240 },
+    { "id": "continental", "name": "Continental", "width": 384, "height": 288 }
+  ]
 }

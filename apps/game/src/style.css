@@ -68,6 +68,12 @@ button {
 button:hover {
   background: #237f73;
 }
+.secondary {
+  background: #173241;
+}
+.secondary:hover {
+  background: #21495b;
+}
 button:disabled {
   cursor: wait;
   opacity: 0.65;

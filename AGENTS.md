@@ -1,47 +1,153 @@
-# Agent Guide
+# Alohayo World Agent Guide
+
+This repository is designed for AI-assisted development. Keep decisions explicit,
+contracts narrow, and documentation close to the code it governs.
+
+## Read First
+
+1. Read this file.
+2. Read `docs/README.md` for the documentation map.
+3. Read the nearest nested `AGENTS.md` before changing a directory.
+4. Read the relevant module document in `docs/modules/`.
+5. Run the smallest useful check while developing, then the full verification set.
+
+Nested `AGENTS.md` files add local rules. The closest guide to a changed file takes
+precedence when it is more specific.
 
 ## Mission
 
-Build a fast, extensible, map-first single-player web game. Gameplay is selected by
-configuration and registered plugins; content data never executes arbitrary code.
+Build a fast, extensible, map-first single-player web game. The world is local-only,
+deterministic from versioned configuration, and embeddable without loading game code
+until the player explicitly starts it.
 
-## Boundaries
+Content selects registered capabilities. JSON and assets never execute arbitrary code.
+Gameplay systems are plugins over a stable world model, not hard-coded branches in the
+renderer.
 
-- `apps/game`: browser shell and standalone demo.
-- `packages/engine`: lifecycle, renderer, input, diagnostics.
-- `packages/map`: deterministic terrain model and worker protocol.
-- `packages/config`: public types and content validation.
-- `packages/embed`: stable embedding surface.
-- `crates/world-core`: profiled deterministic hot loops compiled to Wasm.
-- `content`: versioned game definitions. `assets`: licensed resources only.
+## Repository Map
 
-## Required checks
+| Path                | Responsibility                                      |
+| ------------------- | --------------------------------------------------- |
+| `apps/game`         | Standalone browser shell and GitHub Pages demo      |
+| `packages/config`   | Public runtime and content contracts                |
+| `packages/map`      | Deterministic geography, topology, worker protocol  |
+| `packages/engine`   | Lifecycle, PixiJS adapter, input, diagnostics       |
+| `packages/embed`    | Lazy public `mountGame` surface                     |
+| `crates/world-core` | Profiled deterministic hot loops compiled to Wasm   |
+| `content`           | Versioned, validated world and gameplay definitions |
+| `assets`            | Original or verified CC0 resources and provenance   |
+| `tests`             | Contract, determinism, benchmark, and browser tests |
+| `.github`           | CI, Pages, release, security, and issue automation  |
 
-Run `yarn format:check`, `yarn lint`, `yarn typecheck`, `yarn validate:content`,
-`yarn validate:assets`, `yarn test`, and `yarn build`. Browser-facing changes also run
-`yarn test:e2e`.
+## Architecture Invariants
 
-## Engineering rules
+- Simulation and geography data do not depend on PixiJS display objects.
+- Generation is deterministic for `(generatorVersion, seed, dimensions, content)`.
+- Continuous geography fields and categorical display terrain remain separate concepts.
+- Ocean versus lake and mainland versus island are topology, not climate biomes.
+- Large numeric layers use typed arrays and transferable worker messages.
+- The main thread never performs full-world generation.
+- Wasm is introduced only for measured CPU-heavy work and keeps a deterministic
+  TypeScript reference or fallback.
+- Every worker, listener, animation loop, GPU object, and DOM node is owned by a
+  `GameHandle` and released by `destroy`.
+- No network gameplay, telemetry, account, or server-side save system is added.
+- New maps, terrain definitions, entities, and gameplay modes begin as data schemas and
+  registries before bespoke code.
 
-- Keep simulation state independent from PixiJS display objects.
-- Use fixed simulation steps and render interpolation for future moving entities.
-- Preserve seed determinism; add hash fixtures when changing generation.
-- Prefer typed arrays, chunk-local work, pooling, and measured optimizations.
-- Add Wasm only for measured CPU-heavy work and retain a deterministic fallback.
-- New biomes, maps, entities, and modes begin as content definitions.
-- Do not add networked gameplay or telemetry.
-- Assets must be original or CC0 and registered with source, license, checksum, and size.
+## Common Change Recipes
 
-## Git
+### Add or change terrain
 
-Use focused conventional commits. Do not commit build output. Update `CHANGELOG.md`,
-`docs/ROADMAP.md`, and milestone status for releases.
+1. Update the geographic model in `packages/map`.
+2. Update definitions in `content/core`.
+3. Update `docs/MAP_SYSTEM.md` and `docs/GIS_FOUNDATIONS.md`.
+4. Preserve deterministic tests and validate all terrain codes.
+5. Check rendering and inspection in both standalone and embedded launchers.
 
-## Milestones
+### Add a gameplay module
 
-Released: `v0.1.0-demo`, a published geography explorer embedded in alohayo.me.
+1. Start with its file in `docs/modules/`.
+2. Define data contracts in `packages/config`.
+3. Add content schemas and examples.
+4. Register a narrow engine capability; do not let configuration execute code.
+5. Add unit tests, lifecycle cleanup tests, and a small playable vertical slice.
 
-Active next: `v0.2.0-world-foundation`: infinite chunk streaming, rivers, coast continuity,
-authored overlays, minimap, explorer movement, IndexedDB saves, content packs, and
-performance budgets. Combat, building, NPCs, vehicles, and creature collection remain
-later plugin milestones.
+### Change the embed contract
+
+1. Treat `MountGameOptions` and `GameHandle` as public APIs.
+2. Keep old optional fields working within the current major version.
+3. Update standalone and blog launchers together.
+4. Verify zero game bundle requests occur before Start.
+
+## Commands
+
+```sh
+yarn dev
+yarn format:check
+yarn lint
+yarn typecheck
+yarn validate:content
+yarn validate:assets
+yarn test
+yarn benchmark
+yarn build
+yarn test:e2e
+```
+
+Use Node from `.nvmrc`, Yarn from `packageManager`, and Rust from
+`rust-toolchain.toml`.
+
+## Verification Matrix
+
+| Change             | Minimum checks                                        |
+| ------------------ | ----------------------------------------------------- |
+| Docs only          | `yarn format:check`                                   |
+| Content only       | format, `validate:content`, affected tests            |
+| TypeScript runtime | format, lint, typecheck, test, build                  |
+| Map generation     | runtime checks plus benchmark and deterministic tests |
+| Browser/embed      | runtime checks plus `test:e2e`                        |
+| Rust/Wasm          | `cargo test`, `build:wasm`, TypeScript parity tests   |
+| Assets             | format, `validate:assets`, build                      |
+| Workflows          | inspect permissions/pins and verify the GitHub run    |
+
+Before release or handoff, run the complete set listed under Commands.
+
+## Performance Rules
+
+- Measure before optimizing and record budgets in benchmarks or roadmap issues.
+- Prefer structure-of-arrays typed data, chunk-local work, transferables, pooling, and
+  bounded caches.
+- Keep generation off the main thread and rendering proportional to visible content.
+- Avoid per-cell objects and per-frame allocation in hot paths.
+- Any larger default map must remain responsive on the supported browser matrix.
+
+## Content and Asset Rules
+
+- Config is versioned, schema-validated, deterministic, and contains no executable code.
+- IDs use `namespace:name`; numeric terrain codes remain stable once released.
+- Assets must be original or CC0 and registered in `assets/ATTRIBUTION.json`.
+- Record source, author, license, modifications, checksum, and optimized size.
+- Do not add protected franchise names, art, audio, characters, or close imitations.
+
+## Git and Handoff
+
+- Use focused conventional commits and do not commit generated build output.
+- Preserve unrelated user changes.
+- Update `CHANGELOG.md`, `docs/ROADMAP.md`, and the relevant module status when behavior
+  changes.
+- A handoff names what is complete, what was verified, known limitations, and the next
+  smallest issue an agent can implement.
+
+## Current State
+
+Released: `v0.1.0-demo`, published through GitHub Pages and embedded at
+`https://alohayo.me/game`.
+
+Active: `v0.2.0-world-foundation`. Current work expands geographic classification,
+world topology, scalable map sizes, and agent-readable module plans. The next runtime
+priority after this foundation is chunk streaming plus drainage and rivers.
+
+Known boundary: the Rust crate defines and tests portable deterministic primitives, but
+the active browser generator is TypeScript until the worker-side Wasm loader and parity
+suite are complete.

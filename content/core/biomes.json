@@ -1,25 +1,61 @@
 [
   {
-    "id": "core:ocean",
+    "id": "core:deep-ocean",
     "code": 0,
-    "name": "Ocean",
+    "name": "Deep Ocean",
+    "color": "#082d52",
+    "accent": "#164a73",
+    "description": "The darkest, deepest bathymetric zone.",
+    "movementCost": 12
+  },
+  {
+    "id": "core:ocean",
+    "code": 1,
+    "name": "Open Ocean",
     "color": "#174b73",
-    "accent": "#3f7fa3",
-    "description": "Deep navigable water.",
-    "movementCost": 8
+    "accent": "#2f6d98",
+    "description": "Open navigable sea beyond the continental shelf.",
+    "movementCost": 9
+  },
+  {
+    "id": "core:shallow-sea",
+    "code": 2,
+    "name": "Shallow Sea",
+    "color": "#2f7794",
+    "accent": "#59a1b6",
+    "description": "Sunlit shelf water approaching land.",
+    "movementCost": 7
   },
   {
     "id": "core:coast",
-    "code": 1,
+    "code": 3,
     "name": "Coast",
     "color": "#d3b77a",
     "accent": "#f0d79b",
-    "description": "Sand, shallows, and tidal margins.",
+    "description": "Beaches, tidal margins, and immediate shore.",
     "movementCost": 2
   },
   {
+    "id": "core:lake",
+    "code": 4,
+    "name": "Lake",
+    "color": "#327f9e",
+    "accent": "#74b9c8",
+    "description": "An inland waterbody disconnected from the world edge.",
+    "movementCost": 7
+  },
+  {
+    "id": "core:lowland",
+    "code": 5,
+    "name": "Lowland",
+    "color": "#7fa85f",
+    "accent": "#a8c97d",
+    "description": "Low-relief continental plain.",
+    "movementCost": 1
+  },
+  {
     "id": "core:grassland",
-    "code": 2,
+    "code": 6,
     "name": "Grassland",
     "color": "#6e9d58",
     "accent": "#9abc72",
@@ -28,7 +64,7 @@
   },
   {
     "id": "core:forest",
-    "code": 3,
+    "code": 7,
     "name": "Forest",
     "color": "#315f45",
     "accent": "#578264",
@@ -37,7 +73,7 @@
   },
   {
     "id": "core:desert",
-    "code": 4,
+    "code": 8,
     "name": "Desert",
     "color": "#c48d4f",
     "accent": "#e5b66e",
@@ -46,29 +82,47 @@
   },
   {
     "id": "core:wetland",
-    "code": 5,
+    "code": 9,
     "name": "Wetland",
     "color": "#477a6a",
     "accent": "#72a68d",
-    "description": "Low, waterlogged terrain.",
+    "description": "Low, saturated terrain near water.",
     "movementCost": 3
   },
   {
+    "id": "core:highland",
+    "code": 10,
+    "name": "Highland",
+    "color": "#78805c",
+    "accent": "#a0a77a",
+    "description": "Elevated plateau and rolling upland.",
+    "movementCost": 3
+  },
+  {
+    "id": "core:bare-rock",
+    "code": 11,
+    "name": "Bare Rock",
+    "color": "#746f67",
+    "accent": "#a49b8e",
+    "description": "Exposed dry or steep stone.",
+    "movementCost": 4
+  },
+  {
     "id": "core:mountain",
-    "code": 6,
+    "code": 12,
     "name": "Mountain",
-    "color": "#6c6f75",
-    "accent": "#9b9da1",
-    "description": "Steep highland terrain.",
-    "movementCost": 5
+    "color": "#555b63",
+    "accent": "#8b9198",
+    "description": "Very high and difficult terrain.",
+    "movementCost": 6
   },
   {
     "id": "core:snow",
-    "code": 7,
+    "code": 13,
     "name": "Snow",
     "color": "#d9e5e7",
     "accent": "#ffffff",
     "description": "Frozen alpine terrain.",
-    "movementCost": 4
+    "movementCost": 5
   }
 ]
