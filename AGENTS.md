@@ -39,9 +39,9 @@ Use focused conventional commits. Do not commit build output. Update `CHANGELOG.
 
 ## Milestones
 
-Current: `v0.1.0-demo`, a published geography explorer embedded in alohayo.me.
+Released: `v0.1.0-demo`, a published geography explorer embedded in alohayo.me.
 
-Next: `v0.2.0-world-foundation`: infinite chunk streaming, rivers, coast continuity,
+Active next: `v0.2.0-world-foundation`: infinite chunk streaming, rivers, coast continuity,
 authored overlays, minimap, explorer movement, IndexedDB saves, content packs, and
 performance budgets. Combat, building, NPCs, vehicles, and creature collection remain
 later plugin milestones.

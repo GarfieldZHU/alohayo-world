@@ -6,7 +6,7 @@
 - [x] Configurable deterministic terrain demo and lazy embed lifecycle.
 - [x] Worker generation, optional Rust/Wasm crate, diagnostics, pan/zoom, inspection.
 - [x] CI, Pages, release packaging, security checks, and asset provenance.
-- [ ] Production verification at `alohayo.me/game` after both deployments complete.
+- [x] Production verification at `alohayo.me/game` after both deployments complete.
 
 ## v0.2.0-world-foundation
 
