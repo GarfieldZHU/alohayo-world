@@ -23,6 +23,7 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: true,
     rollupOptions: {
+      preserveEntrySignatures: 'strict',
       input: {
         app: fileURLToPath(new URL('./index.html', import.meta.url)),
         'embed/bootstrap': fileURLToPath(new URL('./src/embed.ts', import.meta.url)),

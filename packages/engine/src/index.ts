@@ -6,6 +6,7 @@ import type {
   WorldDefinition,
 } from '@alohayo/config'
 import type { GeneratedWorld, GenerateWorldResponse } from '@alohayo/map'
+import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 
 interface EngineContent {
   world: WorldDefinition
@@ -47,9 +48,7 @@ export async function createGame(
   app.canvas.className = 'alohayo-world-canvas'
   app.canvas.setAttribute('aria-label', 'Alohayo World map')
 
-  const worker = new Worker(new URL('../../map/src/world.worker.ts', import.meta.url), {
-    type: 'module',
-  })
+  const worker = new WorldWorker()
   const viewport = new Container()
   const terrain = new Graphics()
   const overlay = new Container()
