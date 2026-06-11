@@ -15,7 +15,7 @@ jobs:
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn build
-      - run: tar -czf alohayo-world-embed-${{ github.ref_name }}.tar.gz -C dist embed
+      - run: tar -czf alohayo-world-embed-${{ github.ref_name }}.tar.gz -C dist embed assets
       - run: shasum -a 256 alohayo-world-embed-${{ github.ref_name }}.tar.gz > checksums.txt
       - uses: softprops/action-gh-release@v2
         with:

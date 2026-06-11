@@ -18,7 +18,8 @@ yarn build
 ```
 
 The production build is written to `dist/`. The integration entry is
-`dist/embed/bootstrap.js`.
+`dist/embed/bootstrap.js`; distribute it together with the sibling `dist/assets/`
+directory referenced by the module.
 
 ## Embed
 
