@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "archipelago",
+  "name": "Archipelago Example",
+  "version": "0.1.0",
+  "description": "A future overlay pack demonstrating drop-in world extensions.",
+  "dependencies": ["core"],
+  "world": "world.json",
+  "biomes": "../../core/biomes.json"
+}

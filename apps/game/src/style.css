@@ -1,0 +1,113 @@
+:root {
+  color: #d8f3ff;
+  background: #07111f;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 15%, #163a4b 0, transparent 32rem),
+    linear-gradient(145deg, #07111f, #091827 60%, #07111f);
+}
+.shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0 32px;
+}
+.eyebrow {
+  color: #72d7c8;
+  font-family: ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+h1 {
+  max-width: 760px;
+  margin: 0.2em 0;
+  font-size: clamp(2.5rem, 7vw, 5.4rem);
+  line-height: 0.96;
+}
+header > p:last-child,
+footer {
+  color: #9bb2bf;
+}
+#launcher {
+  margin: 34px 0 20px;
+}
+#launcher label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: ui-monospace, monospace;
+}
+.launch-row {
+  display: flex;
+  gap: 10px;
+}
+input,
+button {
+  border: 1px solid #315263;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: inherit;
+  background: #0c1e2b;
+  font: inherit;
+}
+input {
+  min-width: 0;
+  flex: 1;
+}
+button {
+  cursor: pointer;
+  background: #1b695f;
+  font-weight: 700;
+}
+button:hover {
+  background: #237f73;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+#game {
+  position: relative;
+  width: 100%;
+  height: min(70vh, 720px);
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #315263;
+  border-radius: 12px;
+  background: #07111f;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+}
+.placeholder {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 24px;
+  color: #78909c;
+  text-align: center;
+}
+.alohayo-world-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+footer {
+  padding-top: 14px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .launch-row {
+    flex-direction: column;
+  }
+  #game {
+    min-height: 480px;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "policy": "Only project-original/generated or verified CC0 resources are accepted.",
+  "assets": [
+    {
+      "path": "explorer.svg",
+      "title": "Alohayo Explorer",
+      "author": "Alohayo World project",
+      "source": "project-original",
+      "license": "MIT",
+      "modifications": "Original 16x16 pixel-style vector.",
+      "sha256": "generated-and-verified-by-ci-in-future"
+    }
+  ]
+}

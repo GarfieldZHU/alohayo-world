@@ -1,0 +1,74 @@
+[
+  {
+    "id": "core:ocean",
+    "code": 0,
+    "name": "Ocean",
+    "color": "#174b73",
+    "accent": "#3f7fa3",
+    "description": "Deep navigable water.",
+    "movementCost": 8
+  },
+  {
+    "id": "core:coast",
+    "code": 1,
+    "name": "Coast",
+    "color": "#d3b77a",
+    "accent": "#f0d79b",
+    "description": "Sand, shallows, and tidal margins.",
+    "movementCost": 2
+  },
+  {
+    "id": "core:grassland",
+    "code": 2,
+    "name": "Grassland",
+    "color": "#6e9d58",
+    "accent": "#9abc72",
+    "description": "Open temperate terrain.",
+    "movementCost": 1
+  },
+  {
+    "id": "core:forest",
+    "code": 3,
+    "name": "Forest",
+    "color": "#315f45",
+    "accent": "#578264",
+    "description": "Dense moist woodland.",
+    "movementCost": 2
+  },
+  {
+    "id": "core:desert",
+    "code": 4,
+    "name": "Desert",
+    "color": "#c48d4f",
+    "accent": "#e5b66e",
+    "description": "Hot and arid terrain.",
+    "movementCost": 2
+  },
+  {
+    "id": "core:wetland",
+    "code": 5,
+    "name": "Wetland",
+    "color": "#477a6a",
+    "accent": "#72a68d",
+    "description": "Low, waterlogged terrain.",
+    "movementCost": 3
+  },
+  {
+    "id": "core:mountain",
+    "code": 6,
+    "name": "Mountain",
+    "color": "#6c6f75",
+    "accent": "#9b9da1",
+    "description": "Steep highland terrain.",
+    "movementCost": 5
+  },
+  {
+    "id": "core:snow",
+    "code": 7,
+    "name": "Snow",
+    "color": "#d9e5e7",
+    "accent": "#ffffff",
+    "description": "Frozen alpine terrain.",
+    "movementCost": 4
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "archipelago:world",
+  "name": "Cloudbreak Archipelago",
+  "defaultSeed": "cloudbreak",
+  "width": 128,
+  "height": 96,
+  "chunkSize": 64,
+  "cellSize": 8,
+  "generator": "continental-v1"
+}

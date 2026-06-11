@@ -1,0 +1,42 @@
+{
+  "name": "alohayo-world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@3.6.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "vite --config apps/game/vite.config.ts",
+    "build": "vite build --config apps/game/vite.config.ts && yarn build:wasm && node scripts/package-release.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "validate:content": "node scripts/validate-content.mjs",
+    "validate:assets": "node scripts/validate-assets.mjs",
+    "benchmark": "vitest run tests/benchmarks",
+    "package": "node scripts/package-release.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "pixi.js": "^8.9.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.29",
+    "eslint": "^9.28.0",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4"
+  }
+}

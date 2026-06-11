@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "core:world",
+  "name": "Alohayo Atlas",
+  "defaultSeed": "alohayo",
+  "width": 128,
+  "height": 96,
+  "chunkSize": 64,
+  "cellSize": 8,
+  "generator": "continental-v1"
+}

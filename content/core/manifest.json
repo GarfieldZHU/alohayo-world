@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "core",
+  "name": "Alohayo Core World",
+  "version": "0.1.0",
+  "description": "The default deterministic geography pack.",
+  "dependencies": [],
+  "world": "world.json",
+  "biomes": "biomes.json"
+}

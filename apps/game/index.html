@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111f" />
+    <title>Alohayo World</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Alohayo World / v0.1.0-demo</p>
+        <h1>A vivid world from one small seed.</h1>
+        <p>Generate a local geography atlas. Nothing leaves your browser.</p>
+      </header>
+      <form id="launcher">
+        <label for="seed">World seed</label>
+        <div class="launch-row">
+          <input id="seed" name="seed" maxlength="64" value="alohayo" />
+          <button type="submit">Enter the world</button>
+        </div>
+      </form>
+      <section id="game" aria-live="polite">
+        <div class="placeholder">The renderer, worker, and world data load on demand.</div>
+      </section>
+      <footer>Drag to pan. Scroll to zoom. Hover to inspect. WASD also moves the map.</footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+.yarn/cache
+.yarn/install-state.gz
+node_modules
+dist
+coverage
+playwright-report
+test-results
+target
+crates/world-core/pkg
+.DS_Store
+
