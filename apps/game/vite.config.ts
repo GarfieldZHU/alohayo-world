@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
-  base: process.env.GITHUB_ACTIONS ? '/alohayo-world/' : '/',
+  base: './',
   resolve: {
     alias: {
       '@alohayo/config': fileURLToPath(
