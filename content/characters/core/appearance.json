@@ -1,0 +1,12 @@
+{
+  "bodyShapes": ["slender", "balanced", "broad", "round", "angular"],
+  "builds": ["light", "lean", "average", "athletic", "sturdy", "heavy"],
+  "heights": ["short", "below-average", "average", "tall", "very-tall"],
+  "faceShapes": ["oval", "round", "square", "heart", "diamond", "long"],
+  "skinTones": ["porcelain", "fair", "warm", "olive", "brown", "deep"],
+  "eyeShapes": ["round", "almond", "hooded", "upturned", "downturned"],
+  "eyeColors": ["brown", "amber", "hazel", "green", "blue", "gray"],
+  "hairStyles": ["buzz", "crop", "bob", "waves", "braids", "bun", "mohawk", "long"],
+  "hairColors": ["black", "dark-brown", "brown", "auburn", "blonde", "silver", "white"],
+  "facialHairStyles": ["none", "stubble", "mustache", "goatee", "short-beard", "full-beard"]
+}

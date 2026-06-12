@@ -16,6 +16,8 @@ blindly.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
+- `config/MAPS.md`: write and plug authored area files into the world.
+- `config/CHARACTERS.md`: abilities, appearance, equipment, weapons, and archetypes.
 - `MODULE_CATALOG.md`: dependency map and extension protocol.
 
 ## Module Plans

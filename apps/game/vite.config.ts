@@ -10,6 +10,9 @@ export default defineConfig({
         new URL('../../packages/config/src/index.ts', import.meta.url)
       ),
       '@alohayo/map': fileURLToPath(new URL('../../packages/map/src/index.ts', import.meta.url)),
+      '@alohayo/character': fileURLToPath(
+        new URL('../../packages/character/src/index.ts', import.meta.url)
+      ),
       '@alohayo/engine': fileURLToPath(
         new URL('../../packages/engine/src/index.ts', import.meta.url)
       ),

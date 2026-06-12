@@ -1,0 +1,98 @@
+[
+  {
+    "schemaVersion": 1,
+    "id": "core:explorer",
+    "name": "Wayfinder",
+    "role": "player",
+    "description": "A balanced configurable explorer used by the first playable character.",
+    "abilities": {
+      "core:strength": { "minimum": 6, "maximum": 12 },
+      "core:agility": { "minimum": 8, "maximum": 14 },
+      "core:endurance": { "minimum": 8, "maximum": 14 },
+      "core:intelligence": { "minimum": 7, "maximum": 14 },
+      "core:perception": { "minimum": 9, "maximum": 15 },
+      "core:willpower": { "minimum": 7, "maximum": 14 },
+      "core:charisma": { "minimum": 5, "maximum": 13 },
+      "core:luck": { "minimum": 4, "maximum": 16 }
+    },
+    "appearance": {},
+    "equipment": [
+      { "slotId": "wear:head", "poolId": "core:explorer-headwear", "shared": true },
+      { "slotId": "wear:face", "poolId": "core:explorer-facewear", "shared": true },
+      { "slotId": "wear:torso", "fixedItemId": "core:linen-shirt", "shared": true },
+      { "slotId": "wear:outer", "fixedItemId": "core:trail-coat" },
+      { "slotId": "wear:hands", "fixedItemId": "core:work-gloves", "shared": true },
+      { "slotId": "wear:waist", "fixedItemId": "core:utility-belt", "shared": true },
+      { "slotId": "wear:legs", "fixedItemId": "core:travel-pants", "shared": true },
+      { "slotId": "wear:feet", "fixedItemId": "core:trail-boots", "shared": true },
+      { "slotId": "decor:neck", "poolId": "core:explorer-neckwear" },
+      { "slotId": "decor:wrist-left", "poolId": "core:common-wristwear", "shared": true },
+      { "slotId": "weapon:primary", "poolId": "core:explorer-primary-weapons" },
+      { "slotId": "weapon:ranged", "poolId": "core:scout-ranged-weapons" },
+      { "slotId": "weapon:utility", "fixedItemId": "core:field-hatchet", "shared": true }
+    ],
+    "weaponSetSlots": ["weapon:primary", "weapon:ranged", "weapon:utility"],
+    "tags": ["explorer", "playable", "human"]
+  },
+  {
+    "schemaVersion": 1,
+    "id": "core:beacon-keeper",
+    "name": "Beacon Keeper",
+    "role": "npc",
+    "description": "An authored-area NPC using the same abilities, appearance, and equipment model.",
+    "abilities": {
+      "core:intelligence": { "minimum": 11, "maximum": 16 },
+      "core:perception": { "minimum": 10, "maximum": 16 },
+      "core:willpower": { "minimum": 10, "maximum": 15 }
+    },
+    "appearance": {
+      "fixed": {
+        "hairStyles": "bun"
+      }
+    },
+    "equipment": [
+      { "slotId": "wear:torso", "fixedItemId": "core:linen-shirt", "shared": true },
+      { "slotId": "wear:outer", "fixedItemId": "core:trail-coat" },
+      { "slotId": "wear:legs", "fixedItemId": "core:travel-pants", "shared": true },
+      { "slotId": "wear:feet", "fixedItemId": "core:trail-boots", "shared": true },
+      { "slotId": "decor:neck", "fixedItemId": "core:beacon-pendant" },
+      { "slotId": "weapon:primary", "fixedItemId": "core:walking-staff" }
+    ],
+    "weaponSetSlots": ["weapon:primary"],
+    "tags": ["npc", "keeper", "human"]
+  },
+  {
+    "schemaVersion": 1,
+    "id": "core:shore-raider",
+    "name": "Shore Raider",
+    "role": "enemy",
+    "description": "A hostile archetype proving enemies share the complete character system.",
+    "abilities": {
+      "core:strength": { "minimum": 9, "maximum": 15 },
+      "core:agility": { "minimum": 8, "maximum": 14 },
+      "core:endurance": { "minimum": 8, "maximum": 15 },
+      "core:intelligence": { "minimum": 4, "maximum": 10 },
+      "core:perception": { "minimum": 7, "maximum": 13 },
+      "core:willpower": { "minimum": 6, "maximum": 12 },
+      "core:charisma": { "minimum": 3, "maximum": 9 },
+      "core:luck": { "minimum": 3, "maximum": 12 }
+    },
+    "appearance": {
+      "pools": {
+        "bodyShapes": ["broad", "angular"],
+        "builds": ["athletic", "sturdy", "heavy"],
+        "hairStyles": ["buzz", "crop", "mohawk"]
+      }
+    },
+    "equipment": [
+      { "slotId": "wear:torso", "fixedItemId": "core:linen-shirt", "shared": true },
+      { "slotId": "wear:waist", "fixedItemId": "core:utility-belt", "shared": true },
+      { "slotId": "wear:legs", "fixedItemId": "core:travel-pants", "shared": true },
+      { "slotId": "wear:feet", "fixedItemId": "core:trail-boots", "shared": true },
+      { "slotId": "weapon:primary", "fixedItemId": "core:short-blade" },
+      { "slotId": "weapon:ranged", "fixedItemId": "core:hunting-bow" }
+    ],
+    "weaponSetSlots": ["weapon:primary", "weapon:ranged"],
+    "tags": ["enemy", "raider", "human"]
+  }
+]

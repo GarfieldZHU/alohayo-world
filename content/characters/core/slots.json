@@ -1,0 +1,146 @@
+[
+  {
+    "id": "wear:head",
+    "name": "Head",
+    "kind": "wearable",
+    "accepts": ["hat", "helmet"],
+    "layer": 80,
+    "optional": true
+  },
+  {
+    "id": "wear:face",
+    "name": "Face",
+    "kind": "wearable",
+    "accepts": ["mask", "eyewear"],
+    "layer": 85,
+    "optional": true
+  },
+  {
+    "id": "wear:torso",
+    "name": "Torso",
+    "kind": "wearable",
+    "accepts": ["shirt", "armor"],
+    "layer": 40,
+    "optional": false
+  },
+  {
+    "id": "wear:outer",
+    "name": "Outerwear",
+    "kind": "wearable",
+    "accepts": ["coat", "cloak"],
+    "layer": 60,
+    "optional": true
+  },
+  {
+    "id": "wear:hands",
+    "name": "Hands",
+    "kind": "wearable",
+    "accepts": ["gloves"],
+    "layer": 55,
+    "optional": true
+  },
+  {
+    "id": "wear:waist",
+    "name": "Waist",
+    "kind": "wearable",
+    "accepts": ["belt"],
+    "layer": 50,
+    "optional": true
+  },
+  {
+    "id": "wear:legs",
+    "name": "Legs",
+    "kind": "wearable",
+    "accepts": ["pants", "skirt"],
+    "layer": 35,
+    "optional": false
+  },
+  {
+    "id": "wear:feet",
+    "name": "Feet",
+    "kind": "wearable",
+    "accepts": ["boots", "shoes"],
+    "layer": 30,
+    "optional": false
+  },
+  {
+    "id": "decor:ears",
+    "name": "Ears",
+    "kind": "decorator",
+    "accepts": ["earring"],
+    "layer": 95,
+    "optional": true
+  },
+  {
+    "id": "decor:neck",
+    "name": "Neck",
+    "kind": "decorator",
+    "accepts": ["necklace", "scarf"],
+    "layer": 75,
+    "optional": true
+  },
+  {
+    "id": "decor:wrist-left",
+    "name": "Left Wrist",
+    "kind": "decorator",
+    "accepts": ["bracelet", "watch"],
+    "layer": 70,
+    "optional": true
+  },
+  {
+    "id": "decor:wrist-right",
+    "name": "Right Wrist",
+    "kind": "decorator",
+    "accepts": ["bracelet", "watch"],
+    "layer": 70,
+    "optional": true
+  },
+  {
+    "id": "decor:finger-left",
+    "name": "Left Hand Ring",
+    "kind": "decorator",
+    "accepts": ["ring"],
+    "layer": 72,
+    "optional": true
+  },
+  {
+    "id": "decor:finger-right",
+    "name": "Right Hand Ring",
+    "kind": "decorator",
+    "accepts": ["ring"],
+    "layer": 72,
+    "optional": true
+  },
+  {
+    "id": "weapon:primary",
+    "name": "Primary Weapon",
+    "kind": "weapon",
+    "accepts": ["weapon"],
+    "layer": 100,
+    "optional": true
+  },
+  {
+    "id": "weapon:secondary",
+    "name": "Secondary Weapon",
+    "kind": "weapon",
+    "accepts": ["weapon"],
+    "layer": 100,
+    "optional": true
+  },
+  {
+    "id": "weapon:ranged",
+    "name": "Ranged Weapon",
+    "kind": "weapon",
+    "accepts": ["weapon-ranged"],
+    "layer": 100,
+    "optional": true
+  },
+  {
+    "id": "weapon:utility",
+    "name": "Utility Weapon",
+    "kind": "weapon",
+    "accepts": ["weapon-tool"],
+    "layer": 100,
+    "optional": true
+  }
+]

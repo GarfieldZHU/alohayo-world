@@ -1,0 +1,82 @@
+[
+  {
+    "id": "core:strength",
+    "name": "Strength",
+    "abbreviation": "STR",
+    "description": "Force, lifting, melee power, and physical burden.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "physical"
+  },
+  {
+    "id": "core:agility",
+    "name": "Agility",
+    "abbreviation": "AGI",
+    "description": "Speed, balance, precision, and reaction.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "physical"
+  },
+  {
+    "id": "core:endurance",
+    "name": "Endurance",
+    "abbreviation": "END",
+    "description": "Health, stamina, resistance, and recovery.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "physical"
+  },
+  {
+    "id": "core:intelligence",
+    "name": "Intelligence",
+    "abbreviation": "INT",
+    "description": "Reasoning, learning, crafting, and technical knowledge.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "mental"
+  },
+  {
+    "id": "core:perception",
+    "name": "Perception",
+    "abbreviation": "PER",
+    "description": "Awareness, observation, tracking, and ranged accuracy.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "mental"
+  },
+  {
+    "id": "core:willpower",
+    "name": "Willpower",
+    "abbreviation": "WIL",
+    "description": "Focus, courage, discipline, and mental resistance.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "mental"
+  },
+  {
+    "id": "core:charisma",
+    "name": "Charisma",
+    "abbreviation": "CHA",
+    "description": "Presence, empathy, leadership, and negotiation.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "social"
+  },
+  {
+    "id": "core:luck",
+    "name": "Luck",
+    "abbreviation": "LCK",
+    "description": "Fortune, unusual outcomes, and opportunity.",
+    "minimum": 1,
+    "maximum": 20,
+    "default": 8,
+    "group": "fortune"
+  }
+]

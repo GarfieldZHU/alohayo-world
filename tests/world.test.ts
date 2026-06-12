@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { BIOME, generateWorld, hashSeed } from '../packages/map/src'
+import { BIOME, applyMapAreas, generateWorld, hashSeed } from '../packages/map/src'
+import type { MapAreaDefinition } from '../packages/config/src'
+import wayfinderIsle from '../content/maps/core/areas/wayfinder-isle.json'
 
 describe('world generation', () => {
   it('is deterministic for a seed', () => {
@@ -25,5 +27,29 @@ describe('world generation', () => {
     for (let index = 0; index < world.biomes.length; index += 1) {
       expect(Boolean(world.landmass[index]) !== Boolean(world.waterbody[index])).toBe(true)
     }
+  })
+
+  it('applies authored map areas and landmarks deterministically', () => {
+    const terrainCodes = {
+      'core:shallow-sea': BIOME.shallowSea,
+      'core:coast': BIOME.coast,
+      'core:grassland': BIOME.grassland,
+      'core:highland': BIOME.highland,
+      'core:bare-rock': BIOME.bareRock,
+    }
+    const first = applyMapAreas(
+      generateWorld('authored', 128, 96),
+      [wayfinderIsle as MapAreaDefinition],
+      terrainCodes
+    )
+    const second = applyMapAreas(
+      generateWorld('authored', 128, 96),
+      [wayfinderIsle as MapAreaDefinition],
+      terrainCodes
+    )
+    expect(first.hash).toBe(second.hash)
+    expect(first.areaIds).toContain('core:wayfinder-isle')
+    expect(first.landmarks[0]?.id).toBe('core:wayfinder-beacon')
+    expect(first.authoredArea.some((area) => area > 0)).toBe(true)
   })
 })

@@ -1,4 +1,9 @@
-import { generateWorld, type GenerateWorldRequest, type GenerateWorldResponse } from './index'
+import {
+  applyMapAreas,
+  generateWorld,
+  type GenerateWorldRequest,
+  type GenerateWorldResponse,
+} from './index'
 
 const workerScope = self as unknown as {
   onmessage: ((event: MessageEvent<GenerateWorldRequest>) => void) | null
@@ -7,7 +12,10 @@ const workerScope = self as unknown as {
 
 workerScope.onmessage = (event: MessageEvent<GenerateWorldRequest>) => {
   if (event.data.type !== 'generate') return
-  const world = generateWorld(event.data.seed, event.data.width, event.data.height)
+  let world = generateWorld(event.data.seed, event.data.width, event.data.height)
+  if (event.data.mapAreas?.length && event.data.terrainCodes) {
+    world = applyMapAreas(world, event.data.mapAreas, event.data.terrainCodes)
+  }
   const response: GenerateWorldResponse = { type: 'generated', world }
   workerScope.postMessage(response, {
     transfer: [
@@ -17,6 +25,7 @@ workerScope.onmessage = (event: MessageEvent<GenerateWorldRequest>) => {
       world.biomes.buffer,
       world.landmass.buffer,
       world.waterbody.buffer,
+      world.authoredArea.buffer,
     ],
   })
 }

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "abilities": "abilities.json",
+  "appearancePools": "appearance.json",
+  "slots": "slots.json",
+  "items": "items.json",
+  "equipmentPools": "equipment-pools.json",
+  "archetypes": "archetypes.json"
+}

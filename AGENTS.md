@@ -26,18 +26,19 @@ renderer.
 
 ## Repository Map
 
-| Path                | Responsibility                                      |
-| ------------------- | --------------------------------------------------- |
-| `apps/game`         | Standalone browser shell and GitHub Pages demo      |
-| `packages/config`   | Public runtime and content contracts                |
-| `packages/map`      | Deterministic geography, topology, worker protocol  |
-| `packages/engine`   | Lifecycle, PixiJS adapter, input, diagnostics       |
-| `packages/embed`    | Lazy public `mountGame` surface                     |
-| `crates/world-core` | Profiled deterministic hot loops compiled to Wasm   |
-| `content`           | Versioned, validated world and gameplay definitions |
-| `assets`            | Original or verified CC0 resources and provenance   |
-| `tests`             | Contract, determinism, benchmark, and browser tests |
-| `.github`           | CI, Pages, release, security, and issue automation  |
+| Path                 | Responsibility                                      |
+| -------------------- | --------------------------------------------------- |
+| `apps/game`          | Standalone browser shell and GitHub Pages demo      |
+| `packages/config`    | Public runtime and content contracts                |
+| `packages/map`       | Deterministic geography, topology, worker protocol  |
+| `packages/character` | Shared abilities, appearance, gear, and generation  |
+| `packages/engine`    | Lifecycle, PixiJS adapter, input, diagnostics       |
+| `packages/embed`     | Lazy public `mountGame` surface                     |
+| `crates/world-core`  | Profiled deterministic hot loops compiled to Wasm   |
+| `content`            | Versioned, validated world and gameplay definitions |
+| `assets`             | Original or verified CC0 resources and provenance   |
+| `tests`              | Contract, determinism, benchmark, and browser tests |
+| `.github`            | CI, Pages, release, security, and issue automation  |
 
 ## Architecture Invariants
 
@@ -72,6 +73,20 @@ renderer.
 3. Add content schemas and examples.
 4. Register a narrow engine capability; do not let configuration execute code.
 5. Add unit tests, lifecycle cleanup tests, and a small playable vertical slice.
+
+### Add an authored map area
+
+1. Read `docs/config/MAPS.md`.
+2. Add JSON under `content/maps/<pack>/areas/`; build discovery is automatic.
+3. Validate terrain references and deterministic overlay output.
+4. Keep large areas patch-based instead of listing thousands of cells.
+
+### Add a character or ability
+
+1. Read `docs/config/CHARACTERS.md` and `packages/character/AGENTS.md`.
+2. Extend the catalogs under `content/characters/`.
+3. Use the shared archetype model for players, NPCs, and enemies.
+4. Validate slot/item/pool references and deterministic generation.
 
 ### Change the embed contract
 

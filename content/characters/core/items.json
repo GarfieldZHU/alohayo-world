@@ -1,0 +1,132 @@
+[
+  {
+    "id": "core:wayfinder-cap",
+    "name": "Wayfinder Cap",
+    "tags": ["hat", "travel"],
+    "allowedSlots": ["wear:head"],
+    "appearance": { "shape": "cap", "color": "#315f45" },
+    "shareable": true
+  },
+  {
+    "id": "core:linen-shirt",
+    "name": "Linen Shirt",
+    "tags": ["shirt", "light"],
+    "allowedSlots": ["wear:torso"],
+    "appearance": { "shape": "shirt", "color": "#d8d1b5" },
+    "shareable": true
+  },
+  {
+    "id": "core:trail-coat",
+    "name": "Trail Coat",
+    "tags": ["coat", "travel"],
+    "allowedSlots": ["wear:outer"],
+    "appearance": { "shape": "coat", "color": "#477a6a" },
+    "modifiers": { "core:endurance": 1 },
+    "shareable": false
+  },
+  {
+    "id": "core:work-gloves",
+    "name": "Work Gloves",
+    "tags": ["gloves", "work"],
+    "allowedSlots": ["wear:hands"],
+    "appearance": { "shape": "gloves", "color": "#746f67" },
+    "shareable": true
+  },
+  {
+    "id": "core:utility-belt",
+    "name": "Utility Belt",
+    "tags": ["belt", "utility"],
+    "allowedSlots": ["wear:waist"],
+    "appearance": { "shape": "belt", "color": "#5b4431" },
+    "shareable": true
+  },
+  {
+    "id": "core:travel-pants",
+    "name": "Travel Pants",
+    "tags": ["pants", "travel"],
+    "allowedSlots": ["wear:legs"],
+    "appearance": { "shape": "pants", "color": "#34485a" },
+    "shareable": true
+  },
+  {
+    "id": "core:trail-boots",
+    "name": "Trail Boots",
+    "tags": ["boots", "travel"],
+    "allowedSlots": ["wear:feet"],
+    "appearance": { "shape": "boots", "color": "#4b3829" },
+    "shareable": true
+  },
+  {
+    "id": "core:round-glasses",
+    "name": "Round Glasses",
+    "tags": ["eyewear", "scholar"],
+    "allowedSlots": ["wear:face"],
+    "appearance": { "shape": "round-glasses", "color": "#9b9da1" },
+    "shareable": true
+  },
+  {
+    "id": "core:beacon-pendant",
+    "name": "Beacon Pendant",
+    "tags": ["necklace", "beacon"],
+    "allowedSlots": ["decor:neck"],
+    "appearance": { "shape": "pendant", "color": "#f0d79b" },
+    "shareable": false
+  },
+  {
+    "id": "core:copper-earring",
+    "name": "Copper Earring",
+    "tags": ["earring"],
+    "allowedSlots": ["decor:ears"],
+    "appearance": { "shape": "ring", "color": "#c48d4f" },
+    "shareable": true
+  },
+  {
+    "id": "core:field-watch",
+    "name": "Field Watch",
+    "tags": ["watch"],
+    "allowedSlots": ["decor:wrist-left", "decor:wrist-right"],
+    "appearance": { "shape": "watch", "color": "#6c6f75" },
+    "shareable": true
+  },
+  {
+    "id": "core:plain-ring",
+    "name": "Plain Ring",
+    "tags": ["ring"],
+    "allowedSlots": ["decor:finger-left", "decor:finger-right"],
+    "appearance": { "shape": "ring", "color": "#d9e5e7" },
+    "shareable": true
+  },
+  {
+    "id": "core:walking-staff",
+    "name": "Walking Staff",
+    "tags": ["weapon", "staff", "tool"],
+    "allowedSlots": ["weapon:primary", "weapon:secondary"],
+    "appearance": { "shape": "staff", "color": "#6b4d32" },
+    "modifiers": { "core:perception": 1 },
+    "shareable": false
+  },
+  {
+    "id": "core:short-blade",
+    "name": "Short Blade",
+    "tags": ["weapon", "blade"],
+    "allowedSlots": ["weapon:primary", "weapon:secondary"],
+    "appearance": { "shape": "short-blade", "color": "#b7c0c4" },
+    "shareable": false
+  },
+  {
+    "id": "core:hunting-bow",
+    "name": "Hunting Bow",
+    "tags": ["weapon-ranged", "bow"],
+    "allowedSlots": ["weapon:ranged"],
+    "appearance": { "shape": "bow", "color": "#8b6948" },
+    "shareable": false
+  },
+  {
+    "id": "core:field-hatchet",
+    "name": "Field Hatchet",
+    "tags": ["weapon-tool", "hatchet"],
+    "allowedSlots": ["weapon:utility"],
+    "appearance": { "shape": "hatchet", "color": "#8b9198" },
+    "shareable": true
+  }
+]

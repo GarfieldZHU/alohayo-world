@@ -1,3 +1,5 @@
+import type { MapAreaDefinition, MapLandmarkDefinition } from '@alohayo/config'
+
 export const BIOME = {
   deepOcean: 0,
   ocean: 1,
@@ -27,7 +29,14 @@ export interface GeneratedWorld {
   biomes: Uint8Array
   landmass: Uint16Array
   waterbody: Uint16Array
+  authoredArea: Uint16Array
   mainlandId: number
+  areaIds: string[]
+  landmarks: GeneratedLandmark[]
+}
+
+export interface GeneratedLandmark extends MapLandmarkDefinition {
+  areaId: string
 }
 
 export interface GenerateWorldRequest {
@@ -35,6 +44,8 @@ export interface GenerateWorldRequest {
   seed: string
   width: number
   height: number
+  mapAreas?: MapAreaDefinition[]
+  terrainCodes?: Record<string, number>
 }
 
 export interface GenerateWorldResponse {
@@ -201,6 +212,146 @@ function classifyTopology(
   return { ocean, landmass, waterbody, mainlandId }
 }
 
+function classifyTopologyFromBiomes(
+  biomes: Uint8Array,
+  width: number,
+  height: number
+): { landmass: Uint16Array; waterbody: Uint16Array; mainlandId: number } {
+  const elevation = new Uint8Array(biomes.length)
+  for (let index = 0; index < biomes.length; index += 1) {
+    const biome = biomes[index]!
+    elevation[index] =
+      biome === BIOME.deepOcean ||
+      biome === BIOME.ocean ||
+      biome === BIOME.shallowSea ||
+      biome === BIOME.lake
+        ? 0
+        : 255
+  }
+  const topology = classifyTopology(elevation, width, height)
+  return {
+    landmass: topology.landmass,
+    waterbody: topology.waterbody,
+    mainlandId: topology.mainlandId,
+  }
+}
+
+function patchContains(
+  shape: 'rectangle' | 'ellipse',
+  localX: number,
+  localY: number,
+  width: number,
+  height: number
+): boolean {
+  if (shape === 'rectangle') return true
+  const normalizedX = (localX + 0.5) / width - 0.5
+  const normalizedY = (localY + 0.5) / height - 0.5
+  return normalizedX * normalizedX * 4 + normalizedY * normalizedY * 4 <= 1
+}
+
+export function applyMapAreas(
+  world: GeneratedWorld,
+  areas: MapAreaDefinition[],
+  terrainCodes: Record<string, number>
+): GeneratedWorld {
+  const authoredArea = new Uint16Array(world.biomes.length)
+  const areaIds = ['']
+  const landmarks: GeneratedLandmark[] = []
+
+  const applyCell = (
+    worldX: number,
+    worldY: number,
+    areaIndex: number,
+    terrainId: string,
+    elevation?: number,
+    moisture?: number,
+    temperature?: number
+  ) => {
+    if (worldX < 0 || worldY < 0 || worldX >= world.width || worldY >= world.height) return
+    const terrainCode = terrainCodes[terrainId]
+    if (terrainCode === undefined) throw new Error(`unknown terrain id ${terrainId}`)
+    const index = worldY * world.width + worldX
+    world.biomes[index] = terrainCode
+    authoredArea[index] = areaIndex
+    if (elevation !== undefined) world.elevation[index] = elevation
+    if (moisture !== undefined) world.moisture[index] = moisture
+    if (temperature !== undefined) world.temperature[index] = temperature
+  }
+
+  for (const area of areas) {
+    if (!area.enabled) continue
+    const areaIndex = areaIds.length
+    areaIds.push(area.id)
+    const originX =
+      area.placement.mode === 'normalized'
+        ? Math.round((world.width - area.width) * area.placement.x)
+        : Math.round(area.placement.x)
+    const originY =
+      area.placement.mode === 'normalized'
+        ? Math.round((world.height - area.height) * area.placement.y)
+        : Math.round(area.placement.y)
+
+    for (const patch of area.terrainPatches) {
+      for (let y = 0; y < patch.height; y += 1) {
+        for (let x = 0; x < patch.width; x += 1) {
+          if (!patchContains(patch.shape, x, y, patch.width, patch.height)) continue
+          applyCell(
+            originX + patch.x + x,
+            originY + patch.y + y,
+            areaIndex,
+            patch.terrainId,
+            patch.elevation,
+            patch.moisture,
+            patch.temperature
+          )
+        }
+      }
+    }
+
+    for (const cell of area.cells ?? []) {
+      applyCell(
+        originX + cell.x,
+        originY + cell.y,
+        areaIndex,
+        cell.terrainId,
+        cell.elevation,
+        cell.moisture,
+        cell.temperature
+      )
+    }
+
+    for (const landmark of area.landmarks ?? []) {
+      landmarks.push({
+        ...landmark,
+        x: originX + landmark.x,
+        y: originY + landmark.y,
+        areaId: area.id,
+      })
+    }
+  }
+
+  const topology = classifyTopologyFromBiomes(world.biomes, world.width, world.height)
+  world.landmass = topology.landmass
+  world.waterbody = topology.waterbody
+  world.mainlandId = topology.mainlandId
+  world.authoredArea = authoredArea
+  world.areaIds = areaIds
+  world.landmarks = landmarks
+
+  let worldHash = 2166136261
+  for (let index = 0; index < world.biomes.length; index += 1) {
+    worldHash ^=
+      world.biomes[index]! +
+      world.elevation[index]! +
+      world.landmass[index]! +
+      world.waterbody[index]! +
+      world.authoredArea[index]!
+    worldHash = Math.imul(worldHash, 16777619)
+  }
+  world.hash = (worldHash >>> 0).toString(16).padStart(8, '0')
+  return world
+}
+
 function touchesWater(
   index: number,
   width: number,
@@ -313,6 +464,9 @@ export function generateWorld(seedText: string, width: number, height: number): 
     biomes,
     landmass: topology.landmass,
     waterbody: topology.waterbody,
+    authoredArea: new Uint16Array(size),
     mainlandId: topology.mainlandId,
+    areaIds: [''],
+    landmarks: [],
   }
 }

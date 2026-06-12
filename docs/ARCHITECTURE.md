@@ -15,6 +15,15 @@ without mutating authoritative state. PixiJS is an adapter, never the world mode
 `WorldDefinition -> validator -> generator worker -> typed terrain layers -> biome
 classifier -> render chunks -> inspector/diagnostics`.
 
+Authored map-area JSON is discovered at build time, transferred with the generation
+request, applied in the worker after procedural classification, and followed by
+topology/hash recalculation.
+
+Character catalogs flow through `@alohayo/character`, which deterministically resolves
+ability rolls, appearance pools, equipment choices, and active weapon slots for every
+role. The engine consumes generated snapshots and does not own character definition
+logic.
+
 The active browser generator is currently TypeScript inside a Web Worker. The Rust crate
 contains deterministic primitives and a Wasm build path, but it does not become
 authoritative until a worker-side loader, coarse batch API, and cross-language parity

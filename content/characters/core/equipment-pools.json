@@ -1,0 +1,32 @@
+[
+  {
+    "id": "core:explorer-headwear",
+    "itemIds": ["core:wayfinder-cap"],
+    "allowEmpty": true
+  },
+  {
+    "id": "core:explorer-facewear",
+    "itemIds": ["core:round-glasses"],
+    "allowEmpty": true
+  },
+  {
+    "id": "core:explorer-neckwear",
+    "itemIds": ["core:beacon-pendant"],
+    "allowEmpty": true
+  },
+  {
+    "id": "core:explorer-primary-weapons",
+    "itemIds": ["core:walking-staff", "core:short-blade"],
+    "allowEmpty": false
+  },
+  {
+    "id": "core:scout-ranged-weapons",
+    "itemIds": ["core:hunting-bow"],
+    "allowEmpty": false
+  },
+  {
+    "id": "core:common-wristwear",
+    "itemIds": ["core:field-watch"],
+    "allowEmpty": true
+  }
+]

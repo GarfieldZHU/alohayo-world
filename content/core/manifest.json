@@ -6,5 +6,7 @@
   "description": "The default deterministic geography pack.",
   "dependencies": [],
   "world": "world.json",
-  "biomes": "biomes.json"
+  "biomes": "biomes.json",
+  "mapAreas": "../maps/core/index.json",
+  "characters": "../characters/core/index.json"
 }

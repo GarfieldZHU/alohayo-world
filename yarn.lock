@@ -5,7 +5,16 @@ __metadata:
   version: 6
   cacheKey: 8
 
-"@alohayo/config@workspace:packages/config":
+"@alohayo/character@workspace:*, @alohayo/character@workspace:packages/character":
+  version: 0.0.0-use.local
+  resolution: "@alohayo/character@workspace:packages/character"
+  dependencies:
+    "@alohayo/config": "workspace:*"
+    "@alohayo/map": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@alohayo/config@workspace:*, @alohayo/config@workspace:packages/config":
   version: 0.0.0-use.local
   resolution: "@alohayo/config@workspace:packages/config"
   languageName: unknown
@@ -20,6 +29,10 @@ __metadata:
 "@alohayo/engine@workspace:packages/engine":
   version: 0.0.0-use.local
   resolution: "@alohayo/engine@workspace:packages/engine"
+  dependencies:
+    "@alohayo/character": "workspace:*"
+    "@alohayo/config": "workspace:*"
+    "@alohayo/map": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -29,9 +42,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alohayo/map@workspace:packages/map":
+"@alohayo/map@workspace:*, @alohayo/map@workspace:packages/map":
   version: 0.0.0-use.local
   resolution: "@alohayo/map@workspace:packages/map"
+  dependencies:
+    "@alohayo/config": "workspace:*"
   languageName: unknown
   linkType: soft
 

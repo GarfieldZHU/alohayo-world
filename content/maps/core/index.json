@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "core:map-areas",
+  "name": "Core Authored Areas",
+  "description": "Drop-in authored areas applied after procedural geography.",
+  "areas": ["areas/wayfinder-isle.json"]
+}

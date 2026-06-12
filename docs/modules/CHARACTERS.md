@@ -1,24 +1,35 @@
 # Character Module
 
-**Status:** planned for the living-explorer stage.
+**Status:** configurable generation foundation active.
 
 ## Owns
 
-Character definitions, identity, stats, movement intent, locomotion modes, inventory
-references, interaction reach, and save state.
+Character definitions, roles, extensible abilities, deterministic appearance,
+equipment/loadout selection, active weapon slot, identity, and future save state.
 
-## Data First
+## Shared Model
 
-Definitions provide sprite set, movement profile, capabilities, starting components,
-and progression tables. Runtime code implements registered movement and interaction
-systems; definitions do not contain scripts.
+Players, NPCs, and enemies use `CharacterArchetypeDefinition`. Role-specific behavior
+will be supplied by AI, input, interaction, and combat modules; the character data model
+does not fork.
 
-## First Vertical Slice
+## Active Foundation
 
-One explorer can spawn on traversable mainland, walk between cells, collide with blocked
-terrain, inspect a landmark, rest, and resume from a local save.
+- Eight configurable core abilities with arbitrary extension IDs.
+- Body, build, height, face, skin, eyes, hair, and facial-hair pools.
+- Eight wearable, six decorator, and four weapon slots.
+- Fixed items, reusable item pools, sharing intent, ability modifiers.
+- Deterministic generation and initial active weapon selection.
+- A generated Wayfinder marker rendered on the map.
+
+## Next Vertical Slice
+
+Spawn definitions from authored map landmarks, character movement, collision, layered
+sprite assembly, inventory item instances, weapon switching input, inspection panel,
+and local save round trips.
 
 ## Dependencies and Tests
 
-Depends on map queries, input commands, clock, and persistence. Test deterministic spawn,
-movement costs, collision, lifecycle cleanup, and save round trips.
+Depends on config, map spawn queries, input, clock, and persistence. Tests cover
+determinism, complete ability catalogs, shared player/NPC/enemy generation, fixed
+appearance, equipment references, and multiple weapon slots.

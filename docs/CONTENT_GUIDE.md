@@ -34,5 +34,10 @@ IDs are lowercase kebab-case and globally namespaced by pack. References must re
 inside declared dependencies. Run `yarn validate:content` after every change.
 
 To add a biome, append a definition with a unique numeric code, color, climate ranges,
-movement cost, and description. To add a map pack, copy the example pack, change its ID,
-declare its dependency on `core`, and provide a world definition or authored overlay.
+movement cost, and description.
+
+Custom authored areas live under `content/maps/**/areas/` and are discovered
+automatically at build time. See `config/MAPS.md`.
+
+Characters live under `content/characters/` as separate ability, appearance, slot,
+item, pool, and archetype catalogs. See `config/CHARACTERS.md`.

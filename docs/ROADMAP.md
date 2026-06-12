@@ -16,6 +16,8 @@
       mainland/island inspection.
 - [x] Larger bounded map presets with an explicit enlarge control.
 - [x] Deterministic terrain transitions and zoom-dependent geographic detail.
+- [x] Build-time discovered custom map-area configs, landmarks, and topology refresh.
+- [x] Shared configurable character generation for player, NPC, and enemy archetypes.
 - [ ] Infinite chunk streaming and eviction.
 - [ ] Seam-safe coastlines, slope, drainage, rivers, erosion, and authored overlays.
 - Explorer entity movement, minimap, discovery, and IndexedDB saves.

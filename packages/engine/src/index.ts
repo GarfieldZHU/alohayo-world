@@ -1,7 +1,10 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
+import { generateCharacter, type GeneratedCharacter } from '@alohayo/character'
 import type {
   BiomeDefinition,
+  CharacterContentDefinition,
   GameHandle,
+  MapAreaDefinition,
   MountGameOptions,
   WorldDefinition,
 } from '@alohayo/config'
@@ -11,13 +14,17 @@ import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 interface EngineContent {
   world: WorldDefinition
   biomes: BiomeDefinition[]
+  mapAreas: MapAreaDefinition[]
+  characters: CharacterContentDefinition
 }
 
 function loadWorld(
   worker: Worker,
   seed: string,
   width: number,
-  height: number
+  height: number,
+  mapAreas: MapAreaDefinition[],
+  terrainCodes: Record<string, number>
 ): Promise<GeneratedWorld> {
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => reject(new Error('World generation timed out')), 15000)
@@ -29,7 +36,7 @@ function loadWorld(
       window.clearTimeout(timeout)
       reject(new Error(event.message || 'World generation failed'))
     }
-    worker.postMessage({ type: 'generate', seed, width, height })
+    worker.postMessage({ type: 'generate', seed, width, height, mapAreas, terrainCodes })
   })
 }
 
@@ -54,11 +61,14 @@ export async function createGame(
   const transitions = new Graphics()
   const regionalDetails = new Graphics()
   const closeDetails = new Graphics()
+  const landmarks = new Graphics()
+  const characterLayer = new Graphics()
   const overlay = new Container()
-  viewport.addChild(terrain, transitions, regionalDetails, closeDetails)
+  viewport.addChild(terrain, transitions, regionalDetails, closeDetails, landmarks, characterLayer)
   app.stage.addChild(viewport, overlay)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
+  const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
   const status = new Text({
     text: 'Generating world...',
     style: { fill: '#d8f3ff', fontFamily: 'monospace', fontSize: 13 },
@@ -69,6 +79,7 @@ export async function createGame(
   let paused = false
   let destroyed = false
   let world: GeneratedWorld | null = null
+  let explorer: GeneratedCharacter | null = null
   let scale = 1
   let dragging = false
   let lastX = 0
@@ -91,6 +102,96 @@ export async function createGame(
   const updateDetailLevel = () => {
     regionalDetails.visible = scale >= 1.15
     closeDetails.visible = scale >= 2.15
+    landmarks.visible = scale >= 1.15
+  }
+
+  const appearanceColor = (value: string, fallback: number) => {
+    const colors: Record<string, number> = {
+      porcelain: 0xf1d6c6,
+      fair: 0xe4bfa6,
+      warm: 0xc99370,
+      olive: 0xa77b55,
+      brown: 0x815536,
+      deep: 0x4f3023,
+      black: 0x151719,
+      'dark-brown': 0x33251e,
+      auburn: 0x7a3f2d,
+      blonde: 0xd2b36c,
+      silver: 0x9b9da1,
+      white: 0xe5e7e8,
+    }
+    return colors[value] ?? fallback
+  }
+
+  const itemColor = (slotIds: string[], fallback: number) => {
+    if (!explorer) return fallback
+    const selection = explorer.equipment.find(
+      (entry) => slotIds.includes(entry.slotId) && entry.itemId
+    )
+    const item = content.characters.items.find((candidate) => candidate.id === selection?.itemId)
+    const color = item?.appearance.color
+    return color?.startsWith('#') ? Number.parseInt(color.slice(1), 16) : fallback
+  }
+
+  const drawExplorer = () => {
+    characterLayer.clear()
+    if (!world || !explorer) return
+    const centerX = Math.floor(world.width / 2)
+    const centerY = Math.floor(world.height / 2)
+    let spawnIndex = -1
+    for (
+      let radius = 0;
+      radius < Math.max(world.width, world.height) && spawnIndex < 0;
+      radius += 1
+    ) {
+      for (
+        let y = Math.max(0, centerY - radius);
+        y <= Math.min(world.height - 1, centerY + radius);
+        y += 1
+      ) {
+        for (
+          let x = Math.max(0, centerX - radius);
+          x <= Math.min(world.width - 1, centerX + radius);
+          x += 1
+        ) {
+          const index = y * world.width + x
+          if (world.landmass[index] === world.mainlandId) {
+            spawnIndex = index
+            break
+          }
+        }
+        if (spawnIndex >= 0) break
+      }
+    }
+    if (spawnIndex < 0) return
+    const x = spawnIndex % world.width
+    const y = Math.floor(spawnIndex / world.width)
+    const centerPixelX = x * cellSize + cellSize / 2
+    const centerPixelY = y * cellSize + cellSize / 2
+    const skin = appearanceColor(explorer.appearance.skinTone, 0xc99370)
+    const hair = appearanceColor(explorer.appearance.hairColor, 0x33251e)
+    const clothing = itemColor(['wear:outer', 'wear:torso'], 0x72d7c8)
+    const bodyWidth =
+      explorer.appearance.bodyShape === 'broad'
+        ? 3.5
+        : explorer.appearance.bodyShape === 'slender'
+          ? 2.25
+          : 2.9
+    const bodyHeight =
+      explorer.appearance.height === 'very-tall' || explorer.appearance.height === 'tall'
+        ? 3
+        : explorer.appearance.height === 'short'
+          ? 2
+          : 2.5
+    characterLayer
+      .circle(centerPixelX, centerPixelY - 1.2, 1.45)
+      .fill({ color: skin })
+      .circle(centerPixelX, centerPixelY - 1.85, 1.25)
+      .fill({ color: hair, alpha: 0.92 })
+      .rect(centerPixelX - bodyWidth / 2, centerPixelY, bodyWidth, bodyHeight)
+      .fill({ color: clothing })
+      .circle(centerPixelX, centerPixelY, 3.4)
+      .stroke({ color: 0xffffff, width: 0.55, alpha: 0.85 })
   }
 
   const drawWorld = () => {
@@ -99,6 +200,7 @@ export async function createGame(
     transitions.clear()
     regionalDetails.clear()
     closeDetails.clear()
+    landmarks.clear()
     for (let y = 0; y < world.height; y += 1) {
       for (let x = 0; x < world.width; x += 1) {
         const index = y * world.width + x
@@ -172,6 +274,19 @@ export async function createGame(
         }
       }
     }
+    for (const landmark of world.landmarks) {
+      const x = landmark.x * cellSize + cellSize / 2
+      const y = landmark.y * cellSize + cellSize / 2
+      landmarks
+        .moveTo(x, y - 2)
+        .lineTo(x + 2, y)
+        .lineTo(x, y + 2)
+        .lineTo(x - 2, y)
+        .closePath()
+        .fill({ color: 0xf0d79b, alpha: 0.95 })
+        .stroke({ color: 0xffffff, width: 0.45, alpha: 0.8 })
+    }
+    drawExplorer()
     scale = Math.min(
       1,
       Math.max(
@@ -192,7 +307,8 @@ export async function createGame(
 
   const generate = async (seed: string) => {
     status.text = `Generating "${seed}"...`
-    world = await loadWorld(worker, seed, worldWidth, worldHeight)
+    explorer = generateCharacter(content.characters, 'core:explorer', seed)
+    world = await loadWorld(worker, seed, worldWidth, worldHeight, content.mapAreas, terrainCodes)
     window.localStorage.setItem('alohayo-world:last-seed', seed)
     drawWorld()
   }
@@ -200,7 +316,9 @@ export async function createGame(
 
   const updateStatus = () => {
     if (!world) return
-    status.text = `seed ${world.seed}  hash ${world.hash}  ${world.generationMs.toFixed(
+    status.text = `${explorer?.name ?? 'Explorer'}  seed ${world.seed}  hash ${
+      world.hash
+    }  ${world.generationMs.toFixed(
       1
     )}ms  ${world.width}x${world.height}  ${fps}fps  zoom ${scale.toFixed(2)}x`
   }
@@ -224,6 +342,7 @@ export async function createGame(
     if (x < 0 || y < 0 || x >= world.width || y >= world.height) return
     const index = y * world.width + x
     const biome = biomeByCode.get(world.biomes[index]!)
+    const areaId = world.areaIds[world.authoredArea[index]!] ?? ''
     const region = world.waterbody[index]
       ? world.waterbody[index] === 1
         ? 'ocean'
@@ -231,7 +350,9 @@ export async function createGame(
       : world.landmass[index] === world.mainlandId
         ? 'mainland'
         : `island ${world.landmass[index]}`
-    status.text = `${biome?.name ?? 'Unknown'} / ${region} (${x}, ${y})  elevation ${
+    status.text = `${biome?.name ?? 'Unknown'} / ${region}${
+      areaId ? ` / ${areaId}` : ''
+    } (${x}, ${y})  elevation ${
       world.elevation[index]
     }  moisture ${world.moisture[index]}  temperature ${world.temperature[index]}`
   }

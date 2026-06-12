@@ -17,7 +17,8 @@ spatial queries, map hashes, and map persistence boundaries.
 ## First Vertical Slice
 
 Bounded large atlas with ocean depth, lakes, lowland, highland, rock, mountain, snow,
-ecological cover, and mainland/island inspection.
+ecological cover, mainland/island inspection, and worker-applied authored area configs
+with landmarks.
 
 ## Next Slice
 

@@ -8,6 +8,9 @@
 - Increased the default atlas size and added bounded enlargement presets.
 - Added deterministic terrain transitions, cursor-centered zoom, and zoom-dependent
   regional and close terrain details.
+- Added plug-in authored map-area configs with worker application and landmarks.
+- Added shared configurable character abilities, appearance, wearable/decorator slots,
+  item pools, and switchable weapon loadouts for players, NPCs, and enemies.
 
 ## 0.1.0-demo
 

@@ -25,15 +25,15 @@ scripts.
 
 ## Planned Modules
 
-| Module      | First useful outcome                   | Depends on        |
-| ----------- | -------------------------------------- | ----------------- |
-| Map         | streamed geography, drainage, overlays | config, worker    |
-| Characters  | one controllable explorer              | map, input, saves |
-| Weather     | deterministic local weather fronts     | map, clock        |
-| Settlements | place and grow one settlement          | map, characters   |
-| Economy     | resources, inventories, local exchange | settlements       |
-| Combat      | data-driven encounters and equipment   | characters        |
-| Vehicles    | roads, steering, traversal modes       | map, characters   |
-| Creatures   | habitats, spawning, observation        | map, weather      |
+| Module      | First useful outcome                   | Depends on      |
+| ----------- | -------------------------------------- | --------------- |
+| Map         | streamed geography, drainage, overlays | config, worker  |
+| Characters  | configurable generated explorer marker | map, config     |
+| Weather     | deterministic local weather fronts     | map, clock      |
+| Settlements | place and grow one settlement          | map, characters |
+| Economy     | resources, inventories, local exchange | settlements     |
+| Combat      | data-driven encounters and equipment   | characters      |
+| Vehicles    | roads, steering, traversal modes       | map, characters |
+| Creatures   | habitats, spawning, observation        | map, weather    |
 
 Read the matching `modules/*.md` before implementing one.
