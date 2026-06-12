@@ -7,6 +7,7 @@ blindly.
 
 - `GAME_DESIGN.md`: vision, player promise, non-goals, and future modes.
 - `GAMEPLAY.md`: current explorer behavior and gameplay conventions.
+- `GAME_MODES.md`: World Mode vs Game Mode responsibilities and camera expectations.
 - `ROADMAP.md`: milestone status and implementation sequence.
 - `DEVELOPMENT_STAGES.md`: gates for growing from atlas to extensible game.
 
@@ -34,6 +35,8 @@ dependencies, first vertical slice, tests, and deferred work.
 - `modules/COMBAT.md`
 - `modules/VEHICLES.md`
 - `modules/CREATURES.md`
+- `modules/EXPLORATION.md`
+- `modules/ROADS.md`
 
 ## Decisions
 

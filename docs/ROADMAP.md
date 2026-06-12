@@ -21,12 +21,18 @@
 - [x] One-ninth-cell character scale with fixed-step walk, run, collision, and actions.
 - [ ] Infinite chunk streaming and eviction.
 - [ ] Seam-safe coastlines, slope, drainage, rivers, erosion, and authored overlays.
-- Explorer entity movement, minimap, discovery, and IndexedDB saves.
-- Content-pack dependency loading and schema migrations.
-- Explicit desktop/mobile performance budgets and benchmark history.
+- [ ] World Mode readouts for coordinates, elevation/z-band, terrain identity, and movement affordances.
+- [ ] Explorer entity movement, minimap, discovery, and IndexedDB saves.
+- [ ] Fixed-camera Game Mode with a basic main-character model and HUD skeleton.
+- [ ] Movement-state expansion for walk, run, swim, and fly.
+- [ ] Seeded settlement/site generation for villages, towns, cities, caves, and dungeons.
+- [ ] Terrain-aware road hierarchy and movement-speed modifiers.
+- [ ] Content-pack dependency loading and schema migrations.
+- [ ] Explicit desktop/mobile performance budgets and benchmark history.
 
 ## Staged Modules
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
-settlements, economy, combat, vehicles, and creatures. The next implementation target
-is streamed chunks plus drainage; gameplay plugins wait on stable spatial queries.
+settlements, economy, combat, vehicles, creatures, exploration, and roads. The next
+implementation target is streamed chunks plus drainage; Game Mode systems should stay
+behind stable spatial queries and shared terminology from World Mode.

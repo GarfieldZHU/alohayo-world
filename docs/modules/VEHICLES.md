@@ -12,6 +12,10 @@ compatibility, and route constraints.
 Enter one configurable vehicle and drive along an authored road with distinct handling
 on road, lowland, wetland, and water.
 
+Road hierarchy should already matter before vehicles mature: broad city avenues, local
+roads, narrow forest paths, wetland crossings, sparse highland/snow connectors, and rare
+desert interior routes all shape future vehicle traversal.
+
 ## Dependencies and Tests
 
 Depends on map surfaces, roads, characters, input, and persistence. Test deterministic

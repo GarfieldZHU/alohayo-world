@@ -9,6 +9,7 @@ import {
   type GeneratedCharacter,
 } from '@alohayo/character'
 import type {
+  ActiveBiomeSnapshot,
   BiomeDefinition,
   CharacterContentDefinition,
   GameHandle,
@@ -98,6 +99,7 @@ export async function createGame(
   let fpsStarted = performance.now()
   let simulationStarted = performance.now()
   let simulationAccumulator = 0
+  let lastBiomeSignature = ''
   let actionMessage = ''
   let actionMessageUntil = 0
   const pressedKeys = new Set<string>()
@@ -343,12 +345,50 @@ export async function createGame(
     )
   }
 
+  const getActiveBiomeSnapshot = (): ActiveBiomeSnapshot | null => {
+    if (!world || !explorerMotion) return null
+    const x = Math.max(0, Math.min(world.width - 1, Math.floor(explorerMotion.x)))
+    const y = Math.max(0, Math.min(world.height - 1, Math.floor(explorerMotion.y)))
+    const index = y * world.width + x
+    const biome = biomeByCode.get(world.biomes[index]!)
+    if (!biome) return null
+    const region = world.waterbody[index]
+      ? world.waterbody[index] === 1
+        ? 'ocean'
+        : `lake ${world.waterbody[index]}`
+      : world.landmass[index] === world.mainlandId
+        ? 'mainland'
+        : `island ${world.landmass[index]}`
+
+    return {
+      biomeId: biome.id,
+      biomeName: biome.name,
+      region,
+      x,
+      y,
+      elevation: world.elevation[index]!,
+      moisture: world.moisture[index]!,
+      temperature: world.temperature[index]!,
+      movementCost: biome.movementCost,
+    }
+  }
+
+  const notifyBiomeChange = () => {
+    const snapshot = getActiveBiomeSnapshot()
+    if (!snapshot) return
+    const signature = `${snapshot.biomeId}:${snapshot.x}:${snapshot.y}`
+    if (signature === lastBiomeSignature) return
+    lastBiomeSignature = signature
+    options.onBiomeChange?.(snapshot)
+  }
+
   const generate = async (seed: string) => {
     status.text = `Generating "${seed}"...`
     explorer = generateCharacter(content.characters, 'core:explorer', seed)
     world = await loadWorld(worker, seed, worldWidth, worldHeight, content.mapAreas, terrainCodes)
     window.localStorage.setItem('alohayo-world:last-seed', seed)
     drawWorld()
+    notifyBiomeChange()
   }
   await generate(options.initialWorld?.seed || content.world.defaultSeed)
 
@@ -525,6 +565,7 @@ export async function createGame(
     if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
       viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
       viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
+      notifyBiomeChange()
     }
   }
 

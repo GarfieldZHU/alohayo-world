@@ -20,17 +20,21 @@ memory growth.
 ## Stage C: Living Explorer
 
 - Character definitions, movement, collision, path queries, time, weather.
-- One explorer sprite and one inspect/interact loop.
+- One explorer sprite/model and one inspect/interact loop.
+- Fixed follow camera, minimap, and first Game Mode HUD skeleton.
+- Movement-state progression for walk, run, swim, and fly.
 - Save migration and content-pack dependency loading.
 
-Gate: a player can travel, inspect, rest, and resume locally.
+Gate: a player can travel, inspect, rest, and resume locally through a stable fixed-camera play loop.
 
 ## Stage D: Settlement Simulation
 
 - Resources, inventories, construction footprints, jobs, local economy.
+- Village, town, and city generation with readable road hierarchy.
+- Seeded sites such as caves, dungeons, forts, ruins, and wilderness structures.
 - Settlement growth driven by config and world suitability.
 
-Gate: one small settlement can be founded and simulated deterministically.
+Gate: one small settlement can be founded and simulated deterministically, with roads and nearby sites participating in traversal.
 
 ## Stage E: Optional Gameplay Plugins
 

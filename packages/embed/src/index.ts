@@ -65,6 +65,7 @@ export async function mountGame(options: MountGameOptions): Promise<GameHandle> 
 }
 
 export type {
+  ActiveBiomeSnapshot,
   BiomeDefinition,
   CharacterArchetypeDefinition,
   CharacterContentDefinition,

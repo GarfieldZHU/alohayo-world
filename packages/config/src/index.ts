@@ -225,10 +225,23 @@ export interface WorldManifest {
   characters?: CharacterContentDefinition
 }
 
+export interface ActiveBiomeSnapshot {
+  biomeId: string
+  biomeName: string
+  region: string
+  x: number
+  y: number
+  elevation: number
+  moisture: number
+  temperature: number
+  movementCost: number
+}
+
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
   initialWorld?: { seed?: string; width?: number; height?: number }
+  onBiomeChange?: (snapshot: ActiveBiomeSnapshot) => void
 }
 
 export interface GameHandle {

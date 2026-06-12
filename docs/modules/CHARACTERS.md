@@ -29,7 +29,14 @@ does not fork.
 
 Spawn definitions from authored map landmarks, layered sprite assembly, stamina,
 context-sensitive targets, NPC steering/pathfinding, inventory item instances, weapon
-switching input, inspection panel, and local save round trips.
+switching input, inspection panel, local save round trips, and a clearer basic main-character
+model for fixed-camera play.
+
+## Game Mode Expectations
+
+- Keep the explorer silhouette readable against varied terrain palettes.
+- Expose facing, movement mode, and status clearly enough for HUD-driven play.
+- Preserve shared player/NPC/enemy data contracts even if the first playable mode only uses one explorer.
 
 ## Dependencies and Tests
 

@@ -53,6 +53,9 @@ Water terrain currently has movement cost `7+` and rejects occupancy. Land terra
 traversable but high-cost terrain slows movement. Future locomotion profiles replace
 this temporary threshold for swimming, boats, flying, climbing, and vehicles.
 
+Game Mode should present locomotion as explicit movement modes with visible state, speed,
+and traversal permission rather than burying everything in terrain cost alone.
+
 ## Motion States
 
 - `idle`: no accepted movement.
@@ -119,6 +122,7 @@ items, doors, resources, combat targets, and context-sensitive selection.
 - Context-sensitive action selection and an interaction prompt.
 - Layered directional sprites and animation clips.
 - Stamina and ability-derived movement modifiers.
-- Swimming/climbing/vehicle locomotion profiles.
+- Swimming/flying/vehicle locomotion profiles with explicit mode toggles and HUD state.
+- Coordinate, elevation, and nearest-road/site readouts that remain stable under a fixed camera.
 - NPC steering and pathfinding through the same motion commands.
 - Save/load of position, facing, action state, and active weapon.

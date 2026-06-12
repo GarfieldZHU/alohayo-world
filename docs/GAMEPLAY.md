@@ -22,3 +22,16 @@ habitats, climate ranges, rarity, behavior, and capture systems.
 
 Each module is a registered plugin with data schemas; none may require changing the map
 core.
+
+## World Mode and Game Mode
+
+- **World Mode** keeps the current free camera and atlas-scale inspection workflow.
+- **Game Mode** is the next player-facing loop with a fixed follow camera, embodied traversal, HUD, and seeded sites.
+- World Mode should expose coordinate, elevation/z-band, terrain, and route information that Game Mode later consumes through HUD panels instead of a full-map camera.
+
+## Planned Game Mode HUD
+
+- status: health, stamina, condition, and active movement mode;
+- actions: interact, inspect, rest, tools, and future abilities;
+- minimap: roads, settlements, discovered sites, and camera orientation;
+- world readouts: coordinates, terrain, elevation band, nearest road/site.
