@@ -1,6 +1,6 @@
 # Character Module
 
-**Status:** configurable generation foundation active.
+**Status:** configurable generation and controllable movement foundation active.
 
 ## Owns
 
@@ -21,12 +21,15 @@ does not fork.
 - Fixed items, reusable item pools, sharing intent, ability modifiers.
 - Deterministic generation and initial active weapon selection.
 - A generated Wayfinder marker rendered on the map.
+- One-ninth-cell physical/render scale contract.
+- Fixed-step walk/run movement, terrain cost, water collision, facing, and camera follow.
+- Config-defined interaction actions with range, duration, target kind, and feedback.
 
 ## Next Vertical Slice
 
-Spawn definitions from authored map landmarks, character movement, collision, layered
-sprite assembly, inventory item instances, weapon switching input, inspection panel,
-and local save round trips.
+Spawn definitions from authored map landmarks, layered sprite assembly, stamina,
+context-sensitive targets, NPC steering/pathfinding, inventory item instances, weapon
+switching input, inspection panel, and local save round trips.
 
 ## Dependencies and Tests
 

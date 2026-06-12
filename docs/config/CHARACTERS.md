@@ -13,6 +13,7 @@ content/characters/core/
   slots.json
   items.json
   equipment-pools.json
+  actions.json
   archetypes.json
   index.json
 ```
@@ -91,6 +92,14 @@ ownership. Unique runtime item instances and durability arrive with inventory.
 first is initially active. Input and combat systems will switch active slots without
 changing the equipment model.
 
+## Movement and Actions
+
+Archetypes configure walk speed, run multiplier, interaction range, and allowed action
+IDs. Actions configure duration, range, input intent, and registered target kind.
+
+See `../MOVEMENT_AND_ACTIONS.md` for the runtime algorithm, one-ninth terrain scale,
+collision rules, controls, and extension invariants.
+
 ## Adding a Person, NPC, or Enemy
 
 1. Add or reuse ability, appearance, slot, item, and pool definitions.
@@ -104,6 +113,7 @@ changing the equipment model.
 
 `@alohayo/character` deterministically generates all abilities, appearance choices,
 equipment selections, and the active weapon slot. The demo's visible Wayfinder marker
-uses generated skin, hair, body proportions, height, and equipped clothing color.
-Movement, layered sprites, inventory instances, behavior AI, and combat are next-stage
-systems.
+uses generated skin, hair, body proportions, height, and equipped clothing color. It
+walks, runs, collides with water, changes facing, follows terrain cost, and interacts
+through content-defined actions. Layered sprites, inventory instances, behavior AI,
+pathfinding, and combat remain next-stage systems.

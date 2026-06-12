@@ -14,6 +14,7 @@ blindly.
 
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
+- `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
 - `config/MAPS.md`: write and plug authored area files into the world.

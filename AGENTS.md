@@ -88,6 +88,14 @@ renderer.
 3. Use the shared archetype model for players, NPCs, and enemies.
 4. Validate slot/item/pool references and deterministic generation.
 
+### Change movement or actions
+
+1. Read `docs/MOVEMENT_AND_ACTIONS.md`.
+2. Keep motion state and stepping in `packages/character`; the engine supplies input and
+   world queries.
+3. Preserve fixed-step simulation and the one-ninth terrain-cell footprint.
+4. Add unit tests for state transitions/collision and E2E coverage for controls.
+
 ### Change the embed contract
 
 1. Treat `MountGameOptions` and `GameHandle` as public APIs.

@@ -35,7 +35,104 @@ export interface GeneratedCharacter {
   appearance: GeneratedCharacterAppearance
   equipment: GeneratedEquipment[]
   activeWeaponSlot: string | null
+  actionIds: string[]
+  movement: {
+    walkSpeed: number
+    runMultiplier: number
+    actionRange: number
+  }
   tags: string[]
+}
+
+export type CharacterFacing = 'north' | 'east' | 'south' | 'west'
+export type CharacterActionState = 'idle' | 'walk' | 'run' | 'action'
+
+export interface CharacterMotionState {
+  x: number
+  y: number
+  facing: CharacterFacing
+  state: CharacterActionState
+  actionTimeRemaining: number
+  distanceTravelled: number
+}
+
+export interface CharacterMovementInput {
+  x: number
+  y: number
+  running: boolean
+}
+
+export interface CharacterMovementContext {
+  character: GeneratedCharacter
+  deltaSeconds: number
+  input: CharacterMovementInput
+  canOccupy(x: number, y: number): boolean
+  movementCost(x: number, y: number): number
+}
+
+export const CHARACTER_CELL_FRACTION = 1 / 3
+export const CHARACTER_TERRAIN_AREA_RATIO = 1 / 9
+
+export function createCharacterMotion(x: number, y: number): CharacterMotionState {
+  return {
+    x,
+    y,
+    facing: 'south',
+    state: 'idle',
+    actionTimeRemaining: 0,
+    distanceTravelled: 0,
+  }
+}
+
+export function startCharacterAction(motion: CharacterMotionState, durationSeconds = 0.32): void {
+  motion.state = 'action'
+  motion.actionTimeRemaining = durationSeconds
+}
+
+export function stepCharacterMotion(
+  motion: CharacterMotionState,
+  context: CharacterMovementContext
+): void {
+  if (motion.actionTimeRemaining > 0) {
+    motion.actionTimeRemaining = Math.max(0, motion.actionTimeRemaining - context.deltaSeconds)
+    motion.state = motion.actionTimeRemaining > 0 ? 'action' : 'idle'
+    return
+  }
+
+  const magnitude = Math.hypot(context.input.x, context.input.y)
+  if (!magnitude) {
+    motion.state = 'idle'
+    return
+  }
+
+  const directionX = context.input.x / magnitude
+  const directionY = context.input.y / magnitude
+  if (Math.abs(directionX) > Math.abs(directionY)) {
+    motion.facing = directionX < 0 ? 'west' : 'east'
+  } else {
+    motion.facing = directionY < 0 ? 'north' : 'south'
+  }
+
+  const running = context.input.running
+  const baseSpeed = context.character.movement.walkSpeed
+  const speed = baseSpeed * (running ? context.character.movement.runMultiplier : 1)
+  const terrainCost = Math.max(1, context.movementCost(motion.x, motion.y))
+  const distance = (speed * context.deltaSeconds) / Math.sqrt(terrainCost)
+  const nextX = motion.x + directionX * distance
+  const nextY = motion.y + directionY * distance
+  let moved = 0
+
+  if (context.canOccupy(nextX, motion.y)) {
+    motion.x = nextX
+    moved += Math.abs(directionX * distance)
+  }
+  if (context.canOccupy(motion.x, nextY)) {
+    motion.y = nextY
+    moved += Math.abs(directionY * distance)
+  }
+
+  motion.distanceTravelled += moved
+  motion.state = moved > 0 ? (running ? 'run' : 'walk') : 'idle'
 }
 
 function createRandom(seedText: string): () => number {
@@ -136,6 +233,8 @@ export function generateCharacter(
     appearance: generateAppearance(archetype, content.appearancePools, random),
     equipment,
     activeWeaponSlot: archetype.weaponSetSlots[0] ?? null,
+    actionIds: [...archetype.actionIds],
+    movement: { ...archetype.movement },
     tags: [...archetype.tags],
   }
 }

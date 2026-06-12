@@ -3,9 +3,14 @@
 ## Explorer demo
 
 - Enter a seed and generate a deterministic atlas.
-- Drag or use WASD/arrow keys to pan; use wheel or controls to zoom.
+- Walk with WASD/arrow keys; hold Shift to run.
+- Use E or Space to interact with a nearby landmark.
+- Drag to pan the camera; use wheel or trackpad to zoom toward the pointer.
 - Hover/click cells to inspect biome, elevation, moisture, temperature, and coordinates.
 - Regenerate without reloading. The last seed is remembered locally.
+
+The character occupies one ninth of a terrain cell's area and moves continuously within
+cell coordinates. See `MOVEMENT_AND_ACTIONS.md`.
 
 ## Planned modules
 

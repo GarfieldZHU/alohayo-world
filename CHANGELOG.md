@@ -11,6 +11,8 @@
 - Added plug-in authored map-area configs with worker application and landmarks.
 - Added shared configurable character abilities, appearance, wearable/decorator slots,
   item pools, and switchable weapon loadouts for players, NPCs, and enemies.
+- Added the one-ninth-cell character scale, fixed-step walking/running, terrain-aware
+  collision, facing animation, camera follow, and configurable interaction actions.
 
 ## 0.1.0-demo
 

@@ -169,6 +169,22 @@ export interface CharacterEquipmentSelection {
   shared?: boolean
 }
 
+export interface CharacterMovementDefinition {
+  walkSpeed: number
+  runMultiplier: number
+  actionRange: number
+}
+
+export interface CharacterActionDefinition {
+  id: string
+  name: string
+  description: string
+  input: 'interact'
+  duration: number
+  range: number
+  target: 'landmark' | 'self'
+}
+
 export interface CharacterArchetypeDefinition {
   schemaVersion: 1
   id: string
@@ -179,6 +195,8 @@ export interface CharacterArchetypeDefinition {
   appearance: CharacterAppearanceSelection
   equipment: CharacterEquipmentSelection[]
   weaponSetSlots: string[]
+  movement: CharacterMovementDefinition
+  actionIds: string[]
   tags: string[]
 }
 
@@ -189,6 +207,7 @@ export interface CharacterContentDefinition {
   slots: EquipmentSlotDefinition[]
   items: EquipmentItemDefinition[]
   equipmentPools: EquipmentPoolDefinition[]
+  actions: CharacterActionDefinition[]
   archetypes: CharacterArchetypeDefinition[]
 }
 

@@ -10,6 +10,9 @@ const mapAreas = readdirSync(mapAreaRoot)
 const abilities = JSON.parse(
   readFileSync(new URL('../content/characters/core/abilities.json', import.meta.url))
 )
+const actions = JSON.parse(
+  readFileSync(new URL('../content/characters/core/actions.json', import.meta.url))
+)
 const appearance = JSON.parse(
   readFileSync(new URL('../content/characters/core/appearance.json', import.meta.url))
 )
@@ -148,6 +151,17 @@ for (const pool of equipmentPools) {
 }
 
 const roles = new Set()
+const actionIds = new Set(actions.map((action) => action.id))
+for (const action of actions) {
+  if (
+    !action.id ||
+    action.duration < 0 ||
+    action.range < 0 ||
+    !['landmark', 'self'].includes(action.target)
+  ) {
+    errors.push(`invalid action ${action.id || '<missing>'}`)
+  }
+}
 for (const archetype of archetypes) {
   roles.add(archetype.role)
   for (const abilityId of Object.keys(archetype.abilities ?? {})) {
@@ -166,6 +180,17 @@ for (const archetype of archetypes) {
       errors.push(`unknown pool ${selection.poolId} in archetype ${archetype.id}`)
     }
   }
+  if (
+    !archetype.movement ||
+    archetype.movement.walkSpeed <= 0 ||
+    archetype.movement.runMultiplier < 1 ||
+    archetype.movement.actionRange <= 0
+  ) {
+    errors.push(`invalid movement profile in archetype ${archetype.id}`)
+  }
+  for (const actionId of archetype.actionIds ?? []) {
+    if (!actionIds.has(actionId)) errors.push(`unknown action ${actionId} in ${archetype.id}`)
+  }
 }
 for (const role of ['player', 'npc', 'enemy']) {
   if (!roles.has(role)) errors.push(`missing ${role} character archetype`)
@@ -176,5 +201,5 @@ if (errors.length) {
   process.exit(1)
 }
 console.log(
-  `validated ${biomes.length} terrains, ${mapAreas.length} map areas, ${abilities.length} abilities, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
+  `validated ${biomes.length} terrains, ${mapAreas.length} map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
 )

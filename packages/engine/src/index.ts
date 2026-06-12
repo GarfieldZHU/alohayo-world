@@ -1,5 +1,13 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
-import { generateCharacter, type GeneratedCharacter } from '@alohayo/character'
+import {
+  CHARACTER_CELL_FRACTION,
+  createCharacterMotion,
+  generateCharacter,
+  startCharacterAction,
+  stepCharacterMotion,
+  type CharacterMotionState,
+  type GeneratedCharacter,
+} from '@alohayo/character'
 import type {
   BiomeDefinition,
   CharacterContentDefinition,
@@ -80,6 +88,7 @@ export async function createGame(
   let destroyed = false
   let world: GeneratedWorld | null = null
   let explorer: GeneratedCharacter | null = null
+  let explorerMotion: CharacterMotionState | null = null
   let scale = 1
   let dragging = false
   let lastX = 0
@@ -87,7 +96,13 @@ export async function createGame(
   let frameCount = 0
   let fps = 0
   let fpsStarted = performance.now()
+  let simulationStarted = performance.now()
+  let simulationAccumulator = 0
+  let actionMessage = ''
+  let actionMessageUntil = 0
+  const pressedKeys = new Set<string>()
   const cellSize = content.world.cellSize
+  const fixedStep = 1 / 60
   const requestedWidth = Math.round(options.initialWorld?.width ?? content.world.width)
   const requestedHeight = Math.round(options.initialWorld?.height ?? content.world.height)
   const worldWidth = Math.max(64, Math.min(384, requestedWidth))
@@ -133,17 +148,11 @@ export async function createGame(
     return color?.startsWith('#') ? Number.parseInt(color.slice(1), 16) : fallback
   }
 
-  const drawExplorer = () => {
-    characterLayer.clear()
-    if (!world || !explorer) return
+  const findSpawn = (): { x: number; y: number } | null => {
+    if (!world) return null
     const centerX = Math.floor(world.width / 2)
     const centerY = Math.floor(world.height / 2)
-    let spawnIndex = -1
-    for (
-      let radius = 0;
-      radius < Math.max(world.width, world.height) && spawnIndex < 0;
-      radius += 1
-    ) {
+    for (let radius = 0; radius < Math.max(world.width, world.height); radius += 1) {
       for (
         let y = Math.max(0, centerY - radius);
         y <= Math.min(world.height - 1, centerY + radius);
@@ -155,43 +164,70 @@ export async function createGame(
           x += 1
         ) {
           const index = y * world.width + x
-          if (world.landmass[index] === world.mainlandId) {
-            spawnIndex = index
-            break
-          }
+          if (world.landmass[index] === world.mainlandId) return { x: x + 0.5, y: y + 0.5 }
         }
-        if (spawnIndex >= 0) break
       }
     }
-    if (spawnIndex < 0) return
-    const x = spawnIndex % world.width
-    const y = Math.floor(spawnIndex / world.width)
-    const centerPixelX = x * cellSize + cellSize / 2
-    const centerPixelY = y * cellSize + cellSize / 2
+    return null
+  }
+
+  const drawExplorer = (elapsedSeconds = 0) => {
+    characterLayer.clear()
+    if (!world || !explorer || !explorerMotion) return
+    app.canvas.dataset.characterX = explorerMotion.x.toFixed(4)
+    app.canvas.dataset.characterY = explorerMotion.y.toFixed(4)
+    app.canvas.dataset.characterState = explorerMotion.state
+    app.canvas.dataset.characterAreaRatio = '0.111111'
+    const centerPixelX = explorerMotion.x * cellSize
+    const centerPixelY = explorerMotion.y * cellSize
     const skin = appearanceColor(explorer.appearance.skinTone, 0xc99370)
     const hair = appearanceColor(explorer.appearance.hairColor, 0x33251e)
     const clothing = itemColor(['wear:outer', 'wear:torso'], 0x72d7c8)
-    const bodyWidth =
+    const footprint = cellSize * CHARACTER_CELL_FRACTION
+    const bodyWidthFactor =
       explorer.appearance.bodyShape === 'broad'
-        ? 3.5
+        ? 0.95
         : explorer.appearance.bodyShape === 'slender'
-          ? 2.25
-          : 2.9
-    const bodyHeight =
+          ? 0.68
+          : 0.82
+    const bodyHeightFactor =
       explorer.appearance.height === 'very-tall' || explorer.appearance.height === 'tall'
-        ? 3
+        ? 0.46
         : explorer.appearance.height === 'short'
-          ? 2
-          : 2.5
+          ? 0.34
+          : 0.4
+    const moving = explorerMotion.state === 'walk' || explorerMotion.state === 'run'
+    const strideSpeed = explorerMotion.state === 'run' ? 15 : 9
+    const bob = moving ? Math.sin(elapsedSeconds * strideSpeed) * footprint * 0.08 : 0
+    const bodyWidth = footprint * bodyWidthFactor
+    const bodyHeight = footprint * bodyHeightFactor
+    const headRadius = footprint * 0.2
+    const facingOffsetX =
+      explorerMotion.facing === 'west'
+        ? -footprint * 0.12
+        : explorerMotion.facing === 'east'
+          ? footprint * 0.12
+          : 0
+    const actionPulse =
+      explorerMotion.state === 'action' ? 1 + Math.sin(elapsedSeconds * 24) * 0.15 : 1
     characterLayer
-      .circle(centerPixelX, centerPixelY - 1.2, 1.45)
+      .circle(centerPixelX, centerPixelY, cellSize * 0.45 * actionPulse)
+      .stroke({
+        color: explorerMotion.state === 'action' ? 0xf0d79b : 0xffffff,
+        width: Math.max(0.35, cellSize * 0.08),
+        alpha: 0.78,
+      })
+      .circle(centerPixelX + facingOffsetX, centerPixelY - footprint * 0.27 + bob, headRadius)
       .fill({ color: skin })
-      .circle(centerPixelX, centerPixelY - 1.85, 1.25)
+      .circle(centerPixelX + facingOffsetX, centerPixelY - footprint * 0.34 + bob, headRadius * 0.9)
       .fill({ color: hair, alpha: 0.92 })
-      .rect(centerPixelX - bodyWidth / 2, centerPixelY, bodyWidth, bodyHeight)
+      .rect(
+        centerPixelX - bodyWidth / 2,
+        centerPixelY - footprint * 0.04 + bob,
+        bodyWidth,
+        bodyHeight
+      )
       .fill({ color: clothing })
-      .circle(centerPixelX, centerPixelY, 3.4)
-      .stroke({ color: 0xffffff, width: 0.55, alpha: 0.85 })
   }
 
   const drawWorld = () => {
@@ -286,6 +322,8 @@ export async function createGame(
         .fill({ color: 0xf0d79b, alpha: 0.95 })
         .stroke({ color: 0xffffff, width: 0.45, alpha: 0.8 })
     }
+    const spawn = findSpawn()
+    explorerMotion = spawn ? createCharacterMotion(spawn.x, spawn.y) : null
     drawExplorer()
     scale = Math.min(
       1,
@@ -316,9 +354,13 @@ export async function createGame(
 
   const updateStatus = () => {
     if (!world) return
+    if (actionMessage && performance.now() < actionMessageUntil) {
+      status.text = actionMessage
+      return
+    }
     status.text = `${explorer?.name ?? 'Explorer'}  seed ${world.seed}  hash ${
       world.hash
-    }  ${world.generationMs.toFixed(
+    }  ${explorerMotion?.state ?? 'idle'}  ${world.generationMs.toFixed(
       1
     )}ms  ${world.width}x${world.height}  ${fps}fps  zoom ${scale.toFixed(2)}x`
   }
@@ -336,6 +378,7 @@ export async function createGame(
       lastX = event.clientX
       lastY = event.clientY
     }
+    if (actionMessage && performance.now() < actionMessageUntil) return
     const bounds = app.canvas.getBoundingClientRect()
     const x = Math.floor((event.clientX - bounds.left - viewport.x) / scale / cellSize)
     const y = Math.floor((event.clientY - bounds.top - viewport.y) / scale / cellSize)
@@ -372,12 +415,117 @@ export async function createGame(
     updateDetailLevel()
     updateStatus()
   }
+  const movementKeys = new Set([
+    'arrowleft',
+    'arrowright',
+    'arrowup',
+    'arrowdown',
+    'a',
+    'd',
+    'w',
+    's',
+    'shift',
+  ])
+
+  const performAction = () => {
+    if (!world || !explorer || !explorerMotion) return
+    const actionId = explorer.actionIds[0]
+    const action = content.characters.actions.find((candidate) => candidate.id === actionId)
+    if (!action) return
+    startCharacterAction(explorerMotion, action.duration)
+    let nearest = null as GeneratedWorld['landmarks'][number] | null
+    let nearestDistance = Number.POSITIVE_INFINITY
+    for (const landmark of world.landmarks) {
+      const distance = Math.hypot(
+        landmark.x + 0.5 - explorerMotion.x,
+        landmark.y + 0.5 - explorerMotion.y
+      )
+      const actionRange = Math.min(explorer.movement.actionRange, action.range)
+      if (distance <= actionRange && distance < nearestDistance) {
+        nearest = landmark
+        nearestDistance = distance
+      }
+    }
+    actionMessage =
+      action.target === 'self'
+        ? `${explorer.name} uses ${action.name}.`
+        : nearest
+          ? `${explorer.name} examines ${nearest.name}: ${nearest.description}`
+          : `${explorer.name} uses ${action.name}, but nothing is within reach.`
+    actionMessageUntil = performance.now() + 2600
+    updateStatus()
+  }
+
   const onKeyDown = (event: KeyboardEvent) => {
-    const amount = 28
-    if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') viewport.x += amount
-    if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') viewport.x -= amount
-    if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') viewport.y += amount
-    if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') viewport.y -= amount
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      (event.target instanceof HTMLElement && event.target.isContentEditable)
+    ) {
+      return
+    }
+    const key = event.key.toLowerCase()
+    if (movementKeys.has(key)) {
+      event.preventDefault()
+      pressedKeys.add(key)
+    }
+    if ((key === 'e' || key === ' ') && !event.repeat) {
+      event.preventDefault()
+      performAction()
+    }
+  }
+
+  const onKeyUp = (event: KeyboardEvent) => {
+    pressedKeys.delete(event.key.toLowerCase())
+  }
+
+  const onBlur = () => {
+    pressedKeys.clear()
+  }
+
+  const canOccupy = (x: number, y: number) => {
+    if (!world) return false
+    const radius = CHARACTER_CELL_FRACTION / 2
+    for (const offsetX of [-radius, radius]) {
+      for (const offsetY of [-radius, radius]) {
+        const cellX = Math.floor(x + offsetX)
+        const cellY = Math.floor(y + offsetY)
+        if (cellX < 0 || cellY < 0 || cellX >= world.width || cellY >= world.height) return false
+        const biome = biomeByCode.get(world.biomes[cellY * world.width + cellX]!)
+        if (!biome || biome.movementCost >= 7) return false
+      }
+    }
+    return true
+  }
+
+  const movementCost = (x: number, y: number) => {
+    if (!world) return 1
+    const cellX = Math.max(0, Math.min(world.width - 1, Math.floor(x)))
+    const cellY = Math.max(0, Math.min(world.height - 1, Math.floor(y)))
+    return biomeByCode.get(world.biomes[cellY * world.width + cellX]!)?.movementCost ?? 1
+  }
+
+  const stepSimulation = (deltaSeconds: number) => {
+    if (!explorer || !explorerMotion) return
+    const inputX =
+      Number(pressedKeys.has('d') || pressedKeys.has('arrowright')) -
+      Number(pressedKeys.has('a') || pressedKeys.has('arrowleft'))
+    const inputY =
+      Number(pressedKeys.has('s') || pressedKeys.has('arrowdown')) -
+      Number(pressedKeys.has('w') || pressedKeys.has('arrowup'))
+    const previousX = explorerMotion.x
+    const previousY = explorerMotion.y
+    stepCharacterMotion(explorerMotion, {
+      character: explorer,
+      deltaSeconds,
+      input: { x: inputX, y: inputY, running: pressedKeys.has('shift') },
+      canOccupy,
+      movementCost,
+    })
+    if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
+      viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
+      viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
+    }
   }
 
   app.canvas.addEventListener('pointerdown', onPointerDown)
@@ -386,8 +534,18 @@ export async function createGame(
   app.canvas.addEventListener('pointercancel', onPointerUp)
   app.canvas.addEventListener('wheel', onWheel, { passive: false })
   window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
+  window.addEventListener('blur', onBlur)
   app.ticker.add(() => {
     if (paused || destroyed) return
+    const simulationNow = performance.now()
+    simulationAccumulator += Math.min(0.1, (simulationNow - simulationStarted) / 1000)
+    simulationStarted = simulationNow
+    while (simulationAccumulator >= fixedStep) {
+      stepSimulation(fixedStep)
+      simulationAccumulator -= fixedStep
+    }
+    drawExplorer(simulationNow / 1000)
     frameCount += 1
     const now = performance.now()
     if (now - fpsStarted >= 1000) {
@@ -405,6 +563,7 @@ export async function createGame(
     },
     resume() {
       paused = false
+      simulationStarted = performance.now()
       app.ticker.start()
     },
     async destroy() {
@@ -417,6 +576,8 @@ export async function createGame(
       app.canvas.removeEventListener('pointercancel', onPointerUp)
       app.canvas.removeEventListener('wheel', onWheel)
       window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
       app.destroy(true, { children: true, texture: true })
       options.container.replaceChildren()
     },

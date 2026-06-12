@@ -1,0 +1,20 @@
+[
+  {
+    "id": "core:interact",
+    "name": "Interact",
+    "description": "Inspect or use the nearest reachable landmark.",
+    "input": "interact",
+    "duration": 0.32,
+    "range": 1.75,
+    "target": "landmark"
+  },
+  {
+    "id": "core:ready",
+    "name": "Ready",
+    "description": "Briefly ready the active equipment without selecting a target.",
+    "input": "interact",
+    "duration": 0.2,
+    "range": 0,
+    "target": "self"
+  }
+]

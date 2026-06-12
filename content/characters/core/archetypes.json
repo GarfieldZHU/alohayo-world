@@ -32,6 +32,8 @@
       { "slotId": "weapon:utility", "fixedItemId": "core:field-hatchet", "shared": true }
     ],
     "weaponSetSlots": ["weapon:primary", "weapon:ranged", "weapon:utility"],
+    "movement": { "walkSpeed": 1.8, "runMultiplier": 1.85, "actionRange": 1.75 },
+    "actionIds": ["core:interact", "core:ready"],
     "tags": ["explorer", "playable", "human"]
   },
   {
@@ -59,6 +61,8 @@
       { "slotId": "weapon:primary", "fixedItemId": "core:walking-staff" }
     ],
     "weaponSetSlots": ["weapon:primary"],
+    "movement": { "walkSpeed": 1.4, "runMultiplier": 1.6, "actionRange": 1.5 },
+    "actionIds": ["core:interact"],
     "tags": ["npc", "keeper", "human"]
   },
   {
@@ -93,6 +97,8 @@
       { "slotId": "weapon:ranged", "fixedItemId": "core:hunting-bow" }
     ],
     "weaponSetSlots": ["weapon:primary", "weapon:ranged"],
+    "movement": { "walkSpeed": 1.7, "runMultiplier": 1.9, "actionRange": 1.25 },
+    "actionIds": ["core:ready"],
     "tags": ["enemy", "raider", "human"]
   }
 ]
