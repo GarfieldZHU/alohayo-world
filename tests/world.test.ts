@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BIOME, applyMapAreas, generateWorld, hashSeed } from '../packages/map/src'
+import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '../packages/map/src'
 import type { MapAreaDefinition } from '../packages/config/src'
 import wayfinderIsle from '../content/maps/core/areas/wayfinder-isle.json'
 
@@ -13,6 +13,14 @@ describe('world generation', () => {
 
   it('changes when the seed changes', () => {
     expect(generateWorld('alohayo', 32, 24).hash).not.toBe(generateWorld('cloudbreak', 32, 24).hash)
+  })
+
+  it('generates streamed chunks deterministically', () => {
+    const first = generateChunk('alohayo', -2, 3, 32)
+    const second = generateChunk('alohayo', -2, 3, 32)
+    expect(first.hash).toBe(second.hash)
+    expect(first.biomes).toEqual(second.biomes)
+    expect(first.region).toEqual(second.region)
   })
 
   it('uses the same FNV seed contract as Rust', () => {

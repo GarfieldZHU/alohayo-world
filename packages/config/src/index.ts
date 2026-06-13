@@ -21,7 +21,16 @@ export interface WorldDefinition {
   chunkSize: number
   cellSize: number
   generator: 'continental-v1'
+  stream: WorldStreamDefinition
   sizePresets?: WorldSizePreset[]
+}
+
+export interface WorldStreamDefinition {
+  initialChunkRadius: number
+  retainChunkRadius: number
+  discoveryRadius: number
+  minimapChunkRadius: number
+  maxChunkRadius: number
 }
 
 export interface WorldSizePreset {
@@ -29,6 +38,9 @@ export interface WorldSizePreset {
   name: string
   width: number
   height: number
+  chunkRadius: number
+  retainChunkRadius: number
+  minimapChunkRadius: number
 }
 
 export interface BiomeDefinition {
@@ -228,7 +240,14 @@ export interface WorldManifest {
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
-  initialWorld?: { seed?: string; width?: number; height?: number }
+  initialWorld?: {
+    seed?: string
+    width?: number
+    height?: number
+    chunkRadius?: number
+    retainChunkRadius?: number
+    minimapChunkRadius?: number
+  }
 }
 
 export interface GameHandle {

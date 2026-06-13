@@ -45,8 +45,11 @@ if (!Array.isArray(world.sizePresets) || world.sizePresets.length < 1) {
       !preset.name ||
       preset.width < 64 ||
       preset.height < 48 ||
-      preset.width > 384 ||
-      preset.height > 288
+      preset.width > 2048 ||
+      preset.height > 1536 ||
+      preset.chunkRadius < 1 ||
+      preset.retainChunkRadius < preset.chunkRadius ||
+      preset.minimapChunkRadius < preset.chunkRadius
     ) {
       errors.push(`invalid world size preset ${preset.id || '<missing>'}`)
     }

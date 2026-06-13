@@ -19,9 +19,11 @@
 - [x] Build-time discovered custom map-area configs, landmarks, and topology refresh.
 - [x] Shared configurable character generation for player, NPC, and enemy archetypes.
 - [x] One-ninth-cell character scale with fixed-step walk, run, collision, and actions.
-- [ ] Infinite chunk streaming and eviction.
-- [ ] Seam-safe coastlines, slope, drainage, rivers, erosion, and authored overlays.
-- Explorer entity movement, minimap, discovery, and IndexedDB saves.
+- [x] Infinite chunk coordinate runtime with streamed retention and distance-based eviction.
+- [x] Explorer traversal across streamed chunks with minimap and local discovery fog.
+- [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
+- [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
+- [ ] IndexedDB discovery/save snapshots and restoration.
 - Content-pack dependency loading and schema migrations.
 - Explicit desktop/mobile performance budgets and benchmark history.
 
@@ -29,4 +31,5 @@
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
 settlements, economy, combat, vehicles, and creatures. The next implementation target
-is streamed chunks plus drainage; gameplay plugins wait on stable spatial queries.
+is global topology continuity plus drainage; gameplay plugins now wait on stable
+cross-chunk spatial queries and persistence.

@@ -8,9 +8,40 @@
   "chunkSize": 64,
   "cellSize": 4,
   "generator": "continental-v1",
+  "stream": {
+    "initialChunkRadius": 2,
+    "retainChunkRadius": 3,
+    "discoveryRadius": 3,
+    "minimapChunkRadius": 6,
+    "maxChunkRadius": 6
+  },
   "sizePresets": [
-    { "id": "large", "name": "Large", "width": 256, "height": 192 },
-    { "id": "huge", "name": "Huge", "width": 320, "height": 240 },
-    { "id": "continental", "name": "Continental", "width": 384, "height": 288 }
+    {
+      "id": "frontier",
+      "name": "Frontier",
+      "width": 512,
+      "height": 384,
+      "chunkRadius": 2,
+      "retainChunkRadius": 3,
+      "minimapChunkRadius": 6
+    },
+    {
+      "id": "expanse",
+      "name": "Expanse",
+      "width": 768,
+      "height": 576,
+      "chunkRadius": 3,
+      "retainChunkRadius": 4,
+      "minimapChunkRadius": 8
+    },
+    {
+      "id": "horizon",
+      "name": "Horizon",
+      "width": 1024,
+      "height": 768,
+      "chunkRadius": 4,
+      "retainChunkRadius": 5,
+      "minimapChunkRadius": 10
+    }
   ]
 }

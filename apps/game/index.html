@@ -11,13 +11,15 @@
       <header>
         <p class="eyebrow">Alohayo World / v0.1.0-demo</p>
         <h1>A vivid world from one small seed.</h1>
-        <p>Generate a local geography atlas. Nothing leaves your browser.</p>
+        <p>Stream an infinite local world. Nothing leaves your browser.</p>
       </header>
       <form id="launcher">
         <label for="seed">World seed</label>
         <div class="launch-row">
           <input id="seed" name="seed" maxlength="64" value="alohayo" />
-          <button id="map-size" type="button" class="secondary">Large · 256×192</button>
+          <button id="map-size" type="button" class="secondary">
+            Frontier · 512×384 / Enlarge
+          </button>
           <button type="submit">Enter the world</button>
         </div>
       </form>
@@ -25,7 +27,8 @@
         <div class="placeholder">The renderer, worker, and world data load on demand.</div>
       </section>
       <footer>
-        WASD/arrows walk. Hold Shift to run. E/Space acts. Drag pans the camera. Scroll zooms.
+        WASD/arrows walk. Hold Shift to run. E/Space acts. Drag pans the camera. Scroll zooms. The
+        minimap fills as you discover chunks.
       </footer>
     </main>
     <script type="module" src="/src/main.ts"></script>

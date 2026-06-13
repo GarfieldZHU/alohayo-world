@@ -1,6 +1,6 @@
 # Character Module
 
-**Status:** configurable generation and controllable movement foundation active.
+**Status:** configurable generation and streamed exploration foundation active.
 
 ## Owns
 
@@ -22,14 +22,16 @@ does not fork.
 - Deterministic generation and initial active weapon selection.
 - A generated Wayfinder marker rendered on the map.
 - One-ninth-cell physical/render scale contract.
-- Fixed-step walk/run movement, terrain cost, water collision, facing, and camera follow.
+- Fixed-step walk/run movement, terrain cost, water collision, facing, camera follow,
+  and streamed frontier tolerance when chunks are still loading.
 - Config-defined interaction actions with range, duration, target kind, and feedback.
+- Discovery reveal around the explorer and minimap presence derived from movement.
 
 ## Next Vertical Slice
 
 Spawn definitions from authored map landmarks, layered sprite assembly, stamina,
 context-sensitive targets, NPC steering/pathfinding, inventory item instances, weapon
-switching input, inspection panel, and local save round trips.
+switching input, richer discovery perks, inspection panel, and local save round trips.
 
 ## Dependencies and Tests
 

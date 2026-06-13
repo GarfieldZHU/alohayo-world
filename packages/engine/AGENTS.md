@@ -12,4 +12,10 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Keep motion fixed-step in cell coordinates; render animation never owns position.
 - Preserve the one-ninth terrain-cell footprint and separate it from UI halos.
 - Clear held keys on blur and ignore gameplay input while the user edits form fields.
+- Chunk retention, discovery fog, minimap summaries, and camera follow must consume
+  streamed data without promoting the renderer into authoritative simulation state.
+- Keep browser diagnostics visible through stable canvas data attributes whenever a new
+  exploration feature lands.
+- The engine may request chunks opportunistically, but it must tolerate frontier cells
+  not being loaded yet and cleanly release evicted chunk display objects.
 - Verify browser-facing changes with E2E tests.

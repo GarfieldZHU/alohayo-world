@@ -9,16 +9,17 @@ The logical map uses integer square cells `(x, y)` and floating-point world posi
 for actors. Square cells support buildings, roads, RPG movement, vehicles, and strategy;
 rendered terrain may blend beyond cell boundaries.
 
-The demo presets are:
+The streamed demo survey presets are:
 
-| Name        |  Dimensions |   Cells |
-| ----------- | ----------: | ------: |
-| Large       | `256 x 192` |  49,152 |
-| Huge        | `320 x 240` |  76,800 |
-| Continental | `384 x 288` | 110,592 |
+| Name     |  Survey Hint | Chunk Radius | Minimap Radius |
+| -------- | -----------: | -----------: | -------------: |
+| Frontier |  `512 x 384` |            2 |              6 |
+| Expanse  |  `768 x 576` |            3 |              8 |
+| Horizon  | `1024 x 768` |            4 |             10 |
 
-Cell resolution, pixels per cell, chunk size, and finite map extent are independent.
-The presets are bounded until chunk streaming makes world extent independent of memory.
+Cell resolution, pixels per cell, chunk size, and streamed world extent are independent.
+The survey hint anchors authored overlays and initial retention budgets; it is not a hard
+world boundary.
 
 ## Layer Families
 
@@ -45,6 +46,10 @@ finite land region and the rest are islands.
 This lets inspection and future systems distinguish a forest on the mainland from a
 forest on an island without inventing duplicate biome codes.
 
+For streamed chunks, the runtime currently exposes chunk-local `region` labels:
+`sea`, `lake`, `mainland`, and `island`. These are stable enough for inspection,
+discovery, and movement decisions, but they are not yet cross-chunk global identities.
+
 ### Future layers
 
 Slope, flow direction, accumulation, watershed, river, soil, resources, occupancy,
@@ -55,29 +60,39 @@ chunk data.
 
 1. Hash seed and versioned generator inputs.
 2. Generate continuous elevation, moisture, and temperature fields.
-3. Apply continental edge shaping.
-4. Flood-fill edge-connected submerged cells as ocean.
-5. Flood-fill enclosed submerged cells as lakes.
-6. Flood-fill land regions and select the largest as mainland.
-7. Classify visible terrain from physical fields plus topology.
-8. Hash output layers and transfer buffers from the worker.
+3. For finite atlas generation, apply continental edge shaping.
+4. For finite atlas generation, flood-fill edge-connected submerged cells as ocean.
+5. For finite atlas generation, flood-fill enclosed submerged cells as lakes.
+6. For finite atlas generation, flood-fill land regions and select the largest as mainland.
+7. For streamed generation, classify each cell directly from deterministic global noise
+   and local neighborhood samples.
+8. Apply authored overlays after base classification.
+9. Hash output layers and transfer buffers from the worker.
 
 Neighbor order is fixed north, east, south, west. Changes that alter output require a
 generator version and deterministic test updates.
 
 ## Chunks and Streaming
 
-The current finite atlas is generated as one worker job and rendered as one graphics
-batch. `chunkSize: 64` defines the next storage boundary but is not yet an active
-streaming implementation.
+`chunkSize: 64` is the active storage and render boundary. The runtime requests chunks
+around the explorer, retains a larger square neighborhood, and evicts distant chunks
+from both memory and GPU display lists.
 
-`v0.2` will:
+Current behavior:
 
-- generate addressable chunk coordinates with seam-safe shared inputs;
-- retain visible and near-visible chunks;
-- evict distant chunks under a memory budget;
-- render only camera-visible batches;
-- merge landmass, waterbody, and watershed identity across chunk boundaries.
+- unbounded integer chunk coordinates;
+- worker-generated typed-array chunk payloads;
+- distance-based retention and eviction;
+- zoom-dependent chunk detail layers;
+- per-cell discovery tracked only for loaded chunks;
+- minimap summaries built from discovered chunk data.
+
+Still pending:
+
+- seam-safe coastline blending at chunk borders;
+- global landmass, waterbody, and watershed identity merge across chunk boundaries;
+- chunk persistence in IndexedDB;
+- benchmarked memory budgets for larger retention radii.
 
 ## Hydrology
 
@@ -87,7 +102,7 @@ from a moisture heuristic to drainage and saturation evidence.
 
 ## Rendering and LOD
 
-The demo uses layered PixiJS graphics and automatically fits a newly generated map.
+The demo uses layered PixiJS graphics and automatically fits the initial streamed survey.
 Neighboring terrain classes receive deterministic edge strips and sparse accent pixels
 so boundaries read as natural transitions instead of a hard checkerboard.
 
@@ -98,17 +113,19 @@ Zoom is cursor-anchored and reveals detail in stages:
 - close zoom: water glints, forest canopy marks, wetland reeds, and rock/highland
   ridges.
 
-The detail layers are built once per generated world and toggled by zoom threshold, so
+Chunk detail layers are built once per loaded chunk and toggled by zoom threshold, so
 wheel input does not regenerate geometry. Pan and zoom modify only the viewport. Render
-code consumes snapshots and owns no simulation truth.
+code consumes chunk snapshots and owns no simulation truth.
 
-The next renderer replaces full-map drawing with chunk meshes or atlases, camera
-culling, and zoom-level overlays. Low zoom emphasizes landmass and bathymetry; high zoom
-reveals ecological cover, roads, entities, and cell inspection.
+The next renderer iteration replaces ad hoc per-chunk graphics with chunk meshes or
+atlases, stronger camera culling, and zoom-level overlays. Low zoom emphasizes landmass
+and bathymetry; high zoom reveals ecological cover, roads, entities, and cell inspection.
 
 ## Authored Maps
 
 An authored map is a content-pack overlay: bounds, cell patches, entities, portals,
 landmarks, generator parameters, and protected regions. Procedural base passes run
-first; authored overlays apply afterward. Adding a validated folder and manifest entry
-must be enough to load a new map.
+first; authored overlays apply afterward. In the finite atlas, normalized placement is
+relative to atlas dimensions. In the streamed world, normalized placement is anchored
+against the survey hint and centered around the origin so reusable authored areas remain
+reachable without inventing a finite world edge.

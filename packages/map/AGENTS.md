@@ -7,5 +7,12 @@ This package owns deterministic geography and worker-safe data.
 - Use typed arrays; avoid per-cell objects.
 - Iterate neighbors in a documented fixed order.
 - Transfer large buffers from workers instead of cloning.
+- Streamed chunks are keyed only by integer `(chunkX, chunkY)` and must stay stable across
+  sessions for the same seed and content.
+- Normalized authored areas use finite-atlas placement in `generateWorld` and
+  origin-centered survey placement in streamed chunk generation; do not collapse those
+  two contracts together.
+- Chunk-local `region` labels are an exploration/runtime aid today, not a substitute for
+  future cross-chunk global topology IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
 - Rust/Wasm output must have parity tests before becoming authoritative.

@@ -1,29 +1,30 @@
 # Map Module
 
-**Status:** active foundation.
+**Status:** streamed exploration foundation active.
 
 ## Owns
 
-Coordinates, chunks, geographic fields, topology, generation passes, authored overlays,
-spatial queries, map hashes, and map persistence boundaries.
+Coordinates, streamed chunk generation, chunk retention/eviction, geographic fields,
+topology, authored overlays, spatial queries, map hashes, discovery boundaries, and map
+persistence boundaries.
 
 ## Public Capabilities
 
 - query terrain, elevation, climate, landmass, waterbody, and overlays;
+- query chunk-local region labels for streamed exploration;
 - request/retain/release chunks;
 - convert cell, world, and screen coordinates;
 - subscribe to chunk-ready and overlay-changed events.
 
 ## First Vertical Slice
 
-Bounded large atlas with ocean depth, lakes, lowland, highland, rock, mountain, snow,
-ecological cover, mainland/island inspection, and worker-applied authored area configs
-with landmarks.
+Unbounded chunk coordinates with streamed terrain, chunk-local sea/lake/mainland/island
+labels, discovery-ready authored overlays, and worker-applied landmark configs.
 
 ## Next Slice
 
-Infinite chunk streaming, real slope, drainage, rivers, watersheds, authored landmarks,
-minimap LOD, and benchmark budgets.
+Global topology continuity, real slope, drainage, rivers, watersheds, persisted
+discovery, minimap LOD, and benchmark budgets.
 
 ## Tests
 

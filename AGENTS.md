@@ -96,6 +96,16 @@ renderer.
 3. Preserve fixed-step simulation and the one-ninth terrain-cell footprint.
 4. Add unit tests for state transitions/collision and E2E coverage for controls.
 
+### Change streamed world behavior
+
+1. Read `docs/MAP_SYSTEM.md`, `docs/GAMEPLAY.md`, and `docs/modules/MAP.md`.
+2. Keep chunk generation deterministic by `(seed, chunkX, chunkY, chunkSize, content)`.
+3. Treat `width` and `height` launch inputs as survey hints and authored-overlay anchors,
+   not finite world boundaries.
+4. Retain only near chunks in memory, document eviction rules, and surface diagnostics in
+   the browser contract.
+5. Update unit tests for chunk determinism and E2E coverage for loaded/discovered state.
+
 ### Change the embed contract
 
 1. Treat `MountGameOptions` and `GameHandle` as public APIs.
@@ -168,8 +178,9 @@ Released: `v0.1.0-demo`, published through GitHub Pages and embedded at
 `https://alohayo.me/game`.
 
 Active: `v0.2.0-world-foundation`. Current work expands geographic classification,
-world topology, scalable map sizes, and agent-readable module plans. The next runtime
-priority after this foundation is chunk streaming plus drainage and rivers.
+world topology, scalable map sizes, streamed chunks, and agent-readable module plans.
+The next runtime priority after the active streamed-world slice is seam-safe global
+topology merging plus drainage and rivers.
 
 Known boundary: the Rust crate defines and tests portable deterministic primitives, but
 the active browser generator is TypeScript until the worker-side Wasm loader and parity
