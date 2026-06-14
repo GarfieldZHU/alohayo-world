@@ -106,6 +106,15 @@ renderer.
    the browser contract.
 5. Update unit tests for chunk determinism and E2E coverage for loaded/discovered state.
 
+### Add developer demo tooling
+
+1. Keep it debug-only and explicit; production players should not see hidden test powers by accident.
+2. Prefer capability flags and local-only controls over ad hoc globals or console hacks.
+3. Teleport, fast move, overlay reveal, and loadout override must reuse normal runtime
+   contracts so test behavior stays representative.
+4. Document the activation path and safety boundary in `docs/GAMEPLAY.md` and roadmap/issue
+   notes before implementation.
+
 ### Change the embed contract
 
 1. Treat `MountGameOptions` and `GameHandle` as public APIs.

@@ -25,3 +25,13 @@ habitats, climate ranges, rarity, behavior, and capture systems.
 
 Each module is a registered plugin with data schemas; none may require changing the map
 core.
+
+## Developer demo
+
+The next debug-only testing surface should allow:
+
+- reveal battle-shadow or combat-preview overlays without entering a full combat mode;
+- fast movement multiplier and instant teleport to any cell/chunk coordinate;
+- direct equipment and weapon slot override for the active explorer;
+- repeatable test setup without changing public save data or shipping these controls to
+  normal players by default.

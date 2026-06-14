@@ -24,7 +24,9 @@
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] IndexedDB discovery/save snapshots and restoration.
+- [ ] Dev demo mode: reveal battle shadow, fast move, teleport, and test equipment/weapon overrides.
 - Content-pack dependency loading and schema migrations.
+- Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - Explicit desktop/mobile performance budgets and benchmark history.
 
 ## Staged Modules
@@ -32,4 +34,5 @@
 Detailed independent plans now live in `docs/modules/` for characters, weather,
 settlements, economy, combat, vehicles, and creatures. The next implementation target
 is global topology continuity plus drainage; gameplay plugins now wait on stable
-cross-chunk spatial queries and persistence.
+cross-chunk spatial queries and persistence. Dev-demo tooling should stay debug-only and
+must never weaken the public embed contract or lazy-load boundary.
