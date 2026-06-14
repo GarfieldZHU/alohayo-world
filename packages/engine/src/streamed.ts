@@ -340,7 +340,10 @@ export async function createGame(
       )
       .fill({ color: clothing })
       .moveTo(centerPixelX + bodyWidth * 0.55, centerPixelY + bob)
-      .lineTo(centerPixelX + bodyWidth * 0.55 + footprint * 0.44, centerPixelY + footprint * 0.18 + bob)
+      .lineTo(
+        centerPixelX + bodyWidth * 0.55 + footprint * 0.44,
+        centerPixelY + footprint * 0.18 + bob
+      )
       .stroke({ color: weapon, width: Math.max(0.5, cellSize * 0.12), alpha: 0.92 })
   }
 
