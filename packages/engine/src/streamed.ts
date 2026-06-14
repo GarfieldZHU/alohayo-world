@@ -139,15 +139,17 @@ export async function createGame(
   const rpc = createWorkerRpc(worker)
   const viewport = new Container()
   const chunkLayer = new Container()
+  const devLayer = new Graphics()
   const characterLayer = new Graphics()
   const overlay = new Container()
   const minimapLayer = new Graphics()
-  viewport.addChild(chunkLayer, characterLayer)
+  viewport.addChild(chunkLayer, devLayer, characterLayer)
   app.stage.addChild(viewport, overlay)
   overlay.addChild(minimapLayer)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
+  const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
     text: 'Surveying streamed world...',
     style: { fill: '#d8f3ff', fontFamily: 'monospace', fontSize: 13 },
@@ -179,6 +181,9 @@ export async function createGame(
   let explorer: GeneratedCharacter | null = null
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
+  const devMode = Boolean(options.devMode)
+  let devFastMove = false
+  let devBattleShadow = devMode
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
   const fixedStep = 1 / 60
@@ -250,8 +255,14 @@ export async function createGame(
     return color?.startsWith('#') ? Number.parseInt(color.slice(1), 16) : fallback
   }
 
+  const activeWeaponColor = (fallback: number) => {
+    if (!explorer?.activeWeaponSlot) return fallback
+    return itemColor([explorer.activeWeaponSlot], fallback)
+  }
+
   const drawExplorer = (elapsedSeconds = 0) => {
     characterLayer.clear()
+    devLayer.clear()
     if (!explorer || !explorerMotion) return
     app.canvas.dataset.characterX = explorerMotion.x.toFixed(4)
     app.canvas.dataset.characterY = explorerMotion.y.toFixed(4)
@@ -260,11 +271,15 @@ export async function createGame(
     app.canvas.dataset.loadedChunks = String(chunks.size)
     app.canvas.dataset.discoveredChunks = String(discoveredChunks.size)
     app.canvas.dataset.chunkRadius = String(activeChunkRadius)
+    app.canvas.dataset.devMode = devMode ? 'true' : 'false'
+    app.canvas.dataset.devFastMove = devFastMove ? 'true' : 'false'
     const centerPixelX = explorerMotion.x * cellSize
     const centerPixelY = explorerMotion.y * cellSize
     const skin = appearanceColor(explorer.appearance.skinTone, 0xc99370)
     const hair = appearanceColor(explorer.appearance.hairColor, 0x33251e)
     const clothing = itemColor(['wear:outer', 'wear:torso'], 0x72d7c8)
+    const hat = itemColor(['wear:head', 'decor:head'], 0x9bb2bf)
+    const weapon = activeWeaponColor(0xf0d79b)
     const footprint = cellSize * CHARACTER_CELL_FRACTION
     const bodyWidthFactor =
       explorer.appearance.bodyShape === 'broad'
@@ -292,6 +307,13 @@ export async function createGame(
           : 0
     const actionPulse =
       explorerMotion.state === 'action' ? 1 + Math.sin(elapsedSeconds * 24) * 0.15 : 1
+    if (devMode && devBattleShadow) {
+      devLayer
+        .circle(centerPixelX, centerPixelY, cellSize * 2.1)
+        .stroke({ color: 0xff667a, width: Math.max(0.4, cellSize * 0.1), alpha: 0.9 })
+        .circle(centerPixelX, centerPixelY, cellSize * 1.55)
+        .fill({ color: 0x7a1022, alpha: 0.12 })
+    }
     characterLayer
       .circle(centerPixelX, centerPixelY, cellSize * 0.45 * actionPulse)
       .stroke({
@@ -304,12 +326,22 @@ export async function createGame(
       .circle(centerPixelX + facingOffsetX, centerPixelY - footprint * 0.34 + bob, headRadius * 0.9)
       .fill({ color: hair, alpha: 0.92 })
       .rect(
+        centerPixelX - headRadius * 1.05,
+        centerPixelY - footprint * 0.52 + bob,
+        headRadius * 2.1,
+        headRadius * 0.42
+      )
+      .fill({ color: hat, alpha: 0.88 })
+      .rect(
         centerPixelX - bodyWidth / 2,
         centerPixelY - footprint * 0.04 + bob,
         bodyWidth,
         bodyHeight
       )
       .fill({ color: clothing })
+      .moveTo(centerPixelX + bodyWidth * 0.55, centerPixelY + bob)
+      .lineTo(centerPixelX + bodyWidth * 0.55 + footprint * 0.44, centerPixelY + footprint * 0.18 + bob)
+      .stroke({ color: weapon, width: Math.max(0.5, cellSize * 0.12), alpha: 0.92 })
   }
 
   const redrawChunkFog = (key: string) => {
@@ -629,9 +661,9 @@ export async function createGame(
       status.text = actionMessage
       return
     }
-    status.text = `${explorer?.name ?? 'Explorer'}  seed ${worldSeed}  ${explorerMotion.state}  ${
-      chunks.size
-    } loaded  ${discoveredChunks.size} discovered  ${discoveredCells} cells  ${fps}fps  chunk ${lastChunkGenerationMs.toFixed(
+    status.text = `${devMode ? 'DEV  ' : ''}${explorer?.name ?? 'Explorer'}  seed ${worldSeed}  ${
+      explorerMotion.state
+    }${devFastMove ? ' fast' : ''}  ${chunks.size} loaded  ${discoveredChunks.size} discovered  ${discoveredCells} cells  ${fps}fps  chunk ${lastChunkGenerationMs.toFixed(
       1
     )}ms  zoom ${scale.toFixed(2)}x`
   }
@@ -662,6 +694,230 @@ export async function createGame(
     if (affected.size) drawMinimap()
   }
 
+  const recenterOnExplorer = () => {
+    if (!explorerMotion) return
+    viewport.position.set(
+      app.screen.width / 2 - explorerMotion.x * cellSize * scale,
+      app.screen.height / 2 - explorerMotion.y * cellSize * scale
+    )
+    drawMinimap()
+  }
+
+  const teleportExplorer = async (cellX: number, cellY: number) => {
+    if (!explorerMotion) return
+    const targetChunkX = Math.floor(cellX / chunkSize)
+    const targetChunkY = Math.floor(cellY / chunkSize)
+    await ensureChunkNeighborhood(targetChunkX, targetChunkY, activeChunkRadius)
+    const targetX = cellX + 0.5
+    const targetY = cellY + 0.5
+    if (!canOccupy(targetX, targetY)) {
+      actionMessage = `Cannot teleport to (${cellX}, ${cellY}); terrain is blocked.`
+      actionMessageUntil = performance.now() + 2200
+      updateStatus()
+      return
+    }
+    explorerMotion.x = targetX
+    explorerMotion.y = targetY
+    explorerMotion.state = 'idle'
+    revealAroundExplorer()
+    recenterOnExplorer()
+    actionMessage = `Teleported to (${cellX}, ${cellY}).`
+    actionMessageUntil = performance.now() + 1800
+    updateStatus()
+  }
+
+  const createDevPanel = () => {
+    if (!devMode) return null
+
+    const panel = document.createElement('div')
+    panel.dataset.alohayoWorldDevPanel = 'true'
+    Object.assign(panel.style, {
+      position: 'absolute',
+      inset: '16px auto auto 16px',
+      zIndex: '20',
+      width: 'min(320px, calc(100% - 32px))',
+      padding: '12px',
+      border: '1px solid rgba(114,215,200,0.35)',
+      borderRadius: '12px',
+      background: 'rgba(7, 17, 31, 0.9)',
+      color: '#d8f3ff',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      backdropFilter: 'blur(8px)',
+      boxShadow: '0 18px 44px rgba(0,0,0,0.28)',
+    } satisfies Partial<CSSStyleDeclaration>)
+
+    const heading = document.createElement('div')
+    heading.textContent = 'Dev Mode'
+    Object.assign(heading.style, {
+      fontSize: '12px',
+      letterSpacing: '0.14em',
+      textTransform: 'uppercase',
+      color: '#72d7c8',
+      marginBottom: '10px',
+    } satisfies Partial<CSSStyleDeclaration>)
+    panel.appendChild(heading)
+
+    const makeRow = () => {
+      const row = document.createElement('div')
+      Object.assign(row.style, {
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '8px',
+        alignItems: 'center',
+      } satisfies Partial<CSSStyleDeclaration>)
+      panel.appendChild(row)
+      return row
+    }
+
+    const makeInput = (value = '') => {
+      const input = document.createElement('input')
+      input.value = value
+      Object.assign(input.style, {
+        flex: '1',
+        minWidth: '0',
+        border: '1px solid #315263',
+        borderRadius: '8px',
+        padding: '8px 10px',
+        color: '#d8f3ff',
+        background: '#0c1e2b',
+      } satisfies Partial<CSSStyleDeclaration>)
+      return input
+    }
+
+    const makeButton = (text: string) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.textContent = text
+      Object.assign(button.style, {
+        border: '1px solid #315263',
+        borderRadius: '8px',
+        padding: '8px 10px',
+        cursor: 'pointer',
+        color: '#d8f3ff',
+        background: '#173241',
+        fontWeight: '700',
+      } satisfies Partial<CSSStyleDeclaration>)
+      return button
+    }
+
+    const checkboxRow = makeRow()
+    const battleShadowToggle = document.createElement('input')
+    battleShadowToggle.type = 'checkbox'
+    battleShadowToggle.checked = devBattleShadow
+    battleShadowToggle.addEventListener('change', () => {
+      devBattleShadow = battleShadowToggle.checked
+      drawExplorer(performance.now() / 1000)
+    })
+    const battleShadowLabel = document.createElement('label')
+    battleShadowLabel.textContent = 'Battle shadow'
+    battleShadowLabel.style.flex = '1'
+    checkboxRow.append(battleShadowToggle, battleShadowLabel)
+
+    const fastMoveToggle = document.createElement('input')
+    fastMoveToggle.type = 'checkbox'
+    fastMoveToggle.checked = devFastMove
+    fastMoveToggle.addEventListener('change', () => {
+      devFastMove = fastMoveToggle.checked
+      updateStatus()
+    })
+    const fastMoveLabel = document.createElement('label')
+    fastMoveLabel.textContent = 'Fast move'
+    fastMoveLabel.style.flex = '1'
+    checkboxRow.append(fastMoveToggle, fastMoveLabel)
+
+    const teleportRow = makeRow()
+    const teleportX = makeInput('0')
+    teleportX.inputMode = 'numeric'
+    teleportX.placeholder = 'x'
+    const teleportY = makeInput('0')
+    teleportY.inputMode = 'numeric'
+    teleportY.placeholder = 'y'
+    const teleportButton = makeButton('Teleport')
+    teleportButton.addEventListener('click', () => {
+      const nextX = Number.parseInt(teleportX.value, 10)
+      const nextY = Number.parseInt(teleportY.value, 10)
+      if (Number.isNaN(nextX) || Number.isNaN(nextY)) return
+      void teleportExplorer(nextX, nextY)
+    })
+    teleportRow.append(teleportX, teleportY, teleportButton)
+
+    const gearRow = makeRow()
+    const slotSelect = document.createElement('select')
+    const itemSelect = document.createElement('select')
+    for (const select of [slotSelect, itemSelect]) {
+      Object.assign(select.style, {
+        flex: '1',
+        minWidth: '0',
+        border: '1px solid #315263',
+        borderRadius: '8px',
+        padding: '8px 10px',
+        color: '#d8f3ff',
+        background: '#0c1e2b',
+      } satisfies Partial<CSSStyleDeclaration>)
+    }
+    const applyGearButton = makeButton('Equip')
+    gearRow.append(slotSelect, itemSelect, applyGearButton)
+
+    const fillEquipmentOptions = () => {
+      if (!explorer) return
+      slotSelect.replaceChildren()
+      for (const equipment of explorer.equipment) {
+        const option = document.createElement('option')
+        const slot = slotById.get(equipment.slotId)
+        option.value = equipment.slotId
+        option.textContent = slot?.name ?? equipment.slotId
+        slotSelect.appendChild(option)
+      }
+    }
+
+    const fillItemOptions = () => {
+      itemSelect.replaceChildren()
+      const currentSlotId = slotSelect.value
+      const emptyOption = document.createElement('option')
+      emptyOption.value = ''
+      emptyOption.textContent = 'Unequip'
+      itemSelect.appendChild(emptyOption)
+      for (const item of content.characters.items) {
+        if (!item.allowedSlots.includes(currentSlotId)) continue
+        const option = document.createElement('option')
+        option.value = item.id
+        option.textContent = item.name
+        itemSelect.appendChild(option)
+      }
+      const selected = explorer?.equipment.find((entry) => entry.slotId === currentSlotId)
+      itemSelect.value = selected?.itemId ?? ''
+    }
+
+    slotSelect.addEventListener('change', fillItemOptions)
+    applyGearButton.addEventListener('click', () => {
+      if (!explorer) return
+      const currentSlotId = slotSelect.value
+      const selected = explorer.equipment.find((entry) => entry.slotId === currentSlotId)
+      if (!selected) return
+      selected.itemId = itemSelect.value || null
+      const slot = slotById.get(currentSlotId)
+      if (slot?.kind === 'weapon' && selected.itemId) explorer.activeWeaponSlot = currentSlotId
+      actionMessage = `${slot?.name ?? currentSlotId} set to ${itemSelect.selectedOptions[0]?.textContent ?? 'Unequip'}.`
+      actionMessageUntil = performance.now() + 1800
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
+    })
+
+    fillEquipmentOptions()
+    fillItemOptions()
+
+    const note = document.createElement('p')
+    note.textContent = 'Shift-click teleports. F toggles fast move.'
+    Object.assign(note.style, {
+      margin: '2px 0 0',
+      fontSize: '11px',
+      color: '#9bb2bf',
+    } satisfies Partial<CSSStyleDeclaration>)
+    panel.appendChild(note)
+
+    return { panel, teleportX, teleportY, fastMoveToggle }
+  }
+
   const findSpawn = async () => {
     for (let radius = 0; radius <= activeChunkRadius + 2; radius += 1) {
       await ensureChunkNeighborhood(0, 0, radius)
@@ -686,6 +942,8 @@ export async function createGame(
   await ensureChunkNeighborhood(0, 0, activeChunkRadius)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
+  const devPanel = createDevPanel()
+  if (devPanel) options.container.appendChild(devPanel.panel)
 
   const surveyPixels = (activeChunkRadius * 2 + 1) * chunkSize * cellSize
   scale = clamp(
@@ -702,9 +960,21 @@ export async function createGame(
   revealAroundExplorer()
   drawExplorer()
   drawMinimap()
+  if (devPanel) {
+    devPanel.teleportX.value = Math.floor(spawn.x).toString()
+    devPanel.teleportY.value = Math.floor(spawn.y).toString()
+    devPanel.fastMoveToggle.checked = devFastMove
+  }
   updateStatus()
 
   const onPointerDown = (event: PointerEvent) => {
+    if (devMode && event.shiftKey) {
+      const bounds = app.canvas.getBoundingClientRect()
+      const cellX = Math.floor((event.clientX - bounds.left - viewport.x) / scale / cellSize)
+      const cellY = Math.floor((event.clientY - bounds.top - viewport.y) / scale / cellSize)
+      void teleportExplorer(cellX, cellY)
+      return
+    }
     dragging = true
     lastX = event.clientX
     lastY = event.clientY
@@ -820,6 +1090,11 @@ export async function createGame(
       event.preventDefault()
       pressedKeys.add(key)
     }
+    if (devMode && key === 'f' && !event.repeat) {
+      event.preventDefault()
+      devFastMove = !devFastMove
+      updateStatus()
+    }
     if ((key === 'e' || key === ' ') && !event.repeat) {
       event.preventDefault()
       performAction()
@@ -844,8 +1119,18 @@ export async function createGame(
       Number(pressedKeys.has('w') || pressedKeys.has('arrowup'))
     const previousX = explorerMotion.x
     const previousY = explorerMotion.y
+    const simulationCharacter =
+      devMode && devFastMove
+        ? {
+            ...explorer,
+            movement: {
+              ...explorer.movement,
+              walkSpeed: explorer.movement.walkSpeed * 3.5,
+            },
+          }
+        : explorer
     stepCharacterMotion(explorerMotion, {
-      character: explorer,
+      character: simulationCharacter,
       deltaSeconds,
       input: { x: inputX, y: inputY, running: pressedKeys.has('shift') },
       canOccupy,
@@ -907,6 +1192,7 @@ export async function createGame(
       destroyed = true
       rpc.rejectAll(new Error('Game destroyed'))
       worker.terminate()
+      devPanel?.panel.remove()
       app.canvas.removeEventListener('pointerdown', onPointerDown)
       app.canvas.removeEventListener('pointermove', onPointerMove)
       app.canvas.removeEventListener('pointerup', onPointerUp)

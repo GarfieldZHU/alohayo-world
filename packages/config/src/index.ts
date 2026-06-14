@@ -240,6 +240,7 @@ export interface WorldManifest {
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
+  devMode?: boolean
   initialWorld?: {
     seed?: string
     width?: number
