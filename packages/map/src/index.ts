@@ -155,7 +155,7 @@ export interface GenerateChunkResponse {
 export type WorldWorkerRequest = GenerateWorldRequest | GenerateChunkRequest
 export type WorldWorkerResponse = GenerateWorldResponse | GenerateChunkResponse
 
-const SEA_LEVEL = 0.43
+const DEFAULT_SEA_LEVEL = 0.43
 const FOUR_NEIGHBORS = [
   [0, -1],
   [1, 0],
@@ -215,6 +215,15 @@ function streamLatitude(globalY: number): number {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
+}
+
+function seaLevelForSeed(seed: number): number {
+  const distribution = random2d(seed & 1023, (seed >>> 10) & 1023, seed ^ 0x51f15e3d)
+  const variance = random2d((seed >>> 20) & 1023, seed & 2047, seed ^ 0x7f4a7c15)
+  if (distribution < 0.12) {
+    return 0.24 + variance * 0.32
+  }
+  return 0.36 + variance * 0.13
 }
 
 function streamElevationValue(globalX: number, globalY: number, seed: number): number {
@@ -283,7 +292,8 @@ function visitRegion(
 function classifyTopology(
   elevation: Uint8Array,
   width: number,
-  height: number
+  height: number,
+  seaLevel: number
 ): { ocean: Uint8Array; landmass: Uint16Array; waterbody: Uint16Array; mainlandId: number } {
   const size = width * height
   const water = new Uint8Array(size)
@@ -292,7 +302,7 @@ function classifyTopology(
   const waterbody = new Uint16Array(size)
 
   for (let index = 0; index < size; index += 1) {
-    water[index] = elevation[index]! / 255 < SEA_LEVEL ? 1 : 0
+    water[index] = elevation[index]! / 255 < seaLevel ? 1 : 0
   }
 
   const markOcean = (index: number) => {
@@ -369,7 +379,7 @@ function classifyTopologyFromBiomes(
         ? 0
         : 255
   }
-  const topology = classifyTopology(elevation, width, height)
+  const topology = classifyTopology(elevation, width, height, DEFAULT_SEA_LEVEL)
   return {
     landmass: topology.landmass,
     waterbody: topology.waterbody,
@@ -451,6 +461,7 @@ function streamRuggednessValue(globalX: number, globalY: number, seed: number): 
 
 function classifyTerrain(args: {
   elevationValue: number
+  seaLevel: number
   moistureValue: number
   temperatureValue: number
   ruggednessValue: number
@@ -463,6 +474,7 @@ function classifyTerrain(args: {
 }): number {
   const {
     elevationValue,
+    seaLevel,
     moistureValue,
     temperatureValue,
     ruggednessValue,
@@ -475,14 +487,15 @@ function classifyTerrain(args: {
   } = args
 
   if (water) {
+    const waterDepth = seaLevel - elevationValue
     if (!oceanConnected) return BIOME.lake
-    if (temperatureValue > 0.68 && elevationValue > 0.34 && reefChance > 0.76) return BIOME.reef
-    if (elevationValue < 0.18) return BIOME.deepOcean
-    if (elevationValue < 0.31) return BIOME.ocean
+    if (temperatureValue > 0.68 && waterDepth < 0.08 && reefChance > 0.76) return BIOME.reef
+    if (waterDepth > 0.18) return BIOME.deepOcean
+    if (waterDepth > 0.08) return BIOME.ocean
     return BIOME.shallowSea
   }
 
-  if (touchingWater || elevationValue < 0.48) return BIOME.coast
+  if (touchingWater || elevationValue < seaLevel + 0.05) return BIOME.coast
   if (hotspotValue > 0.82 && elevationValue > 0.79 && ruggednessValue > 0.48) return BIOME.volcano
   if (elevationValue > 0.87 && temperatureValue < 0.3 && moistureValue > 0.58) return BIOME.glacier
   if (elevationValue > 0.83 && temperatureValue < 0.44) return BIOME.snow
@@ -509,18 +522,20 @@ function classifyStreamBiome(
   globalX: number,
   globalY: number,
   seed: number,
+  seaLevel: number,
   elevationValue: number,
   moistureValue: number,
   temperatureValue: number
 ): number {
-  const water = elevationValue < SEA_LEVEL
-  const west = streamElevationValue(globalX - 1, globalY, seed) < SEA_LEVEL
-  const east = streamElevationValue(globalX + 1, globalY, seed) < SEA_LEVEL
-  const north = streamElevationValue(globalX, globalY - 1, seed) < SEA_LEVEL
-  const south = streamElevationValue(globalX, globalY + 1, seed) < SEA_LEVEL
+  const water = elevationValue < seaLevel
+  const west = streamElevationValue(globalX - 1, globalY, seed) < seaLevel
+  const east = streamElevationValue(globalX + 1, globalY, seed) < seaLevel
+  const north = streamElevationValue(globalX, globalY - 1, seed) < seaLevel
+  const south = streamElevationValue(globalX, globalY + 1, seed) < seaLevel
   const enclosed = !west && !east && !north && !south && elevationValue > 0.28
   return classifyTerrain({
     elevationValue,
+    seaLevel,
     moistureValue,
     temperatureValue,
     ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
@@ -592,6 +607,7 @@ interface EvaluatedCell {
 }
 
 function evaluateStreamCell(globalX: number, globalY: number, seed: number): EvaluatedCell {
+  const seaLevel = seaLevelForSeed(seed)
   const elevationValue = streamElevationValue(globalX, globalY, seed)
   const moistureValue = streamMoistureValue(globalX, globalY, seed, elevationValue)
   const temperatureValue = streamTemperatureValue(globalX, globalY, seed, elevationValue)
@@ -599,15 +615,16 @@ function evaluateStreamCell(globalX: number, globalY: number, seed: number): Eva
     globalX,
     globalY,
     seed,
+    seaLevel,
     elevationValue,
     moistureValue,
     temperatureValue
   )
   const nearWater = [
-    streamElevationValue(globalX - 1, globalY, seed) < SEA_LEVEL,
-    streamElevationValue(globalX + 1, globalY, seed) < SEA_LEVEL,
-    streamElevationValue(globalX, globalY - 1, seed) < SEA_LEVEL,
-    streamElevationValue(globalX, globalY + 1, seed) < SEA_LEVEL,
+    streamElevationValue(globalX - 1, globalY, seed) < seaLevel,
+    streamElevationValue(globalX + 1, globalY, seed) < seaLevel,
+    streamElevationValue(globalX, globalY - 1, seed) < seaLevel,
+    streamElevationValue(globalX, globalY + 1, seed) < seaLevel,
   ].some(Boolean)
   return {
     biome,
@@ -1418,6 +1435,7 @@ export function generateWorld(
 ): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
+  const seaLevel = seaLevelForSeed(seed)
   const size = width * height
   const elevation = new Uint8Array(size)
   const moisture = new Uint8Array(size)
@@ -1448,7 +1466,7 @@ export function generateWorld(
     }
   }
 
-  const topology = classifyTopology(elevation, width, height)
+  const topology = classifyTopology(elevation, width, height, seaLevel)
   let worldHash = 2166136261
 
   for (let index = 0; index < size; index += 1) {
@@ -1459,6 +1477,7 @@ export function generateWorld(
     const temperatureValue = temperature[index]! / 255
     const biome = classifyTerrain({
       elevationValue,
+      seaLevel,
       moistureValue,
       temperatureValue,
       ruggednessValue:
@@ -1508,6 +1527,7 @@ export function generateChunk(
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
+  const seaLevel = seaLevelForSeed(seed)
   const size = chunkSize * chunkSize
   const originX = chunkX * chunkSize
   const originY = chunkY * chunkSize
@@ -1529,6 +1549,7 @@ export function generateChunk(
         globalX,
         globalY,
         seed,
+        seaLevel,
         elevationValue,
         moistureValue,
         temperatureValue

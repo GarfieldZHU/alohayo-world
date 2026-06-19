@@ -14,6 +14,8 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Clear held keys on blur and ignore gameplay input while the user edits form fields.
 - Chunk retention, discovery fog, minimap summaries, and camera follow must consume
   streamed data without promoting the renderer into authoritative simulation state.
+- Preserve the mode split: game mode owns a tight follow camera with locked zoom, while
+  dev mode keeps explicit free-camera inspection controls.
 - Keep browser diagnostics visible through stable canvas data attributes whenever a new
   exploration feature lands.
 - The engine may request chunks opportunistically, but it must tolerate frontier cells
@@ -22,6 +24,8 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - HUD, tooltip, and dev-panel strings must resolve through the shared locale helpers.
 - When adding a new visible label, put it in `i18n/` first and then thread the message
   key or translated content ID through the engine.
+- Dev locomotion overrides such as flight must stay clearly debug-scoped until the
+  corresponding content-driven movement capability exists in character/equipment data.
 
 - Roads and settlements are renderer consumers of deterministic map output; do not let
   the view invent or mutate transport topology.

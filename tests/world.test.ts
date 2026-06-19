@@ -3,6 +3,13 @@ import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '..
 import type { MapAreaDefinition } from '../packages/config/src'
 import wayfinderIsle from '../content/maps/core/areas/wayfinder-isle.json'
 
+const isWaterBiome = (biome: number) =>
+  biome === BIOME.deepOcean ||
+  biome === BIOME.ocean ||
+  biome === BIOME.shallowSea ||
+  biome === BIOME.lake ||
+  biome === BIOME.reef
+
 describe('world generation', () => {
   it('is deterministic for a seed', () => {
     const first = generateWorld('alohayo', 32, 24)
@@ -50,6 +57,26 @@ describe('world generation', () => {
     for (let index = 0; index < world.biomes.length; index += 1) {
       expect(Boolean(world.landmass[index]) !== Boolean(world.waterbody[index])).toBe(true)
     }
+  })
+
+  it('keeps seeded ocean coverage within the configured wide range', () => {
+    const ratios = Array.from({ length: 18 }, (_, index) => {
+      const world = generateWorld(`coverage-${index}`, 96, 72)
+      const waterCells = world.biomes.reduce(
+        (total, biome) => total + Number(isWaterBiome(biome)),
+        0
+      )
+      return waterCells / world.biomes.length
+    })
+
+    for (const ratio of ratios) {
+      expect(ratio).toBeGreaterThanOrEqual(0.1)
+      expect(ratio).toBeLessThanOrEqual(0.8)
+    }
+
+    const average = ratios.reduce((total, ratio) => total + ratio, 0) / ratios.length
+    expect(average).toBeGreaterThanOrEqual(0.3)
+    expect(average).toBeLessThanOrEqual(0.6)
   })
 
   it('applies authored map areas and landmarks deterministically', () => {

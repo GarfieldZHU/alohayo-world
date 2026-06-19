@@ -59,9 +59,12 @@ interface RpcPending {
 
 interface DevPanelControls {
   panel: HTMLDivElement
+  body: HTMLDivElement
   heading: HTMLDivElement
+  toggleButton: HTMLButtonElement
   battleShadowLabel: HTMLLabelElement
   fastMoveLabel: HTMLLabelElement
+  flyLabel: HTMLLabelElement
   teleportX: HTMLInputElement
   teleportY: HTMLInputElement
   teleportButton: HTMLButtonElement
@@ -70,8 +73,11 @@ interface DevPanelControls {
   applyGearButton: HTMLButtonElement
   note: HTMLParagraphElement
   fastMoveToggle: HTMLInputElement
+  flyToggle: HTMLInputElement
   fillEquipmentOptions: () => void
   fillItemOptions: () => void
+  setCollapsed: (collapsed: boolean) => void
+  isCollapsed: () => boolean
 }
 
 const REGION_NAME: Record<number, string> = {
@@ -147,6 +153,19 @@ function deriveChunkRadius(
   return Math.max(fallback, radius)
 }
 
+function computeGameCameraScale(screenWidth: number, screenHeight: number, cellSize: number) {
+  const targetVisibleCellsX = 32
+  const targetVisibleCellsY = 22
+  return clamp(
+    Math.min(
+      screenWidth / (cellSize * targetVisibleCellsX),
+      screenHeight / (cellSize * targetVisibleCellsY)
+    ),
+    2.2,
+    9
+  )
+}
+
 export async function createGame(
   options: MountGameOptions,
   content: EngineContent
@@ -214,6 +233,7 @@ export async function createGame(
   )
   let devFastMove = false
   let devBattleShadow = devMode
+  let devFly = false
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
   const fixedStep = 1 / 60
@@ -249,6 +269,7 @@ export async function createGame(
   const worldSeed = options.initialWorld?.seed?.trim() || content.world.defaultSeed
   window.localStorage.setItem('alohayo-world:last-seed', worldSeed)
   window.localStorage.setItem('alohayo-world:locale', locale)
+  const devPanelStateStorageKey = 'alohayo-world:dev-panel-collapsed'
 
   const catalog = () => getI18nCatalog(locale)
   const uiText = (key: string) => catalog().ui[key] ?? key
@@ -331,6 +352,7 @@ export async function createGame(
     app.canvas.dataset.chunkRadius = String(activeChunkRadius)
     app.canvas.dataset.devMode = devMode ? 'true' : 'false'
     app.canvas.dataset.devFastMove = devFastMove ? 'true' : 'false'
+    app.canvas.dataset.devFly = devFly ? 'true' : 'false'
     app.canvas.dataset.locale = locale
     const centerPixelX = explorerMotion.x * cellSize
     const centerPixelY = explorerMotion.y * cellSize
@@ -372,6 +394,13 @@ export async function createGame(
         .stroke({ color: 0xff667a, width: Math.max(0.4, cellSize * 0.1), alpha: 0.9 })
         .circle(centerPixelX, centerPixelY, cellSize * 1.55)
         .fill({ color: 0x7a1022, alpha: 0.12 })
+    }
+    if (devMode && devFly) {
+      devLayer
+        .circle(centerPixelX, centerPixelY, cellSize * 2.6)
+        .stroke({ color: 0x8ef2ff, width: Math.max(0.45, cellSize * 0.1), alpha: 0.9 })
+        .circle(centerPixelX, centerPixelY, cellSize * 2.05)
+        .stroke({ color: 0x1cc8e8, width: Math.max(0.35, cellSize * 0.08), alpha: 0.55 })
     }
     characterLayer
       .circle(centerPixelX, centerPixelY, cellSize * 0.45 * actionPulse)
@@ -423,6 +452,14 @@ export async function createGame(
     }
   }
 
+  const refreshFogVisibility = () => {
+    const fogVisible = !(devMode && devBattleShadow)
+    for (const view of chunkViews.values()) {
+      view.fog.visible = fogVisible
+    }
+    app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
+  }
+
   const renderChunk = (chunk: GeneratedChunk) => {
     const key = chunkKey(chunk.chunkX, chunk.chunkY)
     let view = chunkViews.get(key)
@@ -469,6 +506,7 @@ export async function createGame(
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
+    view.fog.visible = !(devMode && devBattleShadow)
 
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
@@ -727,6 +765,7 @@ export async function createGame(
           void ensureChunk(location.chunkX, location.chunkY)
           return false
         }
+        if (devMode && devFly) continue
         if (data.biome.movementCost >= 7) return false
       }
     }
@@ -734,6 +773,7 @@ export async function createGame(
   }
 
   const movementCost = (x: number, y: number) => {
+    if (devMode && devFly) return 1
     const data = getCellData(Math.floor(x), Math.floor(y))
     return data?.biome.movementCost ?? 1
   }
@@ -848,12 +888,36 @@ export async function createGame(
     if (affected.size) drawMinimap()
   }
 
+  const cameraTarget = () => {
+    if (!explorerMotion) return { x: viewport.x, y: viewport.y }
+    return {
+      x: app.screen.width / 2 - explorerMotion.x * cellSize * scale,
+      y: app.screen.height / 2 - explorerMotion.y * cellSize * scale,
+    }
+  }
+
+  const syncGameCameraScale = () => {
+    if (devMode) return
+    scale = computeGameCameraScale(app.screen.width, app.screen.height, cellSize)
+    viewport.scale.set(scale)
+  }
+
+  const updateCamera = (force = false) => {
+    if (!explorerMotion) return
+    const target = cameraTarget()
+    if (devMode || force) {
+      viewport.position.set(target.x, target.y)
+      return
+    }
+    const followAlpha = 0.2
+    viewport.x += (target.x - viewport.x) * followAlpha
+    viewport.y += (target.y - viewport.y) * followAlpha
+  }
+
   const recenterOnExplorer = () => {
     if (!explorerMotion) return
-    viewport.position.set(
-      app.screen.width / 2 - explorerMotion.x * cellSize * scale,
-      app.screen.height / 2 - explorerMotion.y * cellSize * scale
-    )
+    syncGameCameraScale()
+    updateCamera(true)
     drawMinimap()
   }
 
@@ -900,6 +964,15 @@ export async function createGame(
       boxShadow: '0 18px 44px rgba(0,0,0,0.28)',
     } satisfies Partial<CSSStyleDeclaration>)
 
+    const headerRow = document.createElement('div')
+    Object.assign(headerRow.style, {
+      display: 'flex',
+      gap: '10px',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: '10px',
+    } satisfies Partial<CSSStyleDeclaration>)
+
     const heading = document.createElement('div')
     heading.textContent = devText('heading')
     Object.assign(heading.style, {
@@ -907,9 +980,29 @@ export async function createGame(
       letterSpacing: '0.14em',
       textTransform: 'uppercase',
       color: '#72d7c8',
-      marginBottom: '10px',
+      flex: '1',
     } satisfies Partial<CSSStyleDeclaration>)
-    panel.appendChild(heading)
+    headerRow.appendChild(heading)
+
+    const toggleButton = document.createElement('button')
+    toggleButton.type = 'button'
+    Object.assign(toggleButton.style, {
+      border: '1px solid #315263',
+      borderRadius: '999px',
+      padding: '5px 10px',
+      cursor: 'pointer',
+      color: '#d8f3ff',
+      background: '#102532',
+      fontSize: '11px',
+      fontWeight: '700',
+      whiteSpace: 'nowrap',
+    } satisfies Partial<CSSStyleDeclaration>)
+    headerRow.appendChild(toggleButton)
+
+    panel.appendChild(headerRow)
+
+    const body = document.createElement('div')
+    panel.appendChild(body)
 
     const makeRow = () => {
       const row = document.createElement('div')
@@ -919,7 +1012,7 @@ export async function createGame(
         marginBottom: '8px',
         alignItems: 'center',
       } satisfies Partial<CSSStyleDeclaration>)
-      panel.appendChild(row)
+      body.appendChild(row)
       return row
     }
 
@@ -960,6 +1053,8 @@ export async function createGame(
     battleShadowToggle.checked = devBattleShadow
     battleShadowToggle.addEventListener('change', () => {
       devBattleShadow = battleShadowToggle.checked
+      refreshFogVisibility()
+      updateStatus()
       drawExplorer(performance.now() / 1000)
     })
     const battleShadowLabel = document.createElement('label')
@@ -978,6 +1073,20 @@ export async function createGame(
     fastMoveLabel.textContent = devText('fastMove')
     fastMoveLabel.style.flex = '1'
     checkboxRow.append(fastMoveToggle, fastMoveLabel)
+
+    const flyRow = makeRow()
+    const flyToggle = document.createElement('input')
+    flyToggle.type = 'checkbox'
+    flyToggle.checked = devFly
+    flyToggle.addEventListener('change', () => {
+      devFly = flyToggle.checked
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
+    })
+    const flyLabel = document.createElement('label')
+    flyLabel.textContent = devText('fly')
+    flyLabel.style.flex = '1'
+    flyRow.append(flyToggle, flyLabel)
 
     const teleportRow = makeRow()
     const teleportX = makeInput('0')
@@ -1070,13 +1179,29 @@ export async function createGame(
       fontSize: '11px',
       color: '#9bb2bf',
     } satisfies Partial<CSSStyleDeclaration>)
-    panel.appendChild(note)
+    body.appendChild(note)
+
+    let collapsed = window.localStorage.getItem(devPanelStateStorageKey) === 'true'
+    const setCollapsed = (nextCollapsed: boolean) => {
+      collapsed = nextCollapsed
+      body.style.display = collapsed ? 'none' : ''
+      toggleButton.textContent = devText(collapsed ? 'expand' : 'collapse')
+      toggleButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+      window.localStorage.setItem(devPanelStateStorageKey, collapsed ? 'true' : 'false')
+    }
+    toggleButton.addEventListener('click', () => {
+      setCollapsed(!collapsed)
+    })
+    setCollapsed(collapsed)
 
     return {
       panel,
+      body,
       heading,
+      toggleButton,
       battleShadowLabel,
       fastMoveLabel,
+      flyLabel,
       teleportX,
       teleportY,
       teleportButton,
@@ -1085,16 +1210,21 @@ export async function createGame(
       applyGearButton,
       note,
       fastMoveToggle,
+      flyToggle,
       fillEquipmentOptions,
       fillItemOptions,
+      setCollapsed,
+      isCollapsed: () => collapsed,
     }
   }
 
   const renderDevPanelLocale = (panel: DevPanelControls | null) => {
     if (!panel) return
     panel.heading.textContent = devText('heading')
+    panel.setCollapsed(panel.isCollapsed())
     panel.battleShadowLabel.textContent = devText('battleShadow')
     panel.fastMoveLabel.textContent = devText('fastMove')
+    panel.flyLabel.textContent = devText('fly')
     panel.teleportButton.textContent = devText('teleport')
     panel.applyGearButton.textContent = devText('equip')
     panel.note.textContent = devText('note')
@@ -1131,11 +1261,13 @@ export async function createGame(
   renderDevPanelLocale(devPanel)
 
   const surveyPixels = (activeChunkRadius * 2 + 1) * chunkSize * cellSize
-  scale = clamp(
-    Math.min((app.screen.width - 24) / surveyPixels, (app.screen.height - 66) / surveyPixels),
-    0.35,
-    1
-  )
+  scale = devMode
+    ? clamp(
+        Math.min((app.screen.width - 24) / surveyPixels, (app.screen.height - 66) / surveyPixels),
+        0.35,
+        1
+      )
+    : computeGameCameraScale(app.screen.width, app.screen.height, cellSize)
   viewport.scale.set(scale)
   viewport.position.set(
     app.screen.width / 2 - spawn.x * cellSize * scale,
@@ -1144,11 +1276,13 @@ export async function createGame(
   updateDetailLevel()
   revealAroundExplorer()
   drawExplorer()
+  refreshFogVisibility()
   drawMinimap()
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
     devPanel.fastMoveToggle.checked = devFastMove
+    devPanel.flyToggle.checked = devFly
   }
   status.text = uiText('surveying')
   updateStatus()
@@ -1161,6 +1295,7 @@ export async function createGame(
       void teleportExplorer(cellX, cellY)
       return
     }
+    if (!devMode) return
     dragging = true
     lastX = event.clientX
     lastY = event.clientY
@@ -1200,6 +1335,7 @@ export async function createGame(
   }
 
   const onWheel = (event: WheelEvent) => {
+    if (!devMode) return
     event.preventDefault()
     const bounds = app.canvas.getBoundingClientRect()
     const pointerX = event.clientX - bounds.left
@@ -1292,7 +1428,15 @@ export async function createGame(
     if (devMode && key === 'f' && !event.repeat) {
       event.preventDefault()
       devFastMove = !devFastMove
+      if (devPanel) devPanel.fastMoveToggle.checked = devFastMove
       updateStatus()
+    }
+    if (devMode && key === 'g' && !event.repeat) {
+      event.preventDefault()
+      devFly = !devFly
+      if (devPanel) devPanel.flyToggle.checked = devFly
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
     }
     if ((key === 'e' || key === ' ') && !event.repeat) {
       event.preventDefault()
@@ -1306,6 +1450,14 @@ export async function createGame(
 
   const onBlur = () => {
     pressedKeys.clear()
+  }
+
+  const onResize = () => {
+    if (!explorerMotion) return
+    syncGameCameraScale()
+    updateCamera(true)
+    drawMinimap()
+    updateStatus()
   }
 
   const stepSimulation = (deltaSeconds: number) => {
@@ -1341,8 +1493,10 @@ export async function createGame(
     evictFarChunks(centerChunkX, centerChunkY)
     revealAroundExplorer()
     if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
-      viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
-      viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
+      if (devMode) {
+        viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
+        viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
+      }
       drawMinimap()
     }
   }
@@ -1355,6 +1509,7 @@ export async function createGame(
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('blur', onBlur)
+  window.addEventListener('resize', onResize)
 
   app.ticker.add(() => {
     if (paused || destroyed) return
@@ -1365,6 +1520,7 @@ export async function createGame(
       stepSimulation(fixedStep)
       simulationAccumulator -= fixedStep
     }
+    if (!devMode) updateCamera()
     drawExplorer(simulationNow / 1000)
     frameCount += 1
     const now = performance.now()
@@ -1410,6 +1566,7 @@ export async function createGame(
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
+      window.removeEventListener('resize', onResize)
       app.destroy(true, { children: true, texture: true })
       options.container.replaceChildren()
     },

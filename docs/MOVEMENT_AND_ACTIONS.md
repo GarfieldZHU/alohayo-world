@@ -10,8 +10,8 @@ for the first controllable character slice.
 | `WASD` or arrow keys | Walk in eight directions               |
 | Hold `Shift`         | Run                                    |
 | `E` or `Space`       | Use the first bound interaction action |
-| Pointer drag         | Pan the camera independently           |
-| Wheel/trackpad       | Cursor-centered zoom                   |
+| Pointer drag         | Pan the camera in dev mode             |
+| Wheel/trackpad       | Cursor-centered zoom in dev mode       |
 
 Gameplay keys are ignored while typing into an input, textarea, or editable element.
 
@@ -49,9 +49,14 @@ Movement input is normalized, so diagonal travel is not faster. Each update:
 5. update position, facing, locomotion state, and distance;
 6. offset the camera to follow the character.
 
-Water terrain currently has movement cost `7+` and rejects occupancy. Land terrain is
-traversable but high-cost terrain slows movement. Future locomotion profiles replace
-this temporary threshold for swimming, boats, flying, climbing, and vehicles.
+Game mode uses a tight follow camera with locked zoom so the visible area stays useful
+for exploration and encounters. Dev mode keeps the free camera for inspection, replay,
+and map debugging.
+
+Water terrain currently has movement cost `7+` and rejects occupancy in normal gameplay.
+Land terrain is traversable but high-cost terrain slows movement. Dev flight can ignore
+terrain blocking for testing, but future locomotion profiles should replace this debug
+override for swimming, boats, flying, climbing, and vehicles.
 
 ## Motion States
 

@@ -32,6 +32,7 @@ dependencies, first vertical slice, tests, and deferred work.
 - `modules/SETTLEMENTS.md`
 - `modules/ECONOMY.md`
 - `modules/COMBAT.md`
+- `modules/FLIGHT.md`
 - `modules/VEHICLES.md`
 - `modules/CREATURES.md`
 

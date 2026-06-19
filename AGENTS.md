@@ -14,6 +14,25 @@ contracts narrow, and documentation close to the code it governs.
 Nested `AGENTS.md` files add local rules. The closest guide to a changed file takes
 precedence when it is more specific.
 
+## First-Priority Delivery Pattern
+
+For any multi-step feature or fix set, follow this workflow in order:
+
+1. Work the task list one item at a time.
+2. Finish and verify the current item before starting the next one.
+3. After implementation, review the result against the original expectation instead of
+   assuming the first pass is good enough.
+4. Update the smallest relevant docs and `CHANGELOG.md` as part of the same change.
+5. Commit focused stages, push, monitor GitHub Actions and downstream deploys, and
+   verify the live surface when the work affects a published experience.
+6. Publish or update the release only after the verified changes are on the intended
+   branch and the automation state is healthy.
+7. If an unexpected error or context/token limit interrupts progress, leave a concise
+   memo covering what is done, what remains, what was verified, and the next exact step
+   so another agent can continue cleanly.
+
+This pattern is mandatory unless a task explicitly asks for planning-only work.
+
 ## Mission
 
 Build a fast, extensible, map-first single-player web game. The world is local-only,

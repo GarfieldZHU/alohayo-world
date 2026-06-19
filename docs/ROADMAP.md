@@ -24,7 +24,10 @@
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] IndexedDB discovery/save snapshots and restoration.
-- [ ] Dev demo mode: reveal battle shadow, fast move, teleport, and test equipment/weapon overrides.
+- [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test
+      equipment/weapon overrides.
+- [ ] Convert debug flight into a real locomotion capability granted by gear, mounts,
+      vehicles, or abilities instead of a dev-only bypass.
 - Content-pack dependency loading and schema migrations.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - Explicit desktop/mobile performance budgets and benchmark history.
