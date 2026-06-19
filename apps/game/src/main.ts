@@ -128,7 +128,8 @@ const launch = async () => {
     launcherState = 'running'
     submitButton.textContent = uiText('resurvey')
   } catch (error) {
-    container.textContent = error instanceof Error ? error.message : uiText('gameStartErrorStandalone')
+    container.textContent =
+      error instanceof Error ? error.message : uiText('gameStartErrorStandalone')
     launcherState = 'error'
     submitButton.textContent = uiText('retry')
   } finally {
