@@ -28,6 +28,7 @@ scripts.
 | Module      | First useful outcome                   | Depends on      |
 | ----------- | -------------------------------------- | --------------- |
 | Map         | streamed geography, drainage, overlays | config, worker  |
+| Roads       | tiered travel corridors and conditions | map, weather    |
 | Characters  | configurable generated explorer marker | map, config     |
 | Weather     | deterministic local weather fronts     | map, clock      |
 | Settlements | place and grow one settlement          | map, characters |

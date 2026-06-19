@@ -24,6 +24,8 @@ export interface WorldDefinition {
   cellSize: number
   generator: 'continental-v1'
   stream: WorldStreamDefinition
+  roads: WorldRoadSystemDefinition
+  weather?: WorldWeatherDefinition
   sizePresets?: WorldSizePreset[]
 }
 
@@ -43,6 +45,52 @@ export interface WorldSizePreset {
   chunkRadius: number
   retainChunkRadius: number
   minimapChunkRadius: number
+}
+
+export type WorldRoadProfileId = 'trail' | 'road' | 'trade-route' | 'pass'
+
+export interface WorldRoadProfileDefinition {
+  id: WorldRoadProfileId
+  name: string
+  movementMultiplier: number
+  width: number
+  color: string
+  edgeColor: string
+  terrainTextureStrength: number
+  weatherTextureStrength: number
+}
+
+export interface WorldRoadGenerationDefinition {
+  candidateDistance: number
+  trafficRoadMin: number
+  trafficTradeRouteMin: number
+  ruggedPassThreshold: number
+  smoothingIterations: number
+  textureStep: number
+}
+
+export interface WorldRoadSystemDefinition {
+  profiles: WorldRoadProfileDefinition[]
+  generation: WorldRoadGenerationDefinition
+}
+
+export interface WorldWeatherStateDefinition {
+  id: 'clear' | 'rain' | 'snow' | 'thaw'
+  duration: number
+  wetness: number
+  snowCover: number
+  mud: number
+}
+
+export interface WorldWeatherDefinition {
+  enabled: boolean
+  cycleSeconds: number
+  cellScale: number
+  transitionSeconds: number
+  rainThreshold: number
+  snowTemperatureMax: number
+  surfaceDecay: number
+  states: WorldWeatherStateDefinition[]
 }
 
 export interface BiomeDefinition {

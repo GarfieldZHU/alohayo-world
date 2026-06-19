@@ -23,6 +23,10 @@
   controls.
 - Tuned seeded sea-level variance so worlds usually land between 30% and 60% water, with
   deterministic wider outliers still bounded to the configured extreme range.
+- Added content-tuned medieval road profiles with movement multipliers, smoother curved
+  geometry, and terrain-aware road surfacing.
+- Added first-pass deterministic weather surface overlays for rain, snow, and thaw
+  without yet promoting weather to full gameplay simulation.
 
 ## 0.1.0-demo
 

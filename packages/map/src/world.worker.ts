@@ -17,7 +17,8 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.seed,
       event.data.width,
       event.data.height,
-      event.data.biomeDefinitions
+      event.data.biomeDefinitions,
+      event.data.roadSystem
     )
     if (event.data.mapAreas?.length && event.data.terrainCodes) {
       world = applyMapAreas(
@@ -54,7 +55,8 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
     event.data.surveyHeight,
     event.data.mapAreas ?? [],
     event.data.terrainCodes ?? {},
-    event.data.biomeDefinitions
+    event.data.biomeDefinitions,
+    event.data.roadSystem
   )
   workerScope.postMessage(
     { type: 'generated-chunk', id: event.data.id, chunk },

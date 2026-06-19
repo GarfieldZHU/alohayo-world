@@ -39,6 +39,10 @@ describe('world generation', () => {
     const second = generateChunk('trade-routes', 1, -1, 64)
     expect(first.settlements).toEqual(second.settlements)
     expect(first.roads).toEqual(second.roads)
+    const world = generateWorld('trade-routes-network', 160, 120)
+    expect(
+      world.roads.some((road) => road.points.some((point) => !Number.isInteger(point.x)))
+    ).toBe(true)
   })
 
   it('exposes extended terrain families in generated worlds', () => {

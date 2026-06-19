@@ -26,6 +26,8 @@ To add terrain:
 Content lives under `content/<pack-id>` and begins with `manifest.json`.
 
 - `world.json`: seed defaults, dimensions, chunk size, generator and starting position.
+- `world.json`: seed defaults, dimensions, chunk size, streamed runtime, road profiles,
+  road-generation thresholds, and basic weather-cycle parameters.
 - `biomes.json`: ordered climate/elevation rules and painterly palette.
 - Future `entities.json`: component values, appearance and interaction tags.
 - Future `modes.json`: registered systems, panels, input map and goals.
@@ -37,6 +39,19 @@ To add a biome, append a definition with a unique numeric code, family, palette,
 ranges, movement cost, road cost, occurrence weight, creature habitat tags, and
 settlement suitability. Those metadata drive transport and population generation, not
 just rendering.
+
+Road tuning lives in `content/core/world.json`:
+
+- `roads.profiles`: per-tier movement multiplier, width, palette, and texture strength;
+- `roads.generation`: traffic thresholds, pass ruggedness threshold, candidate distance,
+  smoothing iterations, and texture sampling step.
+
+Basic weather tuning also lives in `world.json`:
+
+- `weather.states`: ordered deterministic states such as clear, rain, snow, and thaw;
+- `weather.cycleSeconds` and `transitionSeconds`: pacing and fade behavior;
+- `weather` values should add visual surface behavior first and only later expand into
+  full simulation effects on movement, roads, and cities.
 
 Custom authored areas live under `content/maps/**/areas/` and are discovered
 automatically at build time. See `config/MAPS.md`.

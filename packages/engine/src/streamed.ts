@@ -16,6 +16,8 @@ import type {
   MapAreaDefinition,
   MountGameOptions,
   WorldDefinition,
+  WorldRoadProfileDefinition,
+  WorldRoadProfileId,
 } from '@alohayo/config'
 import {
   formatI18n,
@@ -26,6 +28,7 @@ import {
 } from '@alohayo/config'
 import {
   CHUNK_REGION,
+  hashSeed,
   type GeneratedChunk,
   type GeneratedLandmark,
   type WorldWorkerRequest,
@@ -46,6 +49,7 @@ interface ChunkView {
   transitions: Graphics
   regionalDetails: Graphics
   closeDetails: Graphics
+  surfaces: Graphics
   roads: Graphics
   settlements: Graphics
   landmarks: Graphics
@@ -55,6 +59,14 @@ interface ChunkView {
 interface RpcPending {
   resolve: (value: GeneratedChunk) => void
   reject: (reason?: unknown) => void
+}
+
+interface ActiveWeatherState {
+  id: string
+  wetness: number
+  snowCover: number
+  mud: number
+  fade: number
 }
 
 interface DevPanelControls {
@@ -137,6 +149,18 @@ function cellNoise(x: number, y: number, salt = 0) {
   return (value ^ (value >>> 16)) >>> 0
 }
 
+function colorFromHex(value: string, fallback: number): number {
+  return /^#[0-9a-f]{6}$/i.test(value) ? Number.parseInt(value.slice(1), 16) : fallback
+}
+
+function profileById(world: WorldDefinition): Map<WorldRoadProfileId, WorldRoadProfileDefinition> {
+  return new Map(
+    world.roads.profiles.map(
+      (profile) => [profile.id, profile] satisfies [WorldRoadProfileId, WorldRoadProfileDefinition]
+    )
+  )
+}
+
 function toChunkCoord(cell: number, chunkSize: number): { chunk: number; local: number } {
   const chunk = Math.floor(cell / chunkSize)
   const local = cell - chunk * chunkSize
@@ -194,6 +218,7 @@ export async function createGame(
   overlay.addChild(minimapLayer)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
+  const roadProfiles = profileById(content.world)
   const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
   const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
@@ -219,6 +244,7 @@ export async function createGame(
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
   const chunkViews = new Map<string, ChunkView>()
+  const roadMasks = new Map<string, Uint8Array>()
   const pendingChunks = new Map<string, Promise<GeneratedChunk>>()
   const discovery = new Map<string, Uint8Array>()
   const dirtyFog = new Set<string>()
@@ -227,6 +253,7 @@ export async function createGame(
   let explorer: GeneratedCharacter | null = null
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
+  let weatherTick = -1
   const devMode = Boolean(options.devMode)
   let locale: LocaleCode = normalizeLocale(
     options.locale ?? window.localStorage.getItem('alohayo-world:locale')
@@ -300,6 +327,7 @@ export async function createGame(
     for (const view of chunkViews.values()) {
       view.regionalDetails.visible = scale >= 1.15
       view.closeDetails.visible = scale >= 2.15
+      view.surfaces.visible = scale >= 1
       view.roads.visible = scale >= 1.05
       view.settlements.visible = scale >= 0.85
       view.landmarks.visible = scale >= 1.15
@@ -460,6 +488,226 @@ export async function createGame(
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
   }
 
+  const activeWeather = (nowMs = performance.now()): ActiveWeatherState => {
+    const weather = content.world.weather
+    if (!weather?.enabled || !weather.states.length) {
+      return { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 }
+    }
+    const totalDuration = weather.states.reduce((sum, state) => sum + state.duration, 0)
+    const seedBias = (cellNoise(hashSeed(worldSeed), content.world.chunkSize, 17) % 1000) / 1000
+    const cycle = (nowMs / 1000 / Math.max(1, weather.cycleSeconds) + seedBias) % 1
+    let cursor = 0
+    for (const state of weather.states) {
+      const next = cursor + state.duration / totalDuration
+      if (cycle <= next || state === weather.states[weather.states.length - 1]) {
+        const local = clamp((cycle - cursor) / Math.max(0.0001, next - cursor), 0, 1)
+        const fade = Math.sin(local * Math.PI) * weather.surfaceDecay
+        return {
+          id: state.id,
+          wetness: state.wetness,
+          snowCover: state.snowCover,
+          mud: state.mud,
+          fade,
+        }
+      }
+      cursor = next
+    }
+    return { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 }
+  }
+
+  const roadProfile = (id: WorldRoadProfileId) =>
+    roadProfiles.get(id) ?? content.world.roads.profiles[0]!
+
+  const rebuildRoadMask = (chunk: GeneratedChunk) => {
+    const mask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
+    for (const road of chunk.roads) {
+      const profile = roadProfile(road.kind)
+      const radius = Math.max(0, Math.ceil(profile.width))
+      for (let pointIndex = 1; pointIndex < road.points.length; pointIndex += 1) {
+        const from = road.points[pointIndex - 1]!
+        const to = road.points[pointIndex]!
+        const length = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * 2))
+        for (let step = 0; step <= length; step += 1) {
+          const t = step / length
+          const x = from.x + (to.x - from.x) * t
+          const y = from.y + (to.y - from.y) * t
+          const localX = Math.round(x - chunk.originX)
+          const localY = Math.round(y - chunk.originY)
+          for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+            for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+              const nx = localX + offsetX
+              const ny = localY + offsetY
+              if (nx < 0 || ny < 0 || nx >= chunk.chunkSize || ny >= chunk.chunkSize) continue
+              const index = ny * chunk.chunkSize + nx
+              mask[index] = Math.max(
+                mask[index]!,
+                profile.id === 'trade-route'
+                  ? 4
+                  : profile.id === 'road'
+                    ? 3
+                    : profile.id === 'pass'
+                      ? 2
+                      : 1
+              )
+            }
+          }
+        }
+      }
+    }
+    roadMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), mask)
+  }
+
+  const roadProfileAt = (
+    chunk: GeneratedChunk,
+    index: number
+  ): WorldRoadProfileDefinition | null => {
+    const mask = roadMasks.get(chunkKey(chunk.chunkX, chunk.chunkY))
+    const value = mask?.[index] ?? 0
+    if (!value) return null
+    return value === 4
+      ? roadProfile('trade-route')
+      : value === 3
+        ? roadProfile('road')
+        : value === 2
+          ? roadProfile('pass')
+          : roadProfile('trail')
+  }
+
+  const roadTextureTint = (biome: BiomeDefinition, state: ActiveWeatherState) => {
+    const snowTemperatureMax = content.world.weather?.snowTemperatureMax ?? 0.42
+    if (state.snowCover > 0.2 && biome.temperature.max <= snowTemperatureMax + 0.2) {
+      return 0xe8edf5
+    }
+    if (
+      state.mud > 0.2 &&
+      (biome.family === 'wetland' ||
+        biome.family === 'forest' ||
+        biome.family === 'grassland' ||
+        biome.family === 'plain')
+    ) {
+      return 0x5f4631
+    }
+    if (biome.family === 'mountain' || biome.family === 'upland') return 0x8a8277
+    if (biome.family === 'arid') return 0xb89263
+    if (biome.family === 'forest') return 0x5a6f45
+    return 0x7d6b58
+  }
+
+  const redrawChunkSurfaces = (chunk: GeneratedChunk, state: ActiveWeatherState) => {
+    const key = chunkKey(chunk.chunkX, chunk.chunkY)
+    const view = chunkViews.get(key)
+    if (!view) return
+    view.surfaces.clear()
+    for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
+      for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
+        const index = localY * chunk.chunkSize + localX
+        const biome = biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!
+        const x = localX * cellSize
+        const y = localY * cellSize
+        const noise = cellNoise(chunk.originX + localX, chunk.originY + localY, 404)
+        if (
+          state.wetness > 0.08 &&
+          noise % 7 === 0 &&
+          !biome.id.includes('ocean') &&
+          !biome.id.includes('sea')
+        ) {
+          view.surfaces.rect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1).fill({
+            color: 0x4a6f88,
+            alpha: state.wetness * state.fade * 0.12,
+          })
+        }
+        if (
+          state.mud > 0.08 &&
+          noise % 11 === 0 &&
+          (biome.family === 'plain' ||
+            biome.family === 'grassland' ||
+            biome.family === 'forest' ||
+            biome.family === 'wetland')
+        ) {
+          view.surfaces
+            .circle(
+              x + 1 + (noise % Math.max(1, cellSize - 1)),
+              y + 1 + ((noise >>> 4) % Math.max(1, cellSize - 1)),
+              0.5
+            )
+            .fill({
+              color: 0x4b3828,
+              alpha: state.mud * state.fade * 0.18,
+            })
+        }
+        if (
+          state.snowCover > 0.08 &&
+          biome.temperature.max <= (content.world.weather?.snowTemperatureMax ?? 0.42) + 0.25 &&
+          noise % 5 === 0
+        ) {
+          view.surfaces.rect(x + 0.3, y + 0.3, cellSize - 0.6, cellSize - 0.6).fill({
+            color: 0xf3f7fb,
+            alpha: state.snowCover * state.fade * 0.22,
+          })
+        }
+      }
+    }
+    for (const road of chunk.roads) {
+      const profile = roadProfile(road.kind)
+      const width = profile.width * 0.58
+      let started = false
+      for (const point of road.points) {
+        const localX = Math.round(point.x - chunk.originX)
+        const localY = Math.round(point.y - chunk.originY)
+        if (localX < 0 || localY < 0 || localX >= chunk.chunkSize || localY >= chunk.chunkSize)
+          continue
+        const index = localY * chunk.chunkSize + localX
+        const biome = biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!
+        const x = (point.x - chunk.originX) * cellSize + cellSize / 2
+        const y = (point.y - chunk.originY) * cellSize + cellSize / 2
+        const tint = roadTextureTint(biome, state)
+        if (!started) {
+          view.surfaces.moveTo(x, y)
+          started = true
+        } else {
+          view.surfaces.lineTo(x, y)
+        }
+        if (
+          cellNoise(localX, localY, 912) %
+            Math.max(2, content.world.roads.generation.textureStep) ===
+          0
+        ) {
+          view.surfaces.circle(x, y, Math.max(0.18, width * 0.36)).fill({
+            color: tint,
+            alpha:
+              profile.terrainTextureStrength * 0.18 +
+              profile.weatherTextureStrength *
+                state.fade *
+                Math.max(state.mud, state.snowCover, state.wetness) *
+                0.24,
+          })
+        }
+      }
+      if (started && state.fade > 0.02) {
+        const overlayColor =
+          state.snowCover > state.mud && state.snowCover > state.wetness
+            ? 0xf0f4f9
+            : state.mud > state.wetness
+              ? 0x5f4631
+              : 0x6d8ca4
+        view.surfaces.stroke({
+          color: overlayColor,
+          width,
+          alpha: profile.weatherTextureStrength * state.fade * 0.3,
+        })
+      }
+    }
+  }
+
+  const refreshWeatherLayers = (nowMs = performance.now(), force = false) => {
+    if (!content.world.weather?.enabled) return
+    const nextTick = Math.floor(nowMs / 1000)
+    if (!force && nextTick === weatherTick) return
+    weatherTick = nextTick
+    const state = activeWeather(nowMs)
+    for (const chunk of chunks.values()) redrawChunkSurfaces(chunk, state)
+  }
+
   const renderChunk = (chunk: GeneratedChunk) => {
     const key = chunkKey(chunk.chunkX, chunk.chunkY)
     let view = chunkViews.get(key)
@@ -469,6 +717,7 @@ export async function createGame(
       const transitions = new Graphics()
       const regionalDetails = new Graphics()
       const closeDetails = new Graphics()
+      const surfaces = new Graphics()
       const roads = new Graphics()
       const settlements = new Graphics()
       const landmarks = new Graphics()
@@ -478,6 +727,7 @@ export async function createGame(
         transitions,
         regionalDetails,
         closeDetails,
+        surfaces,
         roads,
         settlements,
         landmarks,
@@ -490,6 +740,7 @@ export async function createGame(
         transitions,
         regionalDetails,
         closeDetails,
+        surfaces,
         roads,
         settlements,
         landmarks,
@@ -503,10 +754,12 @@ export async function createGame(
     view.transitions.clear()
     view.regionalDetails.clear()
     view.closeDetails.clear()
+    view.surfaces.clear()
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
     view.fog.visible = !(devMode && devBattleShadow)
+    rebuildRoadMask(chunk)
 
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
@@ -590,15 +843,10 @@ export async function createGame(
     }
 
     for (const road of chunk.roads) {
-      const color =
-        road.kind === 'trade-route'
-          ? 0xf0d79b
-          : road.kind === 'road'
-            ? 0xc8b6a1
-            : road.kind === 'pass'
-              ? 0xd7c8bf
-              : 0x8f7f69
-      const width = road.kind === 'trade-route' ? 1.2 : road.kind === 'road' ? 0.95 : 0.7
+      const profile = roadProfile(road.kind)
+      const color = colorFromHex(profile.color, 0xc8b6a1)
+      const edgeColor = colorFromHex(profile.edgeColor, 0x5f4631)
+      const width = profile.width
       let started = false
       for (const point of road.points) {
         const x = (point.x - chunk.originX) * cellSize + cellSize / 2
@@ -610,7 +858,10 @@ export async function createGame(
           view.roads.lineTo(x, y)
         }
       }
-      if (started) view.roads.stroke({ color, width, alpha: 0.9 })
+      if (started) {
+        view.roads.stroke({ color: edgeColor, width: width + 0.34, alpha: 0.76 })
+        view.roads.stroke({ color, width, alpha: 0.93 })
+      }
     }
 
     for (const settlement of chunk.settlements) {
@@ -656,9 +907,11 @@ export async function createGame(
 
     view.regionalDetails.visible = scale >= 1.15
     view.closeDetails.visible = scale >= 2.15
+    view.surfaces.visible = scale >= 1
     view.roads.visible = scale >= 1.05
     view.settlements.visible = scale >= 0.85
     view.landmarks.visible = scale >= 1.15
+    redrawChunkSurfaces(chunk, activeWeather())
     redrawChunkFog(key)
   }
 
@@ -680,6 +933,7 @@ export async function createGame(
         mapAreas: content.mapAreas,
         terrainCodes,
         biomeDefinitions: content.biomes,
+        roadSystem: content.world.roads,
       })
       .then((chunk) => {
         pendingChunks.delete(key)
@@ -723,6 +977,7 @@ export async function createGame(
         chunkViews.delete(key)
       }
       chunks.delete(key)
+      roadMasks.delete(key)
       dirtyFog.delete(key)
     }
   }
@@ -775,7 +1030,10 @@ export async function createGame(
   const movementCost = (x: number, y: number) => {
     if (devMode && devFly) return 1
     const data = getCellData(Math.floor(x), Math.floor(y))
-    return data?.biome.movementCost ?? 1
+    if (!data) return 1
+    const road = roadProfileAt(data.chunk, data.index)
+    const roadMultiplier = road?.movementMultiplier ?? 1
+    return Math.max(0.38, data.biome.movementCost * roadMultiplier)
   }
 
   const drawMinimap = () => {
@@ -1277,6 +1535,7 @@ export async function createGame(
   revealAroundExplorer()
   drawExplorer()
   refreshFogVisibility()
+  refreshWeatherLayers(performance.now(), true)
   drawMinimap()
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
@@ -1521,6 +1780,7 @@ export async function createGame(
       simulationAccumulator -= fixedStep
     }
     if (!devMode) updateCamera()
+    refreshWeatherLayers(simulationNow)
     drawExplorer(simulationNow / 1000)
     frameCount += 1
     const now = performance.now()

@@ -142,6 +142,18 @@ reachable without inventing a finite world edge.
 - roads connect nearby hubs through terrain-cost pathfinding, so plains carry denser
   networks while mountains, marshes, reef water, and glaciers resist them.
 
+Road behavior is now split into content-tuned tiers:
+
+- `trail`: narrow fast-enough foot travel through light terrain;
+- `road`: packed local roads with stronger movement bonus and visible edging;
+- `trade-route`: the broadest and fastest maintained travel corridor;
+- `pass`: constrained mountain or canyon routes that stay slower but still guide travel.
+
+The geometry path is smoothed after pathfinding so roads curve through the world instead
+of reading only as stair-stepped diagonals and hard elbows. Render-side road surfacing
+also samples underlying biome and current weather phase to add mud, snow, gravel, grass,
+or rock accents without rewriting the authoritative road network.
+
 This is intentionally a first-pass transport model, not a final civil-engineering or
 historical simulation. It creates believable travel corridors that later vehicles, trade,
 quests, and faction control can reuse.

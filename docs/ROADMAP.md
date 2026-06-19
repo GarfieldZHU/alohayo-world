@@ -21,6 +21,9 @@
 - [x] One-ninth-cell character scale with fixed-step walk, run, collision, and actions.
 - [x] Infinite chunk coordinate runtime with streamed retention and distance-based eviction.
 - [x] Explorer traversal across streamed chunks with minimap and local discovery fog.
+- [x] Configurable medieval road tiers with curved routing, movement bonuses, and
+      terrain-aware surfacing.
+- [x] Basic deterministic weather surfacing over terrain and roads.
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] IndexedDB discovery/save snapshots and restoration.
@@ -28,6 +31,8 @@
       equipment/weapon overrides.
 - [ ] Convert debug flight into a real locomotion capability granted by gear, mounts,
       vehicles, or abilities instead of a dev-only bypass.
+- [ ] Expand weather into a full simulation system with movement, roads, settlements,
+      creature, and city interactions plus fadeable surface history.
 - Content-pack dependency loading and schema migrations.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - Explicit desktop/mobile performance budgets and benchmark history.

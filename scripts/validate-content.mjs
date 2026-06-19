@@ -34,6 +34,39 @@ if (manifest.schemaVersion !== 1 || manifest.id !== 'core') errors.push('invalid
 if (world.schemaVersion !== 1 || world.chunkSize <= 0 || world.width <= 0 || world.height <= 0) {
   errors.push('invalid world definition')
 }
+if (!world.roads?.profiles?.length || !world.roads?.generation) {
+  errors.push('world road profiles and generation settings are required')
+} else {
+  for (const profile of world.roads.profiles) {
+    if (
+      !profile.id ||
+      !profile.name ||
+      profile.movementMultiplier <= 0 ||
+      profile.width <= 0 ||
+      !/^#[0-9a-f]{6}$/i.test(profile.color) ||
+      !/^#[0-9a-f]{6}$/i.test(profile.edgeColor)
+    ) {
+      errors.push(`invalid road profile ${profile.id || '<missing>'}`)
+    }
+  }
+  const generation = world.roads.generation
+  if (
+    generation.candidateDistance < 16 ||
+    generation.trafficRoadMin < 1 ||
+    generation.trafficTradeRouteMin < generation.trafficRoadMin ||
+    generation.ruggedPassThreshold <= 0 ||
+    generation.ruggedPassThreshold >= 1 ||
+    generation.smoothingIterations < 0 ||
+    generation.textureStep < 1
+  ) {
+    errors.push('invalid road generation settings')
+  }
+}
+if (world.weather) {
+  if (!world.weather.states?.length || world.weather.cycleSeconds <= 0) {
+    errors.push('invalid world weather settings')
+  }
+}
 if (!Array.isArray(biomes) || biomes.length < 14)
   errors.push('at least fourteen terrain definitions are required')
 if (!Array.isArray(world.sizePresets) || world.sizePresets.length < 1) {

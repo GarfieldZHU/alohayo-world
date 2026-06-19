@@ -1,4 +1,9 @@
-import type { BiomeDefinition, MapAreaDefinition, MapLandmarkDefinition } from '@alohayo/config'
+import type {
+  BiomeDefinition,
+  MapAreaDefinition,
+  MapLandmarkDefinition,
+  WorldRoadSystemDefinition,
+} from '@alohayo/config'
 
 export const BIOME = {
   deepOcean: 0,
@@ -124,6 +129,7 @@ export interface GenerateWorldRequest {
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
   biomeDefinitions?: BiomeDefinition[]
+  roadSystem?: WorldRoadSystemDefinition
 }
 
 export interface GenerateChunkRequest {
@@ -138,6 +144,7 @@ export interface GenerateChunkRequest {
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
   biomeDefinitions?: BiomeDefinition[]
+  roadSystem?: WorldRoadSystemDefinition
 }
 
 export interface GenerateWorldResponse {
@@ -446,6 +453,65 @@ function biomeCreatureTags(definitions: Map<number, BiomeDefinition>, biome: num
   return definitions.get(biome)?.creatures.habitatTags ?? []
 }
 
+function defaultRoadSystem(): WorldRoadSystemDefinition {
+  return {
+    profiles: [
+      {
+        id: 'trail',
+        name: 'Foot Trail',
+        movementMultiplier: 0.86,
+        width: 0.72,
+        color: '#8f7f69',
+        edgeColor: '#4d3f31',
+        terrainTextureStrength: 0.34,
+        weatherTextureStrength: 0.2,
+      },
+      {
+        id: 'road',
+        name: 'Packed Road',
+        movementMultiplier: 0.68,
+        width: 0.98,
+        color: '#c8b6a1',
+        edgeColor: '#78624d',
+        terrainTextureStrength: 0.42,
+        weatherTextureStrength: 0.28,
+      },
+      {
+        id: 'trade-route',
+        name: 'Royal Trade Road',
+        movementMultiplier: 0.52,
+        width: 1.22,
+        color: '#f0d79b',
+        edgeColor: '#9c7b46',
+        terrainTextureStrength: 0.5,
+        weatherTextureStrength: 0.34,
+      },
+      {
+        id: 'pass',
+        name: 'Mountain Pass',
+        movementMultiplier: 0.9,
+        width: 0.82,
+        color: '#d7c8bf',
+        edgeColor: '#655c57',
+        terrainTextureStrength: 0.38,
+        weatherTextureStrength: 0.22,
+      },
+    ],
+    generation: {
+      candidateDistance: 120,
+      trafficRoadMin: 3,
+      trafficTradeRouteMin: 4,
+      ruggedPassThreshold: 0.68,
+      smoothingIterations: 2,
+      textureStep: 5,
+    },
+  }
+}
+
+function resolveRoadSystem(roadSystem?: WorldRoadSystemDefinition): WorldRoadSystemDefinition {
+  return roadSystem ?? defaultRoadSystem()
+}
+
 function streamHotspotValue(globalX: number, globalY: number, seed: number): number {
   return clamp01(
     valueNoise(globalX - 410, globalY + 270, 210, seed + 7001) * 0.7 +
@@ -665,9 +731,11 @@ function buildBiomeDefinitionMap(
 function populateChunkFeatures(
   chunk: GeneratedChunk,
   seedText: string,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
+  const roadsConfig = resolveRoadSystem(roadSystem)
   const seed = hashSeed(seedText)
   const featureMargin = 48
   const minX = chunk.originX - featureMargin
@@ -725,7 +793,7 @@ function populateChunkFeatures(
     evaluate,
     biomeMap
   )
-  const roads = buildRoadNetwork(settlements, evaluate, biomeMap).filter((road) =>
+  const roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter((road) =>
     roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize)
   )
   chunk.settlements = settlements.filter(
@@ -743,9 +811,11 @@ function populateChunkFeatures(
 function populateWorldFeatures(
   world: GeneratedWorld,
   seedText: string,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedWorld {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
+  const roadsConfig = resolveRoadSystem(roadSystem)
   const seed = hashSeed(seedText)
   const evaluate = (x: number, y: number): EvaluatedCell => {
     const clampedX = Math.max(0, Math.min(world.width - 1, x))
@@ -778,7 +848,7 @@ function populateWorldFeatures(
     biomeMap
   )
   world.settlements = settlements
-  world.roads = buildRoadNetwork(settlements, evaluate, biomeMap)
+  world.roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig)
   world.landmarks = [...world.landmarks, ...settlements.map(settlementToLandmark)]
   return world
 }
@@ -975,11 +1045,34 @@ const EIGHT_NEIGHBORS = [
   [-1, -1],
 ] as const
 
+function smoothRoadPoints(
+  points: Array<{ x: number; y: number }>,
+  iterations: number
+): Array<{ x: number; y: number }> {
+  if (points.length <= 2 || iterations <= 0) return points
+  let current = points
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const next = [current[0]!]
+    for (let index = 0; index < current.length - 1; index += 1) {
+      const from = current[index]!
+      const to = current[index + 1]!
+      next.push(
+        { x: from.x * 0.75 + to.x * 0.25, y: from.y * 0.75 + to.y * 0.25 },
+        { x: from.x * 0.25 + to.x * 0.75, y: from.y * 0.25 + to.y * 0.75 }
+      )
+    }
+    next.push(current[current.length - 1]!)
+    current = next
+  }
+  return current
+}
+
 function buildRoadPath(
   from: GeneratedSettlement,
   to: GeneratedSettlement,
   evaluateCell: (x: number, y: number) => EvaluatedCell,
-  biomeDefinitions: Map<number, BiomeDefinition>
+  biomeDefinitions: Map<number, BiomeDefinition>,
+  roadSystem: WorldRoadSystemDefinition
 ): Array<{ x: number; y: number }> {
   const minX = Math.min(from.x, to.x) - 10
   const maxX = Math.max(from.x, to.x) + 10
@@ -1080,18 +1173,19 @@ function buildRoadPath(
     }
   }
   simplified.push(raw[raw.length - 1]!)
-  return simplified
+  return smoothRoadPoints(simplified, roadSystem.generation.smoothingIterations)
 }
 
 function roadKindForConnection(
   from: GeneratedSettlement,
   to: GeneratedSettlement,
-  sampleRuggedness: number
+  sampleRuggedness: number,
+  roadSystem: WorldRoadSystemDefinition
 ): RoadKind {
   const traffic = Math.max(from.traffic, to.traffic)
-  if (sampleRuggedness > 0.68) return 'pass'
+  if (sampleRuggedness > roadSystem.generation.ruggedPassThreshold) return 'pass'
   if (
-    traffic >= 4 ||
+    traffic >= roadSystem.generation.trafficTradeRouteMin ||
     from.kind === 'port' ||
     to.kind === 'port' ||
     from.kind === 'oasis' ||
@@ -1099,14 +1193,15 @@ function roadKindForConnection(
   ) {
     return 'trade-route'
   }
-  if (traffic >= 3) return 'road'
+  if (traffic >= roadSystem.generation.trafficRoadMin) return 'road'
   return 'trail'
 }
 
 function buildRoadNetwork(
   settlements: GeneratedSettlement[],
   evaluateCell: (x: number, y: number) => EvaluatedCell,
-  biomeDefinitions: Map<number, BiomeDefinition>
+  biomeDefinitions: Map<number, BiomeDefinition>,
+  roadSystem: WorldRoadSystemDefinition
 ): GeneratedRoad[] {
   const roads: GeneratedRoad[] = []
   const seenPairs = new Set<string>()
@@ -1120,7 +1215,8 @@ function buildRoadNetwork(
       }))
       .filter(
         ({ candidate, distance }) =>
-          distance <= 120 && candidate.population >= settlement.population * 0.55
+          distance <= roadSystem.generation.candidateDistance &&
+          candidate.population >= settlement.population * 0.55
       )
       .sort((left, right) => left.distance - right.distance)
       .slice(0, desiredLinks + 2)
@@ -1130,13 +1226,13 @@ function buildRoadNetwork(
       if (links >= desiredLinks) break
       const pairKey = [settlement.id, candidate.id].sort().join('::')
       if (seenPairs.has(pairKey)) continue
-      const path = buildRoadPath(settlement, candidate, evaluateCell, biomeDefinitions)
+      const path = buildRoadPath(settlement, candidate, evaluateCell, biomeDefinitions, roadSystem)
       if (path.length < 2) continue
       const midpoint = path[Math.floor(path.length / 2)]!
       const ruggedness = evaluateCell(midpoint.x, midpoint.y).ruggednessValue
       roads.push({
         id: `road:${pairKey}`,
-        kind: roadKindForConnection(settlement, candidate, ruggedness),
+        kind: roadKindForConnection(settlement, candidate, ruggedness, roadSystem),
         traffic: Math.max(settlement.traffic, candidate.traffic),
         fromSettlementId: settlement.id,
         toSettlementId: candidate.id,
@@ -1431,7 +1527,8 @@ export function generateWorld(
   seedText: string,
   width: number,
   height: number,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -1515,7 +1612,7 @@ export function generateWorld(
     settlements: [],
     roads: [],
   }
-  return populateWorldFeatures(world, seedText, biomeDefinitions)
+  return populateWorldFeatures(world, seedText, biomeDefinitions, roadSystem)
 }
 
 export function generateChunk(
@@ -1523,7 +1620,8 @@ export function generateChunk(
   chunkX: number,
   chunkY: number,
   chunkSize: number,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -1585,7 +1683,7 @@ export function generateChunk(
     settlements: [],
     roads: [],
   }
-  return populateChunkFeatures(chunk, seedText, biomeDefinitions)
+  return populateChunkFeatures(chunk, seedText, biomeDefinitions, roadSystem)
 }
 
 export function generateChunkWithAreas(
@@ -1597,8 +1695,9 @@ export function generateChunkWithAreas(
   surveyHeight: number,
   areas: MapAreaDefinition[],
   terrainCodes: Record<string, number>,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
-  const chunk = generateChunk(seedText, chunkX, chunkY, chunkSize, biomeDefinitions)
+  const chunk = generateChunk(seedText, chunkX, chunkY, chunkSize, biomeDefinitions, roadSystem)
   return applyAreasToChunk(chunk, areas, terrainCodes, surveyWidth, surveyHeight, biomeDefinitions)
 }

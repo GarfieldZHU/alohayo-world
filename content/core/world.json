@@ -15,6 +15,73 @@
     "minimapChunkRadius": 6,
     "maxChunkRadius": 6
   },
+  "roads": {
+    "profiles": [
+      {
+        "id": "trail",
+        "name": "Foot Trail",
+        "movementMultiplier": 0.86,
+        "width": 0.72,
+        "color": "#8f7f69",
+        "edgeColor": "#4d3f31",
+        "terrainTextureStrength": 0.34,
+        "weatherTextureStrength": 0.2
+      },
+      {
+        "id": "road",
+        "name": "Packed Road",
+        "movementMultiplier": 0.68,
+        "width": 0.98,
+        "color": "#c8b6a1",
+        "edgeColor": "#78624d",
+        "terrainTextureStrength": 0.42,
+        "weatherTextureStrength": 0.28
+      },
+      {
+        "id": "trade-route",
+        "name": "Royal Trade Road",
+        "movementMultiplier": 0.52,
+        "width": 1.22,
+        "color": "#f0d79b",
+        "edgeColor": "#9c7b46",
+        "terrainTextureStrength": 0.5,
+        "weatherTextureStrength": 0.34
+      },
+      {
+        "id": "pass",
+        "name": "Mountain Pass",
+        "movementMultiplier": 0.9,
+        "width": 0.82,
+        "color": "#d7c8bf",
+        "edgeColor": "#655c57",
+        "terrainTextureStrength": 0.38,
+        "weatherTextureStrength": 0.22
+      }
+    ],
+    "generation": {
+      "candidateDistance": 120,
+      "trafficRoadMin": 3,
+      "trafficTradeRouteMin": 4,
+      "ruggedPassThreshold": 0.68,
+      "smoothingIterations": 2,
+      "textureStep": 5
+    }
+  },
+  "weather": {
+    "enabled": true,
+    "cycleSeconds": 120,
+    "cellScale": 48,
+    "transitionSeconds": 18,
+    "rainThreshold": 0.58,
+    "snowTemperatureMax": 0.42,
+    "surfaceDecay": 0.72,
+    "states": [
+      { "id": "clear", "duration": 0.34, "wetness": 0.0, "snowCover": 0.0, "mud": 0.0 },
+      { "id": "rain", "duration": 0.28, "wetness": 1.0, "snowCover": 0.0, "mud": 0.55 },
+      { "id": "snow", "duration": 0.2, "wetness": 0.24, "snowCover": 1.0, "mud": 0.0 },
+      { "id": "thaw", "duration": 0.18, "wetness": 0.46, "snowCover": 0.18, "mud": 0.72 }
+    ]
+  },
   "sizePresets": [
     {
       "id": "frontier",
