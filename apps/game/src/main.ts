@@ -83,7 +83,6 @@ const updateLanguageButtons = () => {
 }
 
 const updateLauncherCopy = () => {
-  const messages = catalog()
   document.documentElement.lang = locale
   document.title = uiText('gameTitle')
   languageLabel.textContent = uiText('language')
