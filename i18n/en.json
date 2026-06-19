@@ -73,7 +73,7 @@
     "teleport": "Teleport",
     "equip": "Equip",
     "unequip": "Unequip",
-    "note": "Shift-click teleports. F toggles fast move. G toggles flight.",
+    "note": "Unchecked battle shadow reveals all fog. Shift-click teleports. F toggles fast move. G toggles flight.",
     "teleportBlocked": "Cannot teleport to ({x}, {y}); terrain is blocked.",
     "teleported": "Teleported to ({x}, {y}).",
     "equipmentSet": "{slotName} set to {itemName}."

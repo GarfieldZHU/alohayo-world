@@ -17,7 +17,7 @@
   collision, facing animation, camera follow, and configurable interaction actions.
 - Fixed dev battle-shadow reveal so the toggle now affects the actual discovery fog on
   loaded chunks.
-- Added a collapsible, locale-aware dev panel with remembered local state.
+- Added a collapsible, locale-aware, theme-aware dev panel with remembered local state.
 - Added dev flight traversal across blocked terrain, plus fly debug visuals and keybinding.
 - Tightened game-mode camera behavior to locked follow/zoom while keeping dev free camera
   controls.

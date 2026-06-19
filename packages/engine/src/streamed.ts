@@ -73,7 +73,7 @@ interface DevPanelControls {
   panel: HTMLDivElement
   body: HTMLDivElement
   heading: HTMLDivElement
-  toggleButton: HTMLButtonElement
+  collapseButton: HTMLButtonElement
   battleShadowLabel: HTMLLabelElement
   fastMoveLabel: HTMLLabelElement
   flyLabel: HTMLLabelElement
@@ -91,6 +91,8 @@ interface DevPanelControls {
   setCollapsed: (collapsed: boolean) => void
   isCollapsed: () => boolean
 }
+
+type UiTheme = 'light' | 'dark'
 
 const REGION_NAME: Record<number, string> = {
   [CHUNK_REGION.sea]: 'sea',
@@ -141,6 +143,10 @@ function chunkKey(chunkX: number, chunkY: number): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
+}
+
+function normalizeTheme(input?: string | null): UiTheme {
+  return input === 'light' ? 'light' : 'dark'
 }
 
 function cellNoise(x: number, y: number, salt = 0) {
@@ -194,11 +200,46 @@ export async function createGame(
   options: MountGameOptions,
   content: EngineContent
 ): Promise<GameHandle> {
+  let theme: UiTheme = normalizeTheme(options.theme)
+  const themePalette = () =>
+    theme === 'light'
+      ? {
+          containerBackground: '#e7eef8',
+          statusFill: '#143247',
+          minimapFill: 0xf6fbff,
+          minimapStroke: 0x3b82f6,
+          minimapExplorerStroke: 0xe7eef8,
+          devBorder: 'rgba(59,130,246,0.28)',
+          devBackground: 'rgba(255, 255, 255, 0.56)',
+          devBackgroundHover: 'rgba(255, 255, 255, 0.94)',
+          devText: '#143247',
+          devAccent: '#2563eb',
+          devMuted: '#476072',
+          devInputBackground: 'rgba(231, 238, 248, 0.92)',
+          devInputBorder: '#98b0c8',
+          devButtonBackground: 'rgba(219, 234, 254, 0.96)',
+        }
+      : {
+          containerBackground: '#07111f',
+          statusFill: '#d8f3ff',
+          minimapFill: 0x091725,
+          minimapStroke: 0x72d7c8,
+          minimapExplorerStroke: 0x10222f,
+          devBorder: 'rgba(114,215,200,0.35)',
+          devBackground: 'rgba(7, 17, 31, 0.42)',
+          devBackgroundHover: 'rgba(7, 17, 31, 0.92)',
+          devText: '#d8f3ff',
+          devAccent: '#72d7c8',
+          devMuted: '#9bb2bf',
+          devInputBackground: '#0c1e2b',
+          devInputBorder: '#315263',
+          devButtonBackground: '#173241',
+        }
   const app = new Application()
   await app.init({
     resizeTo: options.container,
     antialias: false,
-    background: '#07111f',
+    background: themePalette().containerBackground,
     preference: 'webgl',
   })
   options.container.replaceChildren(app.canvas)
@@ -223,7 +264,7 @@ export async function createGame(
   const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
     text: 'Surveying...',
-    style: { fill: '#d8f3ff', fontFamily: 'monospace', fontSize: 13 },
+    style: { fill: themePalette().statusFill, fontFamily: 'monospace', fontSize: 13 },
   })
   status.position.set(14, 12)
   overlay.addChild(status)
@@ -254,13 +295,14 @@ export async function createGame(
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
   let weatherTick = -1
-  const devMode = Boolean(options.devMode)
+  let devMode = Boolean(options.devMode)
   let locale: LocaleCode = normalizeLocale(
     options.locale ?? window.localStorage.getItem('alohayo-world:locale')
   )
   let devFastMove = false
-  let devBattleShadow = devMode
   let devFly = false
+  let devBattleShadow = true
+  let devPanelCollapsed = window.localStorage.getItem('alohayo-world:dev-panel-collapsed') === '1'
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
   const fixedStep = 1 / 60
@@ -322,6 +364,41 @@ export async function createGame(
       : catalog().hud.fallbackExplorerName
   const translatedState = (state: string) => catalog().hud.states[state] ?? state
   const translatedRegion = (region: string) => catalog().hud.regions[region] ?? region
+
+  const applyThemeToContainer = () => {
+    options.container.dataset.alohayoWorldTheme = theme
+    options.container.style.background = themePalette().containerBackground
+  }
+
+  const applyThemeToDevPanel = (panel: DevPanelControls | null, interactive = false) => {
+    if (!panel) return
+    const palette = themePalette()
+    Object.assign(panel.panel.style, {
+      border: `1px solid ${palette.devBorder}`,
+      background: interactive ? palette.devBackgroundHover : palette.devBackground,
+      color: palette.devText,
+      opacity: interactive ? '1' : devPanelCollapsed ? '0.66' : '0.22',
+    } satisfies Partial<CSSStyleDeclaration>)
+    panel.heading.style.color = palette.devAccent
+    panel.note.style.color = palette.devMuted
+    panel.collapseButton.style.color = palette.devText
+
+    for (const element of [panel.teleportX, panel.teleportY, panel.slotSelect, panel.itemSelect]) {
+      Object.assign(element.style, {
+        color: palette.devText,
+        background: palette.devInputBackground,
+        border: `1px solid ${palette.devInputBorder}`,
+      } satisfies Partial<CSSStyleDeclaration>)
+    }
+
+    for (const button of [panel.teleportButton, panel.applyGearButton]) {
+      Object.assign(button.style, {
+        color: palette.devText,
+        background: palette.devButtonBackground,
+        border: `1px solid ${palette.devInputBorder}`,
+      } satisfies Partial<CSSStyleDeclaration>)
+    }
+  }
 
   const updateDetailLevel = () => {
     for (const view of chunkViews.values()) {
@@ -469,6 +546,7 @@ export async function createGame(
     const discovered = discovery.get(key)
     if (!chunk || !view || !discovered) return
     view.fog.clear()
+    if (devMode && !devBattleShadow) return
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
         const index = localY * chunk.chunkSize + localX
@@ -481,7 +559,7 @@ export async function createGame(
   }
 
   const refreshFogVisibility = () => {
-    const fogVisible = !(devMode && devBattleShadow)
+    const fogVisible = !devMode || devBattleShadow
     for (const view of chunkViews.values()) {
       view.fog.visible = fogVisible
     }
@@ -1045,8 +1123,8 @@ export async function createGame(
     const frameY = 16
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
-      .fill({ color: 0x091725, alpha: 0.86 })
-      .stroke({ color: 0x72d7c8, alpha: 0.8, width: 1.2 })
+      .fill({ color: themePalette().minimapFill, alpha: 0.86 })
+      .stroke({ color: themePalette().minimapStroke, alpha: 0.8, width: 1.2 })
 
     const centerChunkX = Math.floor(explorerMotion.x / chunkSize)
     const centerChunkY = Math.floor(explorerMotion.y / chunkSize)
@@ -1090,7 +1168,7 @@ export async function createGame(
         Math.max(2, tile * 0.22)
       )
       .fill({ color: 0xf6f2d6 })
-      .stroke({ color: 0x10222f, width: 1 })
+      .stroke({ color: themePalette().minimapExplorerStroke, width: 1 })
   }
 
   const updateStatus = () => {
@@ -1118,6 +1196,10 @@ export async function createGame(
       zoomLabel: catalog().hud.zoom,
       zoomValue: scale.toFixed(2),
     })
+  }
+
+  const refreshFog = () => {
+    for (const key of chunkViews.keys()) redrawChunkFog(key)
   }
 
   const revealAroundExplorer = () => {
@@ -1209,27 +1291,26 @@ export async function createGame(
     panel.dataset.alohayoWorldDevPanel = 'true'
     Object.assign(panel.style, {
       position: 'absolute',
-      inset: '16px auto auto 16px',
+      inset: 'auto auto 16px 16px',
       zIndex: '20',
-      width: 'min(320px, calc(100% - 32px))',
-      padding: '12px',
-      border: '1px solid rgba(114,215,200,0.35)',
+      width: 'min(280px, calc(100% - 32px))',
+      padding: '10px',
       borderRadius: '12px',
-      background: 'rgba(7, 17, 31, 0.9)',
-      color: '#d8f3ff',
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
       backdropFilter: 'blur(8px)',
       boxShadow: '0 18px 44px rgba(0,0,0,0.28)',
+      transition: 'opacity 140ms ease, background 140ms ease, transform 140ms ease',
     } satisfies Partial<CSSStyleDeclaration>)
 
-    const headerRow = document.createElement('div')
-    Object.assign(headerRow.style, {
+    const header = document.createElement('div')
+    Object.assign(header.style, {
       display: 'flex',
-      gap: '10px',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: '10px',
+      gap: '10px',
+      marginBottom: '8px',
     } satisfies Partial<CSSStyleDeclaration>)
+    panel.appendChild(header)
 
     const heading = document.createElement('div')
     heading.textContent = devText('heading')
@@ -1237,27 +1318,23 @@ export async function createGame(
       fontSize: '12px',
       letterSpacing: '0.14em',
       textTransform: 'uppercase',
-      color: '#72d7c8',
       flex: '1',
+      marginBottom: '0',
     } satisfies Partial<CSSStyleDeclaration>)
-    headerRow.appendChild(heading)
+    header.appendChild(heading)
 
-    const toggleButton = document.createElement('button')
-    toggleButton.type = 'button'
-    Object.assign(toggleButton.style, {
-      border: '1px solid #315263',
-      borderRadius: '999px',
-      padding: '5px 10px',
+    const collapseButton = document.createElement('button')
+    collapseButton.type = 'button'
+    Object.assign(collapseButton.style, {
+      border: '0',
+      background: 'transparent',
       cursor: 'pointer',
-      color: '#d8f3ff',
-      background: '#102532',
+      padding: '2px 6px',
+      borderRadius: '999px',
       fontSize: '11px',
       fontWeight: '700',
-      whiteSpace: 'nowrap',
     } satisfies Partial<CSSStyleDeclaration>)
-    headerRow.appendChild(toggleButton)
-
-    panel.appendChild(headerRow)
+    header.appendChild(collapseButton)
 
     const body = document.createElement('div')
     panel.appendChild(body)
@@ -1280,11 +1357,8 @@ export async function createGame(
       Object.assign(input.style, {
         flex: '1',
         minWidth: '0',
-        border: '1px solid #315263',
         borderRadius: '8px',
         padding: '8px 10px',
-        color: '#d8f3ff',
-        background: '#0c1e2b',
       } satisfies Partial<CSSStyleDeclaration>)
       return input
     }
@@ -1294,12 +1368,9 @@ export async function createGame(
       button.type = 'button'
       button.textContent = text
       Object.assign(button.style, {
-        border: '1px solid #315263',
         borderRadius: '8px',
         padding: '8px 10px',
         cursor: 'pointer',
-        color: '#d8f3ff',
-        background: '#173241',
         fontWeight: '700',
       } satisfies Partial<CSSStyleDeclaration>)
       return button
@@ -1313,6 +1384,7 @@ export async function createGame(
       devBattleShadow = battleShadowToggle.checked
       refreshFogVisibility()
       updateStatus()
+      refreshFog()
       drawExplorer(performance.now() / 1000)
     })
     const battleShadowLabel = document.createElement('label')
@@ -1369,11 +1441,8 @@ export async function createGame(
       Object.assign(select.style, {
         flex: '1',
         minWidth: '0',
-        border: '1px solid #315263',
         borderRadius: '8px',
         padding: '8px 10px',
-        color: '#d8f3ff',
-        background: '#0c1e2b',
       } satisfies Partial<CSSStyleDeclaration>)
     }
     const applyGearButton = makeButton(devText('equip'))
@@ -1435,28 +1504,14 @@ export async function createGame(
     Object.assign(note.style, {
       margin: '2px 0 0',
       fontSize: '11px',
-      color: '#9bb2bf',
     } satisfies Partial<CSSStyleDeclaration>)
     body.appendChild(note)
 
-    let collapsed = window.localStorage.getItem(devPanelStateStorageKey) === 'true'
-    const setCollapsed = (nextCollapsed: boolean) => {
-      collapsed = nextCollapsed
-      body.style.display = collapsed ? 'none' : ''
-      toggleButton.textContent = devText(collapsed ? 'expand' : 'collapse')
-      toggleButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
-      window.localStorage.setItem(devPanelStateStorageKey, collapsed ? 'true' : 'false')
-    }
-    toggleButton.addEventListener('click', () => {
-      setCollapsed(!collapsed)
-    })
-    setCollapsed(collapsed)
-
-    return {
+    const controls: DevPanelControls = {
       panel,
       body,
       heading,
-      toggleButton,
+      collapseButton,
       battleShadowLabel,
       fastMoveLabel,
       flyLabel,
@@ -1471,9 +1526,33 @@ export async function createGame(
       flyToggle,
       fillEquipmentOptions,
       fillItemOptions,
-      setCollapsed,
-      isCollapsed: () => collapsed,
+      setCollapsed(nextCollapsed) {
+        devPanelCollapsed = nextCollapsed
+        body.style.display = devPanelCollapsed ? 'none' : 'block'
+        collapseButton.textContent = devPanelCollapsed ? devText('expand') : devText('collapse')
+        collapseButton.setAttribute('aria-expanded', devPanelCollapsed ? 'false' : 'true')
+        panel.style.transform = devPanelCollapsed ? 'translateY(2px)' : 'translateY(0)'
+        window.localStorage.setItem(devPanelStateStorageKey, devPanelCollapsed ? 'true' : 'false')
+        applyThemeToDevPanel(controls, false)
+      },
+      isCollapsed: () => devPanelCollapsed,
     }
+
+    collapseButton.addEventListener('click', () => {
+      controls.setCollapsed(!devPanelCollapsed)
+    })
+    panel.addEventListener('mouseenter', () => applyThemeToDevPanel(controls, true))
+    panel.addEventListener('mouseleave', () => applyThemeToDevPanel(controls, false))
+    panel.addEventListener('focusin', () => applyThemeToDevPanel(controls, true))
+    panel.addEventListener('focusout', () => {
+      window.setTimeout(() => {
+        if (!panel.contains(document.activeElement)) applyThemeToDevPanel(controls, false)
+      }, 0)
+    })
+
+    controls.setCollapsed(devPanelCollapsed)
+    applyThemeToDevPanel(controls, false)
+    return controls
   }
 
   const renderDevPanelLocale = (panel: DevPanelControls | null) => {
@@ -1510,11 +1589,12 @@ export async function createGame(
     return { x: 0.5, y: 0.5 }
   }
 
+  applyThemeToContainer()
   explorer = generateCharacter(content.characters, 'core:explorer', worldSeed)
   await ensureChunkNeighborhood(0, 0, activeChunkRadius)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
-  const devPanel = createDevPanel()
+  let devPanel = createDevPanel()
   if (devPanel) options.container.appendChild(devPanel.panel)
   renderDevPanelLocale(devPanel)
 
@@ -1537,6 +1617,7 @@ export async function createGame(
   refreshFogVisibility()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
+  applyThemeToDevPanel(devPanel)
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
@@ -1811,6 +1892,32 @@ export async function createGame(
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+    },
+    setDevMode(enabled) {
+      devMode = enabled
+      if (!devMode) {
+        devFastMove = false
+        devBattleShadow = true
+      }
+      devPanel?.panel.remove()
+      devPanel = createDevPanel()
+      if (devPanel) {
+        options.container.appendChild(devPanel.panel)
+        renderDevPanelLocale(devPanel)
+        devPanel.fastMoveToggle.checked = devFastMove
+      }
+      refreshFog()
+      drawMinimap()
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
+      applyThemeToDevPanel(devPanel)
+    },
+    setTheme(nextTheme) {
+      theme = normalizeTheme(nextTheme)
+      status.style.fill = themePalette().statusFill
+      applyThemeToContainer()
+      drawMinimap()
+      applyThemeToDevPanel(devPanel)
     },
     async destroy() {
       if (destroyed) return

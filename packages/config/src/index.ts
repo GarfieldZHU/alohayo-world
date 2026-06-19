@@ -320,6 +320,7 @@ export interface MountGameOptions {
   assetBaseUrl?: string
   devMode?: boolean
   locale?: LocaleCode
+  theme?: 'light' | 'dark'
   initialWorld?: {
     seed?: string
     width?: number
@@ -335,6 +336,7 @@ export interface GameHandle {
   resume(): void
   setDevMode?(enabled: boolean): void
   setLocale?(locale: LocaleCode): void
+  setTheme?(theme: 'light' | 'dark'): void
   destroy(): Promise<void>
 }
 
