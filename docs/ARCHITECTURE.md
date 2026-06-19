@@ -30,6 +30,13 @@ authoritative until a worker-side loader, coarse batch API, and cross-language p
 suite are complete. Browser code must never compile or run full-world generation on the
 main thread.
 
+The streamed-map loop is the first credible Wasm refactor target because it repeatedly
+builds typed `elevation`, `moisture`, `temperature`, and `biomes` buffers for each
+chunk. The production boundary should stay coarse: the worker asks Wasm for a complete
+chunk-layer batch, then TypeScript continues to apply authored overlays, settlements,
+roads, topology helpers, rendering contracts, and fallback behavior. Do not move PixiJS
+or per-frame rendering into Wasm.
+
 ## Extension
 
 Registries map known IDs to engine capabilities. Content packs can reference registered

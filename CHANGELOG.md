@@ -27,6 +27,8 @@
   geometry, and terrain-aware road surfacing.
 - Added first-pass deterministic weather surface overlays for rain, snow, and thaw
   without yet promoting weather to full gameplay simulation.
+- Documented the safe Wasm refactor target for streamed chunk terrain generation and the
+  current Rust tooling/build-order blockers.
 
 ## 0.1.0-demo
 

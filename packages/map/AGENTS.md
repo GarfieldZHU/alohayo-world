@@ -16,3 +16,6 @@ This package owns deterministic geography and worker-safe data.
   future cross-chunk global topology IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
 - Rust/Wasm output must have parity tests before becoming authoritative.
+- The first Wasm production path should be chunk-layer generation as one coarse worker
+  call, not per-cell calls from TypeScript. Preserve typed-array transfer semantics and
+  keep the TypeScript fallback as the reference until CI runs Rust and Wasm parity.

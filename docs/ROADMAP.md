@@ -26,6 +26,8 @@
 - [x] Basic deterministic weather surfacing over terrain and roads.
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
+- [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by
+      Rust tooling in CI and TypeScript parity fixtures.
 - [ ] IndexedDB discovery/save snapshots and restoration.
 - [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test
       equipment/weapon overrides.

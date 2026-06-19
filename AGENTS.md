@@ -233,4 +233,7 @@ slice is seam-safe global topology merging plus drainage and rivers.
 
 Known boundary: the Rust crate defines and tests portable deterministic primitives, but
 the active browser generator is TypeScript until the worker-side Wasm loader and parity
-suite are complete.
+suite are complete. Do not wire Wasm into production as one call per cell. The first
+runtime Wasm migration should be a coarse `generate_stream_chunk_layers`-style worker
+API that returns transferable elevation, moisture, temperature, and biome buffers for a
+whole chunk, with TypeScript parity fixtures and a TypeScript fallback kept active.
