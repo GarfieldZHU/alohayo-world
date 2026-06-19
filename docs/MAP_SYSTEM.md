@@ -32,8 +32,9 @@ Bathymetric depth is derived from elevation below sea level. `v0.2` adds slope.
 
 The compact `biomes` layer currently combines useful visible classes:
 
-deep ocean, open ocean, shallow sea, coast, lake, lowland, grassland, forest, desert,
-wetland, highland, bare rock, mountain, and snow.
+deep ocean, open ocean, shallow sea, reef, coast, lake, lowland plain, grassland,
+savanna, forest, rainforest, desert, oasis, wetland, marsh, plateau, highland,
+canyonlands, bare rock, mountain, volcano, snowfield, tundra, and glacier.
 
 These codes are stable content identifiers, not the complete geographic truth.
 
@@ -53,8 +54,8 @@ discovery, and movement decisions, but they are not yet cross-chunk global ident
 ### Future layers
 
 Slope, flow direction, accumulation, watershed, river, soil, resources, occupancy,
-discovery, borders, roads, and authored overlays are separate typed arrays or sparse
-chunk data.
+discovery, borders, roads, settlements, creature habitats, and authored overlays are
+separate typed arrays or sparse chunk data.
 
 ## Generation Pipeline
 
@@ -129,3 +130,18 @@ first; authored overlays apply afterward. In the finite atlas, normalized placem
 relative to atlas dimensions. In the streamed world, normalized placement is anchored
 against the survey hint and centered around the origin so reusable authored areas remain
 reachable without inventing a finite world edge.
+
+## Roads and Settlements
+
+`v0.2` adds a first deterministic human geography layer above terrain:
+
+- settlement candidates are sampled from a global anchor grid and scored from biome
+  suitability, comfort, ruggedness, and water access;
+- roles such as port, oasis stop, village, town, city, fort, watchpost, and mine are
+  selected from terrain-aware rules;
+- roads connect nearby hubs through terrain-cost pathfinding, so plains carry denser
+  networks while mountains, marshes, reef water, and glaciers resist them.
+
+This is intentionally a first-pass transport model, not a final civil-engineering or
+historical simulation. It creates believable travel corridors that later vehicles, trade,
+quests, and faction control can reuse.

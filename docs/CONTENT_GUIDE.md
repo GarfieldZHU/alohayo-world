@@ -33,8 +33,10 @@ Content lives under `content/<pack-id>` and begins with `manifest.json`.
 IDs are lowercase kebab-case and globally namespaced by pack. References must resolve
 inside declared dependencies. Run `yarn validate:content` after every change.
 
-To add a biome, append a definition with a unique numeric code, color, climate ranges,
-movement cost, and description.
+To add a biome, append a definition with a unique numeric code, family, palette, climate
+ranges, movement cost, road cost, occurrence weight, creature habitat tags, and
+settlement suitability. Those metadata drive transport and population generation, not
+just rendering.
 
 Custom authored areas live under `content/maps/**/areas/` and are discovered
 automatically at build time. See `config/MAPS.md`.

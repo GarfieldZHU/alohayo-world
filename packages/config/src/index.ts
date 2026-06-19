@@ -47,10 +47,38 @@ export interface BiomeDefinition {
   id: string
   code: number
   name: string
+  family:
+    | 'ocean'
+    | 'coast'
+    | 'wetland'
+    | 'plain'
+    | 'grassland'
+    | 'forest'
+    | 'arid'
+    | 'upland'
+    | 'mountain'
+    | 'cryosphere'
+    | 'volcanic'
   color: string
   accent: string
   description: string
   movementCost: number
+  roadCost: number
+  occurrence: number
+  latitude: { min: number; max: number }
+  elevation: { min: number; max: number }
+  temperature: { min: number; max: number }
+  moisture: { min: number; max: number }
+  creatures: {
+    habitatTags: string[]
+    iconicSpecies: string[]
+    abundance: number
+  }
+  settlement: {
+    suitability: number
+    roleWeights: Record<string, number>
+    roadAccess: number
+  }
 }
 
 export interface MapAreaPackDefinition {
@@ -254,5 +282,6 @@ export interface MountGameOptions {
 export interface GameHandle {
   pause(): void
   resume(): void
+  setDevMode?(enabled: boolean): void
   destroy(): Promise<void>
 }

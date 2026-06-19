@@ -21,9 +21,10 @@ The map uses distinct layer families:
 2. **Hydrology:** ocean connection, lakes, drainage direction, flow accumulation,
    rivers, wetlands, watersheds.
 3. **Landform:** lowland, highland, mountain, ridge, basin, cliff, bare rock.
-4. **Ecological cover:** grassland, forest, desert, snow/ice, marsh.
-5. **Topology:** landmass region, mainland, island, waterbody region.
-6. **Authored overlays:** roads, borders, settlements, landmarks, protected zones.
+4. **Ecological cover:** grassland, savanna, forest, rainforest, desert, snow/ice, marsh.
+5. **Special terrains:** reef, canyonlands, plateau, volcanic field, oasis, glacier, tundra.
+6. **Topology:** landmass region, mainland, island, waterbody region.
+7. **Authored and generated overlays:** roads, settlements, landmarks, borders, protected zones.
 
 The renderer may expose a compact combined terrain code, but systems should query the
 underlying layers when the distinction matters.
@@ -121,3 +122,18 @@ The demo supports bounded presets; infinite streaming later removes the finite e
 - Avoid platform-dependent floating-point shortcuts in parity-sensitive code.
 - Include dimensions and generator version in hashes and save metadata.
 - Keep authored overlays after procedural base passes so content remains stable.
+
+## Terrain Probability and Human Use
+
+The generator now treats terrain as a climate-and-landform outcome with distinct real-world
+likelihoods instead of a flat palette. Common combinations such as lowland plains,
+grassland, forest, shallow sea, and coast should dominate. Rare terrains such as reef,
+oasis, volcanic fields, canyonlands, and glaciers are gated by narrower temperature,
+moisture, relief, and hotspot conditions.
+
+Settlements and roads should follow the same logic people use in the real world:
+
+- plains, grasslands, coasts, and lake margins attract denser towns and cheaper roads;
+- forests and highlands permit settlement but raise traversal and construction cost;
+- wetlands, marshes, deep desert, bare rock, glaciers, and reefs strongly suppress roads;
+- ports, oasis stops, forts, and mining outposts appear where terrain creates focused value.

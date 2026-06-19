@@ -27,6 +27,21 @@ describe('world generation', () => {
     expect(hashSeed('alohayo')).toBe(2244857266)
   })
 
+  it('generates deterministic settlements and roads for the same seed', () => {
+    const first = generateChunk('trade-routes', 1, -1, 64)
+    const second = generateChunk('trade-routes', 1, -1, 64)
+    expect(first.settlements).toEqual(second.settlements)
+    expect(first.roads).toEqual(second.roads)
+  })
+
+  it('exposes extended terrain families in generated worlds', () => {
+    const world = generateWorld('terrain-spectrum', 160, 120)
+    const codes = new Set(world.biomes)
+    expect(codes.has(BIOME.tundra) || codes.has(BIOME.snow) || codes.has(BIOME.glacier)).toBe(true)
+    expect(codes.has(BIOME.savanna) || codes.has(BIOME.desert) || codes.has(BIOME.oasis)).toBe(true)
+    expect(world.settlements.length).toBeGreaterThan(0)
+  })
+
   it('assigns every cell to valid terrain and topology', () => {
     const world = generateWorld('atlas-topology', 96, 72)
     const validCodes = new Set<number>(Object.values(BIOME))

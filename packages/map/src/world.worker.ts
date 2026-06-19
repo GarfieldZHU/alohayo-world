@@ -13,9 +13,19 @@ const workerScope = self as unknown as {
 
 workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
   if (event.data.type === 'generate') {
-    let world = generateWorld(event.data.seed, event.data.width, event.data.height)
+    let world = generateWorld(
+      event.data.seed,
+      event.data.width,
+      event.data.height,
+      event.data.biomeDefinitions
+    )
     if (event.data.mapAreas?.length && event.data.terrainCodes) {
-      world = applyMapAreas(world, event.data.mapAreas, event.data.terrainCodes)
+      world = applyMapAreas(
+        world,
+        event.data.mapAreas,
+        event.data.terrainCodes,
+        event.data.biomeDefinitions
+      )
     }
     workerScope.postMessage(
       { type: 'generated', id: event.data.id, world },
@@ -43,7 +53,8 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
     event.data.surveyWidth,
     event.data.surveyHeight,
     event.data.mapAreas ?? [],
-    event.data.terrainCodes ?? {}
+    event.data.terrainCodes ?? {},
+    event.data.biomeDefinitions
   )
   workerScope.postMessage(
     { type: 'generated-chunk', id: event.data.id, chunk },

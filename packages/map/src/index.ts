@@ -1,4 +1,4 @@
-import type { MapAreaDefinition, MapLandmarkDefinition } from '@alohayo/config'
+import type { BiomeDefinition, MapAreaDefinition, MapLandmarkDefinition } from '@alohayo/config'
 
 export const BIOME = {
   deepOcean: 0,
@@ -15,6 +15,16 @@ export const BIOME = {
   bareRock: 11,
   mountain: 12,
   snow: 13,
+  tundra: 14,
+  savanna: 15,
+  rainforest: 16,
+  marsh: 17,
+  plateau: 18,
+  canyon: 19,
+  reef: 20,
+  oasis: 21,
+  volcano: 22,
+  glacier: 23,
 } as const
 
 export const CHUNK_REGION = {
@@ -40,6 +50,8 @@ export interface GeneratedWorld {
   mainlandId: number
   areaIds: string[]
   landmarks: GeneratedLandmark[]
+  settlements: GeneratedSettlement[]
+  roads: GeneratedRoad[]
 }
 
 export interface GeneratedChunk {
@@ -59,10 +71,48 @@ export interface GeneratedChunk {
   region: Uint8Array
   areaIds: string[]
   landmarks: GeneratedLandmark[]
+  settlements: GeneratedSettlement[]
+  roads: GeneratedRoad[]
 }
 
 export interface GeneratedLandmark extends MapLandmarkDefinition {
   areaId: string
+}
+
+export type SettlementKind =
+  | 'camp'
+  | 'hamlet'
+  | 'village'
+  | 'town'
+  | 'city'
+  | 'port'
+  | 'oasis'
+  | 'fort'
+  | 'watchpost'
+  | 'mine'
+
+export interface GeneratedSettlement {
+  id: string
+  name: string
+  kind: SettlementKind
+  x: number
+  y: number
+  biome: number
+  population: number
+  traffic: number
+  creatureTags: string[]
+  roadAccess: number
+}
+
+export type RoadKind = 'trail' | 'road' | 'trade-route' | 'pass'
+
+export interface GeneratedRoad {
+  id: string
+  kind: RoadKind
+  traffic: number
+  fromSettlementId: string
+  toSettlementId: string
+  points: Array<{ x: number; y: number }>
 }
 
 export interface GenerateWorldRequest {
@@ -73,6 +123,7 @@ export interface GenerateWorldRequest {
   height: number
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
+  biomeDefinitions?: BiomeDefinition[]
 }
 
 export interface GenerateChunkRequest {
@@ -86,6 +137,7 @@ export interface GenerateChunkRequest {
   surveyHeight: number
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
+  biomeDefinitions?: BiomeDefinition[]
 }
 
 export interface GenerateWorldResponse {
@@ -359,6 +411,100 @@ function resolveAreaOrigin(
   }
 }
 
+function isWaterBiome(biome: number): boolean {
+  return (
+    biome === BIOME.deepOcean ||
+    biome === BIOME.ocean ||
+    biome === BIOME.shallowSea ||
+    biome === BIOME.lake ||
+    biome === BIOME.reef
+  )
+}
+
+function biomeRoadCost(definitions: Map<number, BiomeDefinition>, biome: number): number {
+  return definitions.get(biome)?.roadCost ?? (isWaterBiome(biome) ? 999 : 4)
+}
+
+function biomeSettlementSuitability(
+  definitions: Map<number, BiomeDefinition>,
+  biome: number
+): number {
+  return definitions.get(biome)?.settlement.suitability ?? 0.1
+}
+
+function biomeCreatureTags(definitions: Map<number, BiomeDefinition>, biome: number): string[] {
+  return definitions.get(biome)?.creatures.habitatTags ?? []
+}
+
+function streamHotspotValue(globalX: number, globalY: number, seed: number): number {
+  return clamp01(
+    valueNoise(globalX - 410, globalY + 270, 210, seed + 7001) * 0.7 +
+      valueNoise(globalX + 93, globalY - 185, 72, seed + 7019) * 0.3
+  )
+}
+
+function streamRuggednessValue(globalX: number, globalY: number, seed: number): number {
+  const ridge = Math.abs(valueNoise(globalX, globalY, 86, seed + 2503) * 2 - 1)
+  const breaks = Math.abs(valueNoise(globalX + 190, globalY - 240, 28, seed + 2609) * 2 - 1)
+  return clamp01(ridge * 0.72 + breaks * 0.28)
+}
+
+function classifyTerrain(args: {
+  elevationValue: number
+  moistureValue: number
+  temperatureValue: number
+  ruggednessValue: number
+  hotspotValue: number
+  water: boolean
+  oceanConnected: boolean
+  touchingWater: boolean
+  reefChance: number
+  oasisChance: number
+}): number {
+  const {
+    elevationValue,
+    moistureValue,
+    temperatureValue,
+    ruggednessValue,
+    hotspotValue,
+    water,
+    oceanConnected,
+    touchingWater,
+    reefChance,
+    oasisChance,
+  } = args
+
+  if (water) {
+    if (!oceanConnected) return BIOME.lake
+    if (temperatureValue > 0.68 && elevationValue > 0.34 && reefChance > 0.76) return BIOME.reef
+    if (elevationValue < 0.18) return BIOME.deepOcean
+    if (elevationValue < 0.31) return BIOME.ocean
+    return BIOME.shallowSea
+  }
+
+  if (touchingWater || elevationValue < 0.48) return BIOME.coast
+  if (hotspotValue > 0.82 && elevationValue > 0.79 && ruggednessValue > 0.48) return BIOME.volcano
+  if (elevationValue > 0.87 && temperatureValue < 0.3 && moistureValue > 0.58) return BIOME.glacier
+  if (elevationValue > 0.83 && temperatureValue < 0.44) return BIOME.snow
+  if (temperatureValue < 0.26 && elevationValue < 0.76) return BIOME.tundra
+  if (ruggednessValue > 0.78 && elevationValue > 0.56 && moistureValue < 0.48) return BIOME.canyon
+  if (elevationValue > 0.7 && ruggednessValue < 0.34) return BIOME.plateau
+  if (elevationValue > 0.81) return BIOME.mountain
+  if (elevationValue > 0.74 && moistureValue < 0.56) return BIOME.bareRock
+  if (elevationValue > 0.64) return BIOME.highland
+  if (moistureValue > 0.82 && temperatureValue > 0.5 && elevationValue < 0.58) return BIOME.marsh
+  if (moistureValue > 0.74 && elevationValue < 0.58) return BIOME.wetland
+  if (temperatureValue > 0.72 && moistureValue < 0.26) {
+    if (oasisChance > 0.86 && elevationValue < 0.68) return BIOME.oasis
+    return BIOME.desert
+  }
+  if (temperatureValue > 0.66 && moistureValue > 0.76) return BIOME.rainforest
+  if (temperatureValue > 0.6 && moistureValue >= 0.3 && moistureValue < 0.56) return BIOME.savanna
+  if (moistureValue > 0.58) return BIOME.forest
+  if (elevationValue < 0.54) return BIOME.lowland
+  return BIOME.grassland
+}
+
 function classifyStreamBiome(
   globalX: number,
   globalY: number,
@@ -372,38 +518,25 @@ function classifyStreamBiome(
   const east = streamElevationValue(globalX + 1, globalY, seed) < SEA_LEVEL
   const north = streamElevationValue(globalX, globalY - 1, seed) < SEA_LEVEL
   const south = streamElevationValue(globalX, globalY + 1, seed) < SEA_LEVEL
-  const touchingWater = west || east || north || south
-
-  if (water) {
-    const enclosed = !west && !east && !north && !south && elevationValue > 0.28
-    if (enclosed) return BIOME.lake
-    if (elevationValue < 0.18) return BIOME.deepOcean
-    if (elevationValue < 0.31) return BIOME.ocean
-    return BIOME.shallowSea
-  }
-
-  if (touchingWater || elevationValue < 0.48) return BIOME.coast
-  if (elevationValue > 0.84 && temperatureValue < 0.48) return BIOME.snow
-  if (elevationValue > 0.82) return BIOME.mountain
-  if (elevationValue > 0.74 && moistureValue < 0.56) return BIOME.bareRock
-  if (elevationValue > 0.66) return BIOME.highland
-  if (moistureValue > 0.74 && elevationValue < 0.57) return BIOME.wetland
-  if (temperatureValue > 0.68 && moistureValue < 0.42) return BIOME.desert
-  if (moistureValue > 0.58) return BIOME.forest
-  if (elevationValue < 0.54) return BIOME.lowland
-  return BIOME.grassland
+  const enclosed = !west && !east && !north && !south && elevationValue > 0.28
+  return classifyTerrain({
+    elevationValue,
+    moistureValue,
+    temperatureValue,
+    ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
+    hotspotValue: streamHotspotValue(globalX, globalY, seed),
+    water,
+    oceanConnected: !enclosed,
+    touchingWater: west || east || north || south,
+    reefChance: valueNoise(globalX + 220, globalY - 160, 18, seed + 8011),
+    oasisChance: valueNoise(globalX - 150, globalY + 180, 24, seed + 8039),
+  })
 }
 
 function classifyChunkRegions(biomes: Uint8Array, chunkSize: number): Uint8Array {
   const size = chunkSize * chunkSize
   const region = new Uint8Array(size)
   const visited = new Uint8Array(size)
-
-  const isWaterBiome = (biome: number) =>
-    biome === BIOME.deepOcean ||
-    biome === BIOME.ocean ||
-    biome === BIOME.shallowSea ||
-    biome === BIOME.lake
 
   for (let index = 0; index < size; index += 1) {
     if (visited[index]) continue
@@ -449,10 +582,587 @@ function classifyChunkRegions(biomes: Uint8Array, chunkSize: number): Uint8Array
   return region
 }
 
+interface EvaluatedCell {
+  biome: number
+  elevationValue: number
+  moistureValue: number
+  temperatureValue: number
+  ruggednessValue: number
+  nearWater: boolean
+}
+
+function evaluateStreamCell(globalX: number, globalY: number, seed: number): EvaluatedCell {
+  const elevationValue = streamElevationValue(globalX, globalY, seed)
+  const moistureValue = streamMoistureValue(globalX, globalY, seed, elevationValue)
+  const temperatureValue = streamTemperatureValue(globalX, globalY, seed, elevationValue)
+  const biome = classifyStreamBiome(
+    globalX,
+    globalY,
+    seed,
+    elevationValue,
+    moistureValue,
+    temperatureValue
+  )
+  const nearWater = [
+    streamElevationValue(globalX - 1, globalY, seed) < SEA_LEVEL,
+    streamElevationValue(globalX + 1, globalY, seed) < SEA_LEVEL,
+    streamElevationValue(globalX, globalY - 1, seed) < SEA_LEVEL,
+    streamElevationValue(globalX, globalY + 1, seed) < SEA_LEVEL,
+  ].some(Boolean)
+  return {
+    biome,
+    elevationValue,
+    moistureValue,
+    temperatureValue,
+    ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
+    nearWater,
+  }
+}
+
+function localRuggednessFromElevation(
+  elevation: Uint8Array,
+  width: number,
+  height: number,
+  x: number,
+  y: number
+): number {
+  const center = elevation[y * width + x]! / 255
+  let total = 0
+  let count = 0
+  for (const [dx, dy] of FOUR_NEIGHBORS) {
+    const nextX = x + dx
+    const nextY = y + dy
+    if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) continue
+    total += Math.abs(center - elevation[nextY * width + nextX]! / 255)
+    count += 1
+  }
+  return clamp01((total / Math.max(1, count)) * 7 + Math.abs(center - 0.62) * 0.12)
+}
+
+function buildBiomeDefinitionMap(
+  biomeDefinitions?: BiomeDefinition[]
+): Map<number, BiomeDefinition> {
+  return new Map((biomeDefinitions ?? []).map((biome) => [biome.code, biome]))
+}
+
+function populateChunkFeatures(
+  chunk: GeneratedChunk,
+  seedText: string,
+  biomeDefinitions?: BiomeDefinition[]
+): GeneratedChunk {
+  const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
+  const seed = hashSeed(seedText)
+  const featureMargin = 48
+  const minX = chunk.originX - featureMargin
+  const maxX = chunk.originX + chunk.chunkSize - 1 + featureMargin
+  const minY = chunk.originY - featureMargin
+  const maxY = chunk.originY + chunk.chunkSize - 1 + featureMargin
+  const evaluate = (x: number, y: number): EvaluatedCell => {
+    if (
+      x >= chunk.originX &&
+      y >= chunk.originY &&
+      x < chunk.originX + chunk.chunkSize &&
+      y < chunk.originY + chunk.chunkSize
+    ) {
+      const localX = x - chunk.originX
+      const localY = y - chunk.originY
+      const index = localY * chunk.chunkSize + localX
+      const biome = chunk.biomes[index]!
+      const nearWater = FOUR_NEIGHBORS.some(([dx, dy]) => {
+        const nx = localX + dx
+        const ny = localY + dy
+        return (
+          nx >= 0 &&
+          ny >= 0 &&
+          nx < chunk.chunkSize &&
+          ny < chunk.chunkSize &&
+          isWaterBiome(chunk.biomes[ny * chunk.chunkSize + nx]!)
+        )
+      })
+      return {
+        biome,
+        elevationValue: chunk.elevation[index]! / 255,
+        moistureValue: chunk.moisture[index]! / 255,
+        temperatureValue: chunk.temperature[index]! / 255,
+        ruggednessValue:
+          localRuggednessFromElevation(
+            chunk.elevation,
+            chunk.chunkSize,
+            chunk.chunkSize,
+            localX,
+            localY
+          ) +
+          streamHotspotValue(x, y, seed) * 0.08,
+        nearWater,
+      }
+    }
+    return evaluateStreamCell(x, y, seed)
+  }
+
+  const settlements = generateSettlementsForBounds(
+    seedText,
+    minX,
+    minY,
+    maxX,
+    maxY,
+    evaluate,
+    biomeMap
+  )
+  const roads = buildRoadNetwork(settlements, evaluate, biomeMap).filter((road) =>
+    roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize)
+  )
+  chunk.settlements = settlements.filter(
+    (settlement) =>
+      settlement.x >= chunk.originX &&
+      settlement.y >= chunk.originY &&
+      settlement.x < chunk.originX + chunk.chunkSize &&
+      settlement.y < chunk.originY + chunk.chunkSize
+  )
+  chunk.roads = roads
+  chunk.landmarks = [...chunk.landmarks, ...chunk.settlements.map(settlementToLandmark)]
+  return chunk
+}
+
+function populateWorldFeatures(
+  world: GeneratedWorld,
+  seedText: string,
+  biomeDefinitions?: BiomeDefinition[]
+): GeneratedWorld {
+  const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
+  const seed = hashSeed(seedText)
+  const evaluate = (x: number, y: number): EvaluatedCell => {
+    const clampedX = Math.max(0, Math.min(world.width - 1, x))
+    const clampedY = Math.max(0, Math.min(world.height - 1, y))
+    const index = clampedY * world.width + clampedX
+    return {
+      biome: world.biomes[index]!,
+      elevationValue: world.elevation[index]! / 255,
+      moistureValue: world.moisture[index]! / 255,
+      temperatureValue: world.temperature[index]! / 255,
+      ruggednessValue:
+        localRuggednessFromElevation(
+          world.elevation,
+          world.width,
+          world.height,
+          clampedX,
+          clampedY
+        ) +
+        streamHotspotValue(clampedX * 4, clampedY * 4, seed) * 0.08,
+      nearWater: touchesWater(index, world.width, world.height, world.waterbody),
+    }
+  }
+  const settlements = generateSettlementsForBounds(
+    seedText,
+    0,
+    0,
+    world.width - 1,
+    world.height - 1,
+    evaluate,
+    biomeMap
+  )
+  world.settlements = settlements
+  world.roads = buildRoadNetwork(settlements, evaluate, biomeMap)
+  world.landmarks = [...world.landmarks, ...settlements.map(settlementToLandmark)]
+  return world
+}
+
+function scoreSettlementSite(
+  biomeDefinitions: Map<number, BiomeDefinition>,
+  cell: EvaluatedCell
+): number {
+  if (isWaterBiome(cell.biome) || biomeRoadCost(biomeDefinitions, cell.biome) >= 999) {
+    return Number.NEGATIVE_INFINITY
+  }
+  const temperatureComfort = 1 - Math.abs(cell.temperatureValue - 0.58)
+  const moistureComfort = 1 - Math.abs(cell.moistureValue - 0.54)
+  let score = biomeSettlementSuitability(biomeDefinitions, cell.biome) * 100
+  score += temperatureComfort * 14
+  score += moistureComfort * 12
+  score -= cell.ruggednessValue * 46
+  if (cell.nearWater) score += 16
+  if (cell.biome === BIOME.lowland || cell.biome === BIOME.grassland) score += 10
+  if (cell.biome === BIOME.coast || cell.biome === BIOME.oasis) score += 14
+  if (cell.biome === BIOME.desert || cell.biome === BIOME.canyon) score -= 12
+  if (cell.biome === BIOME.marsh || cell.biome === BIOME.wetland) score -= 18
+  if (
+    cell.biome === BIOME.mountain ||
+    cell.biome === BIOME.volcano ||
+    cell.biome === BIOME.glacier
+  ) {
+    score -= 28
+  }
+  return score
+}
+
+function chooseSettlementKind(
+  score: number,
+  nearWater: boolean,
+  biome: number,
+  ruggednessValue: number,
+  noise: number
+): SettlementKind {
+  if (biome === BIOME.oasis) return 'oasis'
+  if (biome === BIOME.desert || biome === BIOME.tundra) return score > 54 ? 'camp' : 'camp'
+  if (ruggednessValue > 0.72 && score > 42) return noise > 0.55 ? 'fort' : 'watchpost'
+  if (biome === BIOME.bareRock || biome === BIOME.volcano) return 'mine'
+  if (nearWater && score > 84) return 'port'
+  if (score > 92 && noise > 0.7) return 'city'
+  if (score > 76) return 'town'
+  if (score > 58) return 'village'
+  return 'hamlet'
+}
+
+function settlementPopulation(kind: SettlementKind, noise: number): number {
+  switch (kind) {
+    case 'city':
+      return 9000 + Math.floor(noise * 16000)
+    case 'town':
+    case 'port':
+      return 1800 + Math.floor(noise * 5200)
+    case 'village':
+      return 280 + Math.floor(noise * 900)
+    case 'fort':
+    case 'mine':
+      return 120 + Math.floor(noise * 420)
+    case 'oasis':
+      return 180 + Math.floor(noise * 500)
+    case 'watchpost':
+      return 60 + Math.floor(noise * 180)
+    default:
+      return 40 + Math.floor(noise * 160)
+  }
+}
+
+function settlementTraffic(kind: SettlementKind, population: number): number {
+  const base =
+    kind === 'city'
+      ? 4
+      : kind === 'town' || kind === 'port'
+        ? 3
+        : kind === 'village' || kind === 'oasis'
+          ? 2
+          : 1
+  return Math.max(base, population > 8000 ? 4 : population > 1800 ? 3 : base)
+}
+
+function settlementName(seed: number, gridX: number, gridY: number, kind: SettlementKind): string {
+  const starts = ['Alo', 'Rin', 'Ka', 'Bel', 'Nor', 'Eld', 'Sa', 'Tor', 'Mi', 'Va', 'Lu', 'Zen']
+  const mids = ['ha', 'ra', 'lo', 'mi', 'ta', 'ver', 'sha', 'dun', 'ri', 'ke', 'na', 'sol']
+  const suffixes: Record<SettlementKind, string[]> = {
+    camp: ['Camp', 'Rest', 'Post'],
+    hamlet: ['Cross', 'Field', 'End'],
+    village: ['Vale', 'Ford', 'Hollow'],
+    town: ['Market', 'Bridge', 'Heights'],
+    city: ['Crown', 'Harbor', 'Gate'],
+    port: ['Port', 'Haven', 'Quay'],
+    oasis: ['Spring', 'Palm', 'Well'],
+    fort: ['Hold', 'Keep', 'Watch'],
+    watchpost: ['Lookout', 'Watch', 'Tor'],
+    mine: ['Mine', 'Cut', 'Delve'],
+  }
+  const a = starts[Math.floor(random2d(gridX, gridY, seed + 9001) * starts.length)]!
+  const b = mids[Math.floor(random2d(gridX, gridY, seed + 9019) * mids.length)]!
+  const c = suffixes[kind][Math.floor(random2d(gridX, gridY, seed + 9049) * suffixes[kind].length)]!
+  return `${a}${b} ${c}`
+}
+
+function generateSettlementsForBounds(
+  seedText: string,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  evaluateCell: (x: number, y: number) => EvaluatedCell,
+  biomeDefinitions: Map<number, BiomeDefinition>
+): GeneratedSettlement[] {
+  const seed = hashSeed(seedText)
+  const settlements: GeneratedSettlement[] = []
+  const gridSize = 24
+  const searchRadius = 5
+  const minGridX = Math.floor(minX / gridSize) - 1
+  const maxGridX = Math.floor(maxX / gridSize) + 1
+  const minGridY = Math.floor(minY / gridSize) - 1
+  const maxGridY = Math.floor(maxY / gridSize) + 1
+
+  for (let gridY = minGridY; gridY <= maxGridY; gridY += 1) {
+    for (let gridX = minGridX; gridX <= maxGridX; gridX += 1) {
+      const centerX = gridX * gridSize + Math.floor(random2d(gridX, gridY, seed + 9203) * gridSize)
+      const centerY = gridY * gridSize + Math.floor(random2d(gridX, gridY, seed + 9241) * gridSize)
+      let best: (EvaluatedCell & { x: number; y: number; score: number }) | null = null
+      for (let y = centerY - searchRadius; y <= centerY + searchRadius; y += 1) {
+        if (y < minY || y > maxY) continue
+        for (let x = centerX - searchRadius; x <= centerX + searchRadius; x += 1) {
+          if (x < minX || x > maxX) continue
+          const cell = evaluateCell(x, y)
+          const score = scoreSettlementSite(biomeDefinitions, cell)
+          if (!Number.isFinite(score)) continue
+          if (!best || score > best.score) best = { ...cell, x, y, score }
+        }
+      }
+      if (!best || best.score < 46) continue
+      if (
+        settlements.some(
+          (existing) =>
+            Math.hypot(existing.x - best.x, existing.y - best.y) < 14 &&
+            existing.population >= best.score * 20
+        )
+      ) {
+        continue
+      }
+      const kindNoise = random2d(gridX, gridY, seed + 9277)
+      const kind = chooseSettlementKind(
+        best.score,
+        best.nearWater,
+        best.biome,
+        best.ruggednessValue,
+        kindNoise
+      )
+      const population = settlementPopulation(kind, random2d(gridX, gridY, seed + 9311))
+      settlements.push({
+        id: `settlement:${gridX}:${gridY}`,
+        name: settlementName(seed, gridX, gridY, kind),
+        kind,
+        x: best.x,
+        y: best.y,
+        biome: best.biome,
+        population,
+        traffic: settlementTraffic(kind, population),
+        creatureTags: biomeCreatureTags(biomeDefinitions, best.biome),
+        roadAccess: biomeDefinitions.get(best.biome)?.settlement.roadAccess ?? 0.2,
+      })
+    }
+  }
+
+  return settlements.sort(
+    (left, right) => right.population - left.population || left.id.localeCompare(right.id)
+  )
+}
+
+function roadTraversalCost(
+  biomeDefinitions: Map<number, BiomeDefinition>,
+  cell: EvaluatedCell
+): number {
+  const base = biomeRoadCost(biomeDefinitions, cell.biome)
+  if (base >= 999) return Number.POSITIVE_INFINITY
+  return base + cell.ruggednessValue * 4 + (cell.nearWater ? 0.2 : 0)
+}
+
+const EIGHT_NEIGHBORS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+] as const
+
+function buildRoadPath(
+  from: GeneratedSettlement,
+  to: GeneratedSettlement,
+  evaluateCell: (x: number, y: number) => EvaluatedCell,
+  biomeDefinitions: Map<number, BiomeDefinition>
+): Array<{ x: number; y: number }> {
+  const minX = Math.min(from.x, to.x) - 10
+  const maxX = Math.max(from.x, to.x) + 10
+  const minY = Math.min(from.y, to.y) - 10
+  const maxY = Math.max(from.y, to.y) + 10
+  const width = maxX - minX + 1
+  const height = maxY - minY + 1
+  const size = width * height
+  if (size > 20000) return []
+
+  const start = (from.y - minY) * width + (from.x - minX)
+  const goal = (to.y - minY) * width + (to.x - minX)
+  const gScore = new Float64Array(size)
+  const fScore = new Float64Array(size)
+  const cameFrom = new Int32Array(size)
+  const open = new Uint8Array(size)
+  const closed = new Uint8Array(size)
+  const cache = new Map<number, EvaluatedCell>()
+  for (let index = 0; index < size; index += 1) {
+    gScore[index] = Number.POSITIVE_INFINITY
+    fScore[index] = Number.POSITIVE_INFINITY
+    cameFrom[index] = -1
+  }
+
+  const heuristic = (index: number) => {
+    const x = index % width
+    const y = Math.floor(index / width)
+    return Math.hypot((goal % width) - x, Math.floor(goal / width) - y)
+  }
+
+  const getCell = (index: number) => {
+    const cached = cache.get(index)
+    if (cached) return cached
+    const x = minX + (index % width)
+    const y = minY + Math.floor(index / width)
+    const cell = evaluateCell(x, y)
+    cache.set(index, cell)
+    return cell
+  }
+
+  gScore[start] = 0
+  fScore[start] = heuristic(start)
+  open[start] = 1
+
+  while (true) {
+    let current = -1
+    let currentScore = Number.POSITIVE_INFINITY
+    for (let index = 0; index < size; index += 1) {
+      if (!open[index] || fScore[index]! >= currentScore) continue
+      current = index
+      currentScore = fScore[index]!
+    }
+    if (current < 0) return []
+    if (current == goal) break
+    open[current] = 0
+    closed[current] = 1
+    const currentX = current % width
+    const currentY = Math.floor(current / width)
+
+    for (const [dx, dy] of EIGHT_NEIGHBORS) {
+      const nextX = currentX + dx
+      const nextY = currentY + dy
+      if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) continue
+      const next = nextY * width + nextX
+      if (closed[next]) continue
+      const cell = getCell(next)
+      const traversal = roadTraversalCost(biomeDefinitions, cell)
+      if (!Number.isFinite(traversal)) continue
+      const step = Math.hypot(dx, dy) * traversal
+      const tentative = gScore[current]! + step
+      if (tentative >= gScore[next]!) continue
+      cameFrom[next] = current
+      gScore[next] = tentative
+      fScore[next] = tentative + heuristic(next)
+      open[next] = 1
+    }
+  }
+
+  const raw: Array<{ x: number; y: number }> = []
+  let current = goal
+  while (current >= 0) {
+    raw.push({ x: minX + (current % width), y: minY + Math.floor(current / width) })
+    current = cameFrom[current]!
+  }
+  raw.reverse()
+  if (raw.length <= 2) return raw
+
+  const simplified = [raw[0]!]
+  let previousDirection = ''
+  for (let index = 1; index < raw.length - 1; index += 1) {
+    const prev = raw[index - 1]!
+    const currentPoint = raw[index]!
+    const next = raw[index + 1]!
+    const direction = `${Math.sign(currentPoint.x - prev.x)},${Math.sign(currentPoint.y - prev.y)}:${Math.sign(next.x - currentPoint.x)},${Math.sign(next.y - currentPoint.y)}`
+    if (direction !== previousDirection || index % 3 === 0) {
+      simplified.push(currentPoint)
+      previousDirection = direction
+    }
+  }
+  simplified.push(raw[raw.length - 1]!)
+  return simplified
+}
+
+function roadKindForConnection(
+  from: GeneratedSettlement,
+  to: GeneratedSettlement,
+  sampleRuggedness: number
+): RoadKind {
+  const traffic = Math.max(from.traffic, to.traffic)
+  if (sampleRuggedness > 0.68) return 'pass'
+  if (
+    traffic >= 4 ||
+    from.kind === 'port' ||
+    to.kind === 'port' ||
+    from.kind === 'oasis' ||
+    to.kind === 'oasis'
+  ) {
+    return 'trade-route'
+  }
+  if (traffic >= 3) return 'road'
+  return 'trail'
+}
+
+function buildRoadNetwork(
+  settlements: GeneratedSettlement[],
+  evaluateCell: (x: number, y: number) => EvaluatedCell,
+  biomeDefinitions: Map<number, BiomeDefinition>
+): GeneratedRoad[] {
+  const roads: GeneratedRoad[] = []
+  const seenPairs = new Set<string>()
+  for (const settlement of settlements) {
+    const desiredLinks = settlement.traffic >= 4 ? 3 : settlement.traffic >= 3 ? 2 : 1
+    const neighbors = settlements
+      .filter((candidate) => candidate.id !== settlement.id)
+      .map((candidate) => ({
+        candidate,
+        distance: Math.hypot(candidate.x - settlement.x, candidate.y - settlement.y),
+      }))
+      .filter(
+        ({ candidate, distance }) =>
+          distance <= 120 && candidate.population >= settlement.population * 0.55
+      )
+      .sort((left, right) => left.distance - right.distance)
+      .slice(0, desiredLinks + 2)
+
+    let links = 0
+    for (const { candidate } of neighbors) {
+      if (links >= desiredLinks) break
+      const pairKey = [settlement.id, candidate.id].sort().join('::')
+      if (seenPairs.has(pairKey)) continue
+      const path = buildRoadPath(settlement, candidate, evaluateCell, biomeDefinitions)
+      if (path.length < 2) continue
+      const midpoint = path[Math.floor(path.length / 2)]!
+      const ruggedness = evaluateCell(midpoint.x, midpoint.y).ruggednessValue
+      roads.push({
+        id: `road:${pairKey}`,
+        kind: roadKindForConnection(settlement, candidate, ruggedness),
+        traffic: Math.max(settlement.traffic, candidate.traffic),
+        fromSettlementId: settlement.id,
+        toSettlementId: candidate.id,
+        points: path,
+      })
+      seenPairs.add(pairKey)
+      links += 1
+    }
+  }
+  return roads
+}
+
+function roadTouchesChunk(
+  road: GeneratedRoad,
+  originX: number,
+  originY: number,
+  chunkSize: number
+): boolean {
+  const maxX = originX + chunkSize - 1
+  const maxY = originY + chunkSize - 1
+  return road.points.some(
+    (point) => point.x >= originX && point.x <= maxX && point.y >= originY && point.y <= maxY
+  )
+}
+
+function settlementToLandmark(settlement: GeneratedSettlement): GeneratedLandmark {
+  const creatures = settlement.creatureTags.slice(0, 2).join(', ')
+  return {
+    id: settlement.id,
+    name: settlement.name,
+    x: settlement.x,
+    y: settlement.y,
+    kind: `settlement:${settlement.kind}`,
+    description: `${settlement.kind} population ${settlement.population}. Nearby creatures favor ${creatures || 'local mixed habitats'}.`,
+    areaId: '',
+  }
+}
+
 export function applyMapAreas(
   world: GeneratedWorld,
   areas: MapAreaDefinition[],
-  terrainCodes: Record<string, number>
+  terrainCodes: Record<string, number>,
+  biomeDefinitions?: BiomeDefinition[]
 ): GeneratedWorld {
   const authoredArea = new Uint16Array(world.biomes.length)
   const areaIds = ['']
@@ -530,6 +1240,9 @@ export function applyMapAreas(
   world.authoredArea = authoredArea
   world.areaIds = areaIds
   world.landmarks = landmarks
+  world.settlements = []
+  world.roads = []
+  populateWorldFeatures(world, world.seed, biomeDefinitions)
 
   let worldHash = 2166136261
   for (let index = 0; index < world.biomes.length; index += 1) {
@@ -550,7 +1263,8 @@ function applyAreasToChunk(
   areas: MapAreaDefinition[],
   terrainCodes: Record<string, number>,
   surveyWidth: number,
-  surveyHeight: number
+  surveyHeight: number,
+  biomeDefinitions?: BiomeDefinition[]
 ): GeneratedChunk {
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
@@ -656,6 +1370,9 @@ function applyAreasToChunk(
   chunk.areaIds = areaIds
   chunk.landmarks = landmarks
   chunk.region = classifyChunkRegions(chunk.biomes, chunk.chunkSize)
+  chunk.settlements = []
+  chunk.roads = []
+  populateChunkFeatures(chunk, chunk.seed, biomeDefinitions)
 
   let chunkHash = 2166136261
   for (let index = 0; index < chunk.biomes.length; index += 1) {
@@ -693,7 +1410,12 @@ function touchesWater(
   })
 }
 
-export function generateWorld(seedText: string, width: number, height: number): GeneratedWorld {
+export function generateWorld(
+  seedText: string,
+  width: number,
+  height: number,
+  biomeDefinitions?: BiomeDefinition[]
+): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
   const size = width * height
@@ -730,44 +1452,32 @@ export function generateWorld(seedText: string, width: number, height: number): 
   let worldHash = 2166136261
 
   for (let index = 0; index < size; index += 1) {
+    const x = index % width
+    const y = Math.floor(index / width)
     const elevationValue = elevation[index]! / 255
     const moistureValue = moisture[index]! / 255
     const temperatureValue = temperature[index]! / 255
-    let biome: number
-
-    if (topology.waterbody[index]) {
-      if (!topology.ocean[index]) biome = BIOME.lake
-      else if (elevationValue < 0.2) biome = BIOME.deepOcean
-      else if (elevationValue < 0.34) biome = BIOME.ocean
-      else biome = BIOME.shallowSea
-    } else if (touchesWater(index, width, height, topology.waterbody) || elevationValue < 0.47) {
-      biome = BIOME.coast
-    } else if (elevationValue > 0.83 && temperatureValue < 0.46) {
-      biome = BIOME.snow
-    } else if (elevationValue > 0.82) {
-      biome = BIOME.mountain
-    } else if (elevationValue > 0.74 && moistureValue < 0.55) {
-      biome = BIOME.bareRock
-    } else if (elevationValue > 0.66) {
-      biome = BIOME.highland
-    } else if (moistureValue > 0.72 && elevationValue < 0.56) {
-      biome = BIOME.wetland
-    } else if (temperatureValue > 0.68 && moistureValue < 0.42) {
-      biome = BIOME.desert
-    } else if (moistureValue > 0.58) {
-      biome = BIOME.forest
-    } else if (elevationValue < 0.54) {
-      biome = BIOME.lowland
-    } else {
-      biome = BIOME.grassland
-    }
+    const biome = classifyTerrain({
+      elevationValue,
+      moistureValue,
+      temperatureValue,
+      ruggednessValue:
+        localRuggednessFromElevation(elevation, width, height, x, y) +
+        streamHotspotValue(x * 4, y * 4, seed) * 0.08,
+      hotspotValue: streamHotspotValue(x * 4, y * 4, seed),
+      water: Boolean(topology.waterbody[index]),
+      oceanConnected: Boolean(topology.ocean[index]),
+      touchingWater: touchesWater(index, width, height, topology.waterbody),
+      reefChance: valueNoise(x + 220, y - 160, 18, seed + 8011),
+      oasisChance: valueNoise(x - 150, y + 180, 24, seed + 8039),
+    })
 
     biomes[index] = biome
     worldHash ^= biome + elevation[index]! + topology.landmass[index]! + topology.waterbody[index]!
     worldHash = Math.imul(worldHash, 16777619)
   }
 
-  return {
+  const world: GeneratedWorld = {
     seed: seedText,
     hash: (worldHash >>> 0).toString(16).padStart(8, '0'),
     width,
@@ -783,14 +1493,18 @@ export function generateWorld(seedText: string, width: number, height: number): 
     mainlandId: topology.mainlandId,
     areaIds: [''],
     landmarks: [],
+    settlements: [],
+    roads: [],
   }
+  return populateWorldFeatures(world, seedText, biomeDefinitions)
 }
 
 export function generateChunk(
   seedText: string,
   chunkX: number,
   chunkY: number,
-  chunkSize: number
+  chunkSize: number,
+  biomeDefinitions?: BiomeDefinition[]
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -830,7 +1544,7 @@ export function generateChunk(
     }
   }
 
-  return {
+  const chunk: GeneratedChunk = {
     seed: seedText,
     hash: (chunkHash >>> 0).toString(16).padStart(8, '0'),
     chunkX,
@@ -847,7 +1561,10 @@ export function generateChunk(
     region: classifyChunkRegions(biomes, chunkSize),
     areaIds: [''],
     landmarks: [],
+    settlements: [],
+    roads: [],
   }
+  return populateChunkFeatures(chunk, seedText, biomeDefinitions)
 }
 
 export function generateChunkWithAreas(
@@ -858,8 +1575,9 @@ export function generateChunkWithAreas(
   surveyWidth: number,
   surveyHeight: number,
   areas: MapAreaDefinition[],
-  terrainCodes: Record<string, number>
+  terrainCodes: Record<string, number>,
+  biomeDefinitions?: BiomeDefinition[]
 ): GeneratedChunk {
-  const chunk = generateChunk(seedText, chunkX, chunkY, chunkSize)
-  return applyAreasToChunk(chunk, areas, terrainCodes, surveyWidth, surveyHeight)
+  const chunk = generateChunk(seedText, chunkX, chunkY, chunkSize, biomeDefinitions)
+  return applyAreasToChunk(chunk, areas, terrainCodes, surveyWidth, surveyHeight, biomeDefinitions)
 }

@@ -38,6 +38,8 @@ interface ChunkView {
   transitions: Graphics
   regionalDetails: Graphics
   closeDetails: Graphics
+  roads: Graphics
+  settlements: Graphics
   landmarks: Graphics
   fog: Graphics
 }
@@ -223,6 +225,8 @@ export async function createGame(
     for (const view of chunkViews.values()) {
       view.regionalDetails.visible = scale >= 1.15
       view.closeDetails.visible = scale >= 2.15
+      view.roads.visible = scale >= 1.05
+      view.settlements.visible = scale >= 0.85
       view.landmarks.visible = scale >= 1.15
     }
   }
@@ -373,11 +377,32 @@ export async function createGame(
       const transitions = new Graphics()
       const regionalDetails = new Graphics()
       const closeDetails = new Graphics()
+      const roads = new Graphics()
+      const settlements = new Graphics()
       const landmarks = new Graphics()
       const fog = new Graphics()
-      container.addChild(terrain, transitions, regionalDetails, closeDetails, landmarks, fog)
+      container.addChild(
+        terrain,
+        transitions,
+        regionalDetails,
+        closeDetails,
+        roads,
+        settlements,
+        landmarks,
+        fog
+      )
       chunkLayer.addChild(container)
-      view = { container, terrain, transitions, regionalDetails, closeDetails, landmarks, fog }
+      view = {
+        container,
+        terrain,
+        transitions,
+        regionalDetails,
+        closeDetails,
+        roads,
+        settlements,
+        landmarks,
+        fog,
+      }
       chunkViews.set(key, view)
     }
 
@@ -386,6 +411,8 @@ export async function createGame(
     view.transitions.clear()
     view.regionalDetails.clear()
     view.closeDetails.clear()
+    view.roads.clear()
+    view.settlements.clear()
     view.landmarks.clear()
 
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
@@ -469,6 +496,58 @@ export async function createGame(
       }
     }
 
+    for (const road of chunk.roads) {
+      const color =
+        road.kind === 'trade-route'
+          ? 0xf0d79b
+          : road.kind === 'road'
+            ? 0xc8b6a1
+            : road.kind === 'pass'
+              ? 0xd7c8bf
+              : 0x8f7f69
+      const width = road.kind === 'trade-route' ? 1.2 : road.kind === 'road' ? 0.95 : 0.7
+      let started = false
+      for (const point of road.points) {
+        const x = (point.x - chunk.originX) * cellSize + cellSize / 2
+        const y = (point.y - chunk.originY) * cellSize + cellSize / 2
+        if (!started) {
+          view.roads.moveTo(x, y)
+          started = true
+        } else {
+          view.roads.lineTo(x, y)
+        }
+      }
+      if (started) view.roads.stroke({ color, width, alpha: 0.9 })
+    }
+
+    for (const settlement of chunk.settlements) {
+      const x = (settlement.x - chunk.originX) * cellSize + cellSize / 2
+      const y = (settlement.y - chunk.originY) * cellSize + cellSize / 2
+      const size =
+        settlement.kind === 'city'
+          ? 2.1
+          : settlement.kind === 'town' || settlement.kind === 'port'
+            ? 1.7
+            : settlement.kind === 'village' || settlement.kind === 'oasis'
+              ? 1.35
+              : 1
+      const color =
+        settlement.kind === 'port'
+          ? 0x7bd3f7
+          : settlement.kind === 'oasis'
+            ? 0x84df9f
+            : settlement.kind === 'city'
+              ? 0xf3e4b8
+              : settlement.kind === 'fort' || settlement.kind === 'watchpost'
+                ? 0xd2c6bb
+                : 0xf0d79b
+      view.settlements
+        .circle(x, y, size)
+        .fill({ color, alpha: 0.96 })
+        .circle(x, y, size + 0.4)
+        .stroke({ color: 0x10222f, width: 0.5, alpha: 0.92 })
+    }
+
     for (const landmark of chunk.landmarks) {
       const x = (landmark.x - chunk.originX) * cellSize + cellSize / 2
       const y = (landmark.y - chunk.originY) * cellSize + cellSize / 2
@@ -484,6 +563,8 @@ export async function createGame(
 
     view.regionalDetails.visible = scale >= 1.15
     view.closeDetails.visible = scale >= 2.15
+    view.roads.visible = scale >= 1.05
+    view.settlements.visible = scale >= 0.85
     view.landmarks.visible = scale >= 1.15
     redrawChunkFog(key)
   }
@@ -505,6 +586,7 @@ export async function createGame(
         surveyHeight,
         mapAreas: content.mapAreas,
         terrainCodes,
+        biomeDefinitions: content.biomes,
       })
       .then((chunk) => {
         pendingChunks.delete(key)

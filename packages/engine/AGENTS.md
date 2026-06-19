@@ -19,3 +19,8 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - The engine may request chunks opportunistically, but it must tolerate frontier cells
   not being loaded yet and cleanly release evicted chunk display objects.
 - Verify browser-facing changes with E2E tests.
+
+- Roads and settlements are renderer consumers of deterministic map output; do not let
+  the view invent or mutate transport topology.
+- When new terrain classes land, extend terrain accents, roads, and settlement markers
+  together so the world still reads clearly at low and medium zoom.

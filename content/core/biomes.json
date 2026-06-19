@@ -3,126 +3,980 @@
     "id": "core:deep-ocean",
     "code": 0,
     "name": "Deep Ocean",
+    "family": "ocean",
     "color": "#082d52",
     "accent": "#164a73",
-    "description": "The darkest, deepest bathymetric zone.",
-    "movementCost": 12
+    "description": "Abyssal water far from continental shelves.",
+    "movementCost": 12,
+    "roadCost": 999,
+    "occurrence": 0.88,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.0,
+      "max": 0.18
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["pelagic", "abyssal", "open-water"],
+      "iconicSpecies": ["whale", "giant-squid", "lanternfish"],
+      "abundance": 0.62
+    },
+    "settlement": {
+      "suitability": 0.0,
+      "roleWeights": {},
+      "roadAccess": 0.0
+    }
   },
   {
     "id": "core:ocean",
     "code": 1,
     "name": "Open Ocean",
+    "family": "ocean",
     "color": "#174b73",
     "accent": "#2f6d98",
     "description": "Open navigable sea beyond the continental shelf.",
-    "movementCost": 9
+    "movementCost": 9,
+    "roadCost": 999,
+    "occurrence": 1.0,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.18,
+      "max": 0.31
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["pelagic", "migratory"],
+      "iconicSpecies": ["tuna", "dolphin", "shark"],
+      "abundance": 0.74
+    },
+    "settlement": {
+      "suitability": 0.0,
+      "roleWeights": {},
+      "roadAccess": 0.0
+    }
   },
   {
     "id": "core:shallow-sea",
     "code": 2,
     "name": "Shallow Sea",
+    "family": "ocean",
     "color": "#2f7794",
     "accent": "#59a1b6",
     "description": "Sunlit shelf water approaching land.",
-    "movementCost": 7
+    "movementCost": 7,
+    "roadCost": 999,
+    "occurrence": 0.92,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.31,
+      "max": 0.43
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["shelf", "coastal-water"],
+      "iconicSpecies": ["seal", "shoaling-fish", "sea-turtle"],
+      "abundance": 0.86
+    },
+    "settlement": {
+      "suitability": 0.0,
+      "roleWeights": {},
+      "roadAccess": 0.0
+    }
   },
   {
     "id": "core:coast",
     "code": 3,
     "name": "Coast",
+    "family": "coast",
     "color": "#d3b77a",
     "accent": "#f0d79b",
-    "description": "Beaches, tidal margins, and immediate shore.",
-    "movementCost": 2
+    "description": "Beaches, tidal margins, barrier strands, and immediate shore.",
+    "movementCost": 2,
+    "roadCost": 2,
+    "occurrence": 1.0,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.42,
+      "max": 0.5
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.2,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["shore", "tidal"],
+      "iconicSpecies": ["shorebird", "crab", "seal"],
+      "abundance": 0.84
+    },
+    "settlement": {
+      "suitability": 0.92,
+      "roleWeights": {
+        "port": 0.9,
+        "village": 0.5,
+        "town": 0.5
+      },
+      "roadAccess": 0.95
+    }
   },
   {
     "id": "core:lake",
     "code": 4,
     "name": "Lake",
+    "family": "wetland",
     "color": "#327f9e",
     "accent": "#74b9c8",
     "description": "An inland waterbody disconnected from the world edge.",
-    "movementCost": 7
+    "movementCost": 7,
+    "roadCost": 999,
+    "occurrence": 0.38,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.2,
+      "max": 0.7
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.2,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["freshwater", "shore"],
+      "iconicSpecies": ["trout", "heron", "otter"],
+      "abundance": 0.79
+    },
+    "settlement": {
+      "suitability": 0.76,
+      "roleWeights": {
+        "port": 0.45,
+        "village": 0.65,
+        "town": 0.35
+      },
+      "roadAccess": 0.76
+    }
   },
   {
     "id": "core:lowland",
     "code": 5,
-    "name": "Lowland",
+    "name": "Lowland Plain",
+    "family": "plain",
     "color": "#7fa85f",
     "accent": "#a8c97d",
-    "description": "Low-relief continental plain.",
-    "movementCost": 1
+    "description": "Low-relief continental plain suited to farming and roads.",
+    "movementCost": 1,
+    "roadCost": 1,
+    "occurrence": 1.0,
+    "latitude": {
+      "min": 0.15,
+      "max": 0.85
+    },
+    "elevation": {
+      "min": 0.43,
+      "max": 0.54
+    },
+    "temperature": {
+      "min": 0.28,
+      "max": 0.82
+    },
+    "moisture": {
+      "min": 0.28,
+      "max": 0.72
+    },
+    "creatures": {
+      "habitatTags": ["plain", "farmland"],
+      "iconicSpecies": ["hare", "boar", "songbird"],
+      "abundance": 0.82
+    },
+    "settlement": {
+      "suitability": 1.0,
+      "roleWeights": {
+        "hamlet": 0.4,
+        "village": 0.8,
+        "town": 0.8,
+        "city": 0.65
+      },
+      "roadAccess": 1.0
+    }
   },
   {
     "id": "core:grassland",
     "code": 6,
     "name": "Grassland",
+    "family": "grassland",
     "color": "#6e9d58",
     "accent": "#9abc72",
-    "description": "Open temperate terrain.",
-    "movementCost": 1
+    "description": "Open temperate grass country and rolling prairie.",
+    "movementCost": 1,
+    "roadCost": 1,
+    "occurrence": 0.84,
+    "latitude": {
+      "min": 0.2,
+      "max": 0.82
+    },
+    "elevation": {
+      "min": 0.46,
+      "max": 0.66
+    },
+    "temperature": {
+      "min": 0.3,
+      "max": 0.78
+    },
+    "moisture": {
+      "min": 0.26,
+      "max": 0.58
+    },
+    "creatures": {
+      "habitatTags": ["prairie", "grazing"],
+      "iconicSpecies": ["antelope", "bison", "wolf"],
+      "abundance": 0.77
+    },
+    "settlement": {
+      "suitability": 0.82,
+      "roleWeights": {
+        "hamlet": 0.5,
+        "village": 0.75,
+        "town": 0.55
+      },
+      "roadAccess": 0.9
+    }
   },
   {
     "id": "core:forest",
     "code": 7,
     "name": "Forest",
+    "family": "forest",
     "color": "#315f45",
     "accent": "#578264",
-    "description": "Dense moist woodland.",
-    "movementCost": 2
+    "description": "Dense moist woodland and mixed forest.",
+    "movementCost": 2,
+    "roadCost": 3,
+    "occurrence": 0.92,
+    "latitude": {
+      "min": 0.18,
+      "max": 0.82
+    },
+    "elevation": {
+      "min": 0.45,
+      "max": 0.74
+    },
+    "temperature": {
+      "min": 0.24,
+      "max": 0.72
+    },
+    "moisture": {
+      "min": 0.58,
+      "max": 0.82
+    },
+    "creatures": {
+      "habitatTags": ["woodland", "canopy"],
+      "iconicSpecies": ["deer", "owl", "bear"],
+      "abundance": 0.83
+    },
+    "settlement": {
+      "suitability": 0.58,
+      "roleWeights": {
+        "hamlet": 0.45,
+        "village": 0.45,
+        "town": 0.2
+      },
+      "roadAccess": 0.55
+    }
   },
   {
     "id": "core:desert",
     "code": 8,
     "name": "Desert",
+    "family": "arid",
     "color": "#c48d4f",
     "accent": "#e5b66e",
-    "description": "Hot and arid terrain.",
-    "movementCost": 2
+    "description": "Hot arid terrain with sparse vegetation and shifting sands.",
+    "movementCost": 2,
+    "roadCost": 4,
+    "occurrence": 0.62,
+    "latitude": {
+      "min": 0.12,
+      "max": 0.62
+    },
+    "elevation": {
+      "min": 0.44,
+      "max": 0.72
+    },
+    "temperature": {
+      "min": 0.62,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 0.28
+    },
+    "creatures": {
+      "habitatTags": ["arid", "dune"],
+      "iconicSpecies": ["camel", "fennec", "vulture"],
+      "abundance": 0.36
+    },
+    "settlement": {
+      "suitability": 0.14,
+      "roleWeights": {
+        "camp": 0.7,
+        "oasis": 0.8
+      },
+      "roadAccess": 0.24
+    }
   },
   {
     "id": "core:wetland",
     "code": 9,
     "name": "Wetland",
+    "family": "wetland",
     "color": "#477a6a",
     "accent": "#72a68d",
-    "description": "Low, saturated terrain near water.",
-    "movementCost": 3
+    "description": "Low saturated ground near lakeshores, floodplains, and backswamps.",
+    "movementCost": 3,
+    "roadCost": 6,
+    "occurrence": 0.58,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.42,
+      "max": 0.6
+    },
+    "temperature": {
+      "min": 0.18,
+      "max": 0.86
+    },
+    "moisture": {
+      "min": 0.72,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["wetland", "reedbed"],
+      "iconicSpecies": ["frog", "heron", "crocodile"],
+      "abundance": 0.88
+    },
+    "settlement": {
+      "suitability": 0.28,
+      "roleWeights": {
+        "stilt-town": 0.25,
+        "village": 0.15
+      },
+      "roadAccess": 0.18
+    }
   },
   {
     "id": "core:highland",
     "code": 10,
     "name": "Highland",
+    "family": "upland",
     "color": "#78805c",
     "accent": "#a0a77a",
-    "description": "Elevated plateau and rolling upland.",
-    "movementCost": 3
+    "description": "Elevated broken upland between plains and major mountains.",
+    "movementCost": 3,
+    "roadCost": 4,
+    "occurrence": 0.78,
+    "latitude": {
+      "min": 0.08,
+      "max": 0.9
+    },
+    "elevation": {
+      "min": 0.62,
+      "max": 0.76
+    },
+    "temperature": {
+      "min": 0.18,
+      "max": 0.72
+    },
+    "moisture": {
+      "min": 0.18,
+      "max": 0.74
+    },
+    "creatures": {
+      "habitatTags": ["upland", "ridge"],
+      "iconicSpecies": ["goat", "eagle", "lynx"],
+      "abundance": 0.61
+    },
+    "settlement": {
+      "suitability": 0.38,
+      "roleWeights": {
+        "fort": 0.4,
+        "village": 0.25,
+        "town": 0.12
+      },
+      "roadAccess": 0.34
+    }
   },
   {
     "id": "core:bare-rock",
     "code": 11,
     "name": "Bare Rock",
+    "family": "upland",
     "color": "#746f67",
     "accent": "#a49b8e",
-    "description": "Exposed dry or steep stone.",
-    "movementCost": 4
+    "description": "Exposed bedrock, scree, and hard dry slopes.",
+    "movementCost": 4,
+    "roadCost": 7,
+    "occurrence": 0.48,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.58,
+      "max": 0.9
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 0.82
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 0.58
+    },
+    "creatures": {
+      "habitatTags": ["rocky", "cliff"],
+      "iconicSpecies": ["ibex", "condor", "lizard"],
+      "abundance": 0.31
+    },
+    "settlement": {
+      "suitability": 0.1,
+      "roleWeights": {
+        "mine": 0.55,
+        "fort": 0.2
+      },
+      "roadAccess": 0.12
+    }
   },
   {
     "id": "core:mountain",
     "code": 12,
     "name": "Mountain",
+    "family": "mountain",
     "color": "#555b63",
     "accent": "#8b9198",
-    "description": "Very high and difficult terrain.",
-    "movementCost": 6
+    "description": "Very high rugged relief with steep slopes and passes.",
+    "movementCost": 6,
+    "roadCost": 10,
+    "occurrence": 0.4,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.76,
+      "max": 0.98
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 0.7
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 0.82
+    },
+    "creatures": {
+      "habitatTags": ["alpine", "cliff"],
+      "iconicSpecies": ["snow-leopard", "mountain-goat", "eagle"],
+      "abundance": 0.24
+    },
+    "settlement": {
+      "suitability": 0.08,
+      "roleWeights": {
+        "pass": 0.55,
+        "fort": 0.45,
+        "mine": 0.35
+      },
+      "roadAccess": 0.08
+    }
   },
   {
     "id": "core:snow",
     "code": 13,
-    "name": "Snow",
+    "name": "Snowfield",
+    "family": "cryosphere",
     "color": "#d9e5e7",
     "accent": "#ffffff",
-    "description": "Frozen alpine terrain.",
-    "movementCost": 5
+    "description": "Frozen alpine terrain with seasonal or persistent snow cover.",
+    "movementCost": 5,
+    "roadCost": 9,
+    "occurrence": 0.38,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.78,
+      "max": 1.0
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 0.4
+    },
+    "moisture": {
+      "min": 0.2,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["nival", "alpine-cold"],
+      "iconicSpecies": ["ptarmigan", "yak", "snow-hare"],
+      "abundance": 0.19
+    },
+    "settlement": {
+      "suitability": 0.02,
+      "roleWeights": {
+        "camp": 0.45,
+        "monastery": 0.2
+      },
+      "roadAccess": 0.04
+    }
+  },
+  {
+    "id": "core:tundra",
+    "code": 14,
+    "name": "Tundra",
+    "family": "cryosphere",
+    "color": "#8c9975",
+    "accent": "#bac79d",
+    "description": "Cold treeless ground of high latitude or high elevation margins.",
+    "movementCost": 2,
+    "roadCost": 3,
+    "occurrence": 0.42,
+    "latitude": {
+      "min": 0.0,
+      "max": 0.28
+    },
+    "elevation": {
+      "min": 0.44,
+      "max": 0.72
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 0.34
+    },
+    "moisture": {
+      "min": 0.18,
+      "max": 0.72
+    },
+    "creatures": {
+      "habitatTags": ["subpolar", "open-cold"],
+      "iconicSpecies": ["reindeer", "fox", "musk-ox"],
+      "abundance": 0.43
+    },
+    "settlement": {
+      "suitability": 0.18,
+      "roleWeights": {
+        "camp": 0.6,
+        "village": 0.18
+      },
+      "roadAccess": 0.18
+    }
+  },
+  {
+    "id": "core:savanna",
+    "code": 15,
+    "name": "Savanna",
+    "family": "grassland",
+    "color": "#9aa657",
+    "accent": "#c7d47b",
+    "description": "Warm seasonal grassland with scattered trees.",
+    "movementCost": 1,
+    "roadCost": 1,
+    "occurrence": 0.54,
+    "latitude": {
+      "min": 0.18,
+      "max": 0.68
+    },
+    "elevation": {
+      "min": 0.44,
+      "max": 0.66
+    },
+    "temperature": {
+      "min": 0.58,
+      "max": 0.86
+    },
+    "moisture": {
+      "min": 0.28,
+      "max": 0.56
+    },
+    "creatures": {
+      "habitatTags": ["savanna", "grazing"],
+      "iconicSpecies": ["lion", "elephant", "zebra"],
+      "abundance": 0.81
+    },
+    "settlement": {
+      "suitability": 0.64,
+      "roleWeights": {
+        "hamlet": 0.35,
+        "village": 0.55,
+        "town": 0.3
+      },
+      "roadAccess": 0.74
+    }
+  },
+  {
+    "id": "core:rainforest",
+    "code": 16,
+    "name": "Rainforest",
+    "family": "forest",
+    "color": "#1f5a36",
+    "accent": "#49a96c",
+    "description": "Hot humid closed-canopy forest with very high biomass.",
+    "movementCost": 3,
+    "roadCost": 5,
+    "occurrence": 0.34,
+    "latitude": {
+      "min": 0.28,
+      "max": 0.72
+    },
+    "elevation": {
+      "min": 0.44,
+      "max": 0.68
+    },
+    "temperature": {
+      "min": 0.62,
+      "max": 0.92
+    },
+    "moisture": {
+      "min": 0.76,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["tropical", "canopy", "riverine"],
+      "iconicSpecies": ["jaguar", "parrot", "gorilla"],
+      "abundance": 0.95
+    },
+    "settlement": {
+      "suitability": 0.3,
+      "roleWeights": {
+        "village": 0.28,
+        "river-port": 0.25
+      },
+      "roadAccess": 0.22
+    }
+  },
+  {
+    "id": "core:marsh",
+    "code": 17,
+    "name": "Marsh",
+    "family": "wetland",
+    "color": "#5a846d",
+    "accent": "#8fb59b",
+    "description": "Flat warm wetland of reeds, peat, and shallow standing water.",
+    "movementCost": 4,
+    "roadCost": 7,
+    "occurrence": 0.26,
+    "latitude": {
+      "min": 0.12,
+      "max": 0.82
+    },
+    "elevation": {
+      "min": 0.42,
+      "max": 0.58
+    },
+    "temperature": {
+      "min": 0.42,
+      "max": 0.9
+    },
+    "moisture": {
+      "min": 0.82,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["marsh", "amphibious"],
+      "iconicSpecies": ["egret", "alligator", "frog"],
+      "abundance": 0.91
+    },
+    "settlement": {
+      "suitability": 0.12,
+      "roleWeights": {
+        "stilt-town": 0.4,
+        "camp": 0.25
+      },
+      "roadAccess": 0.1
+    }
+  },
+  {
+    "id": "core:plateau",
+    "code": 18,
+    "name": "Plateau",
+    "family": "upland",
+    "color": "#9b8560",
+    "accent": "#d5b080",
+    "description": "High flat-topped country with abrupt scarps and broad tablelands.",
+    "movementCost": 2,
+    "roadCost": 3,
+    "occurrence": 0.44,
+    "latitude": {
+      "min": 0.08,
+      "max": 0.86
+    },
+    "elevation": {
+      "min": 0.66,
+      "max": 0.82
+    },
+    "temperature": {
+      "min": 0.18,
+      "max": 0.76
+    },
+    "moisture": {
+      "min": 0.1,
+      "max": 0.68
+    },
+    "creatures": {
+      "habitatTags": ["tableland", "steppe-upland"],
+      "iconicSpecies": ["condor", "ibex", "steppe-wolf"],
+      "abundance": 0.46
+    },
+    "settlement": {
+      "suitability": 0.42,
+      "roleWeights": {
+        "fort": 0.3,
+        "village": 0.25,
+        "town": 0.18
+      },
+      "roadAccess": 0.42
+    }
+  },
+  {
+    "id": "core:canyon",
+    "code": 19,
+    "name": "Canyonlands",
+    "family": "upland",
+    "color": "#9e6547",
+    "accent": "#d28f64",
+    "description": "Deeply incised dry terrain of mesas, buttes, and gorge walls.",
+    "movementCost": 4,
+    "roadCost": 8,
+    "occurrence": 0.22,
+    "latitude": {
+      "min": 0.12,
+      "max": 0.72
+    },
+    "elevation": {
+      "min": 0.5,
+      "max": 0.78
+    },
+    "temperature": {
+      "min": 0.28,
+      "max": 0.86
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 0.46
+    },
+    "creatures": {
+      "habitatTags": ["canyon", "rocky-arid"],
+      "iconicSpecies": ["vulture", "bighorn-sheep", "lizard"],
+      "abundance": 0.33
+    },
+    "settlement": {
+      "suitability": 0.08,
+      "roleWeights": {
+        "fort": 0.2,
+        "mine": 0.4
+      },
+      "roadAccess": 0.06
+    }
+  },
+  {
+    "id": "core:reef",
+    "code": 20,
+    "name": "Coral Reef",
+    "family": "coast",
+    "color": "#49b7c2",
+    "accent": "#9fe8e7",
+    "description": "Warm shallow marine shelf with coral structures and lagoons.",
+    "movementCost": 8,
+    "roadCost": 999,
+    "occurrence": 0.12,
+    "latitude": {
+      "min": 0.3,
+      "max": 0.76
+    },
+    "elevation": {
+      "min": 0.34,
+      "max": 0.44
+    },
+    "temperature": {
+      "min": 0.66,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["reef", "lagoon"],
+      "iconicSpecies": ["parrotfish", "ray", "reef-shark"],
+      "abundance": 0.97
+    },
+    "settlement": {
+      "suitability": 0.0,
+      "roleWeights": {},
+      "roadAccess": 0.0
+    }
+  },
+  {
+    "id": "core:oasis",
+    "code": 21,
+    "name": "Oasis",
+    "family": "wetland",
+    "color": "#3f8f63",
+    "accent": "#9cdfad",
+    "description": "Rare desert water pocket supporting palms, gardens, and rest stops.",
+    "movementCost": 1,
+    "roadCost": 2,
+    "occurrence": 0.08,
+    "latitude": {
+      "min": 0.12,
+      "max": 0.64
+    },
+    "elevation": {
+      "min": 0.44,
+      "max": 0.66
+    },
+    "temperature": {
+      "min": 0.6,
+      "max": 0.96
+    },
+    "moisture": {
+      "min": 0.38,
+      "max": 0.7
+    },
+    "creatures": {
+      "habitatTags": ["desert-water", "riparian"],
+      "iconicSpecies": ["gazelle", "date-bat", "ibis"],
+      "abundance": 0.59
+    },
+    "settlement": {
+      "suitability": 0.88,
+      "roleWeights": {
+        "oasis": 1.0,
+        "camp": 0.65,
+        "town": 0.2
+      },
+      "roadAccess": 0.72
+    }
+  },
+  {
+    "id": "core:volcano",
+    "code": 22,
+    "name": "Volcanic Field",
+    "family": "volcanic",
+    "color": "#5f5049",
+    "accent": "#b36b41",
+    "description": "Young volcanic cone, caldera rim, or ash-darkened lava country.",
+    "movementCost": 5,
+    "roadCost": 8,
+    "occurrence": 0.1,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.7,
+      "max": 0.96
+    },
+    "temperature": {
+      "min": 0.1,
+      "max": 0.9
+    },
+    "moisture": {
+      "min": 0.0,
+      "max": 0.78
+    },
+    "creatures": {
+      "habitatTags": ["volcanic", "ash"],
+      "iconicSpecies": ["fire-lizard", "goat", "condor"],
+      "abundance": 0.18
+    },
+    "settlement": {
+      "suitability": 0.06,
+      "roleWeights": {
+        "mine": 0.35,
+        "watchpost": 0.45
+      },
+      "roadAccess": 0.08
+    }
+  },
+  {
+    "id": "core:glacier",
+    "code": 23,
+    "name": "Glacier",
+    "family": "cryosphere",
+    "color": "#b8d8e8",
+    "accent": "#eef9ff",
+    "description": "Moving or persistent land ice descending from high cold accumulation zones.",
+    "movementCost": 6,
+    "roadCost": 999,
+    "occurrence": 0.14,
+    "latitude": {
+      "min": 0.0,
+      "max": 0.3
+    },
+    "elevation": {
+      "min": 0.78,
+      "max": 1.0
+    },
+    "temperature": {
+      "min": 0.0,
+      "max": 0.28
+    },
+    "moisture": {
+      "min": 0.52,
+      "max": 1.0
+    },
+    "creatures": {
+      "habitatTags": ["ice", "nival"],
+      "iconicSpecies": ["seal", "snow-fox", "ice-gull"],
+      "abundance": 0.12
+    },
+    "settlement": {
+      "suitability": 0.0,
+      "roleWeights": {},
+      "roadAccess": 0.0
+    }
   }
 ]
