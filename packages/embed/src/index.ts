@@ -9,9 +9,21 @@ import type {
   EquipmentPoolDefinition,
   EquipmentSlotDefinition,
   GameHandle,
+  I18nCatalog,
+  LanguageOption,
+  LocaleCode,
   MapAreaDefinition,
   MountGameOptions,
   WorldDefinition,
+} from '@alohayo/config'
+import {
+  formatI18n,
+  getI18nCatalog,
+  LANGUAGE_OPTIONS,
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  translateContentDescription,
+  translateContentName,
 } from '@alohayo/config'
 
 const areaModules = import.meta.glob('../../../content/maps/**/areas/*.json', {
@@ -71,8 +83,21 @@ export type {
   ContentPackManifest,
   EntityDefinition,
   GameHandle,
+  I18nCatalog,
+  LanguageOption,
+  LocaleCode,
   MapAreaDefinition,
   MountGameOptions,
   WorldDefinition,
   WorldManifest,
 } from '@alohayo/config'
+
+export {
+  formatI18n,
+  getI18nCatalog,
+  LANGUAGE_OPTIONS,
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  translateContentDescription,
+  translateContentName,
+}

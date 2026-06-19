@@ -9,24 +9,33 @@
   <body>
     <main class="shell">
       <header>
-        <p class="eyebrow">Alohayo World / v0.1.0-demo</p>
-        <h1>A vivid world from one small seed.</h1>
-        <p>Stream an infinite local world. Nothing leaves your browser.</p>
+        <div class="launch-row">
+          <label for="language" id="language-label">Language</label>
+          <div aria-labelledby="language-label">
+            <button id="language-en" type="button" class="secondary">English</button>
+            <button id="language-zh-CN" type="button" class="secondary">中文</button>
+          </div>
+        </div>
+        <p class="eyebrow" id="eyebrow">Alohayo World / v0.1.0-demo</p>
+        <h1 id="hero-title">A vivid world from one small seed.</h1>
+        <p id="hero-description">Stream an infinite local world. Nothing leaves your browser.</p>
       </header>
       <form id="launcher">
-        <label for="seed">World seed</label>
+        <label for="seed" id="seed-label">World seed</label>
         <div class="launch-row">
           <input id="seed" name="seed" maxlength="64" value="alohayo" />
           <button id="map-size" type="button" class="secondary">
             Frontier · 512×384 / Enlarge
           </button>
-          <button type="submit">Enter the world</button>
+          <button id="submit-button" type="submit">Enter the world</button>
         </div>
       </form>
       <section id="game" aria-live="polite">
-        <div class="placeholder">The renderer, worker, and world data load on demand.</div>
+        <div id="placeholder" class="placeholder">
+          The renderer, worker, and world data load on demand.
+        </div>
       </section>
-      <footer>
+      <footer id="footer-copy">
         WASD/arrows walk. Hold Shift to run. E/Space acts. Drag pans the camera. Scroll zooms. The
         minimap fills as you discover chunks.
       </footer>

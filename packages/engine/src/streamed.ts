@@ -11,10 +11,18 @@ import {
 import type {
   BiomeDefinition,
   CharacterContentDefinition,
+  LocaleCode,
   GameHandle,
   MapAreaDefinition,
   MountGameOptions,
   WorldDefinition,
+} from '@alohayo/config'
+import {
+  formatI18n,
+  getI18nCatalog,
+  normalizeLocale,
+  translateContentDescription,
+  translateContentName,
 } from '@alohayo/config'
 import {
   CHUNK_REGION,
@@ -47,6 +55,23 @@ interface ChunkView {
 interface RpcPending {
   resolve: (value: GeneratedChunk) => void
   reject: (reason?: unknown) => void
+}
+
+interface DevPanelControls {
+  panel: HTMLDivElement
+  heading: HTMLDivElement
+  battleShadowLabel: HTMLLabelElement
+  fastMoveLabel: HTMLLabelElement
+  teleportX: HTMLInputElement
+  teleportY: HTMLInputElement
+  teleportButton: HTMLButtonElement
+  slotSelect: HTMLSelectElement
+  itemSelect: HTMLSelectElement
+  applyGearButton: HTMLButtonElement
+  note: HTMLParagraphElement
+  fastMoveToggle: HTMLInputElement
+  fillEquipmentOptions: () => void
+  fillItemOptions: () => void
 }
 
 const REGION_NAME: Record<number, string> = {
@@ -153,7 +178,7 @@ export async function createGame(
   const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
   const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
-    text: 'Surveying streamed world...',
+    text: 'Surveying...',
     style: { fill: '#d8f3ff', fontFamily: 'monospace', fontSize: 13 },
   })
   status.position.set(14, 12)
@@ -184,6 +209,9 @@ export async function createGame(
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
   const devMode = Boolean(options.devMode)
+  let locale: LocaleCode = normalizeLocale(
+    options.locale ?? window.localStorage.getItem('alohayo-world:locale')
+  )
   let devFastMove = false
   let devBattleShadow = devMode
   const chunkSize = content.world.chunkSize
@@ -220,6 +248,32 @@ export async function createGame(
   )
   const worldSeed = options.initialWorld?.seed?.trim() || content.world.defaultSeed
   window.localStorage.setItem('alohayo-world:last-seed', worldSeed)
+  window.localStorage.setItem('alohayo-world:locale', locale)
+
+  const catalog = () => getI18nCatalog(locale)
+  const uiText = (key: string) => catalog().ui[key] ?? key
+  const devText = (key: string) => catalog().devPanel[key] ?? key
+  const actionText = (key: string) => catalog().actions[key] ?? key
+  const translateBiomeName = (biome: BiomeDefinition) =>
+    translateContentName(locale, 'biomes', biome.id, biome.name)
+  const translateActionName = (actionId: string, fallback: string) =>
+    translateContentName(locale, 'actions', actionId, fallback)
+  const translateArchetypeName = (archetypeId: string, fallback: string) =>
+    translateContentName(locale, 'archetypes', archetypeId, fallback)
+  const translateSlotName = (slotId: string, fallback: string) =>
+    translateContentName(locale, 'slots', slotId, fallback)
+  const translateItemName = (itemId: string, fallback: string) =>
+    translateContentName(locale, 'items', itemId, fallback)
+  const translateLandmarkName = (landmarkId: string, fallback: string) =>
+    translateContentName(locale, 'landmarks', landmarkId, fallback)
+  const translateLandmarkDescription = (landmarkId: string, fallback: string) =>
+    translateContentDescription(locale, 'landmarks', landmarkId, fallback)
+  const translatedExplorerName = () =>
+    explorer
+      ? translateArchetypeName(explorer.archetypeId, explorer.name)
+      : catalog().hud.fallbackExplorerName
+  const translatedState = (state: string) => catalog().hud.states[state] ?? state
+  const translatedRegion = (region: string) => catalog().hud.regions[region] ?? region
 
   const updateDetailLevel = () => {
     for (const view of chunkViews.values()) {
@@ -277,6 +331,7 @@ export async function createGame(
     app.canvas.dataset.chunkRadius = String(activeChunkRadius)
     app.canvas.dataset.devMode = devMode ? 'true' : 'false'
     app.canvas.dataset.devFastMove = devFastMove ? 'true' : 'false'
+    app.canvas.dataset.locale = locale
     const centerPixelX = explorerMotion.x * cellSize
     const centerPixelY = explorerMotion.y * cellSize
     const skin = appearanceColor(explorer.appearance.skinTone, 0xc99370)
@@ -746,11 +801,25 @@ export async function createGame(
       status.text = actionMessage
       return
     }
-    status.text = `${devMode ? 'DEV  ' : ''}${explorer?.name ?? 'Explorer'}  seed ${worldSeed}  ${
-      explorerMotion.state
-    }${devFastMove ? ' fast' : ''}  ${chunks.size} loaded  ${discoveredChunks.size} discovered  ${discoveredCells} cells  ${fps}fps  chunk ${lastChunkGenerationMs.toFixed(
-      1
-    )}ms  zoom ${scale.toFixed(2)}x`
+    status.text = formatI18n(catalog().hud.status, {
+      devPrefix: devMode ? `${catalog().hud.devPrefix}  ` : '',
+      explorerName: translatedExplorerName(),
+      seedLabel: catalog().hud.seed,
+      seed: worldSeed,
+      state: translatedState(explorerMotion.state),
+      fastSuffix: devFastMove ? ` ${catalog().hud.fast}` : '',
+      loadedCount: chunks.size,
+      loadedLabel: catalog().hud.loaded,
+      discoveredCount: discoveredChunks.size,
+      discoveredLabel: catalog().hud.discovered,
+      cellsCount: discoveredCells,
+      cellsLabel: catalog().hud.cells,
+      fps,
+      chunkLabel: catalog().hud.chunk,
+      chunkMs: lastChunkGenerationMs.toFixed(1),
+      zoomLabel: catalog().hud.zoom,
+      zoomValue: scale.toFixed(2),
+    })
   }
 
   const revealAroundExplorer = () => {
@@ -796,7 +865,7 @@ export async function createGame(
     const targetX = cellX + 0.5
     const targetY = cellY + 0.5
     if (!canOccupy(targetX, targetY)) {
-      actionMessage = `Cannot teleport to (${cellX}, ${cellY}); terrain is blocked.`
+      actionMessage = formatI18n(devText('teleportBlocked'), { x: cellX, y: cellY })
       actionMessageUntil = performance.now() + 2200
       updateStatus()
       return
@@ -806,12 +875,12 @@ export async function createGame(
     explorerMotion.state = 'idle'
     revealAroundExplorer()
     recenterOnExplorer()
-    actionMessage = `Teleported to (${cellX}, ${cellY}).`
+    actionMessage = formatI18n(devText('teleported'), { x: cellX, y: cellY })
     actionMessageUntil = performance.now() + 1800
     updateStatus()
   }
 
-  const createDevPanel = () => {
+  const createDevPanel = (): DevPanelControls | null => {
     if (!devMode) return null
 
     const panel = document.createElement('div')
@@ -832,7 +901,7 @@ export async function createGame(
     } satisfies Partial<CSSStyleDeclaration>)
 
     const heading = document.createElement('div')
-    heading.textContent = 'Dev Mode'
+    heading.textContent = devText('heading')
     Object.assign(heading.style, {
       fontSize: '12px',
       letterSpacing: '0.14em',
@@ -894,7 +963,7 @@ export async function createGame(
       drawExplorer(performance.now() / 1000)
     })
     const battleShadowLabel = document.createElement('label')
-    battleShadowLabel.textContent = 'Battle shadow'
+    battleShadowLabel.textContent = devText('battleShadow')
     battleShadowLabel.style.flex = '1'
     checkboxRow.append(battleShadowToggle, battleShadowLabel)
 
@@ -906,7 +975,7 @@ export async function createGame(
       updateStatus()
     })
     const fastMoveLabel = document.createElement('label')
-    fastMoveLabel.textContent = 'Fast move'
+    fastMoveLabel.textContent = devText('fastMove')
     fastMoveLabel.style.flex = '1'
     checkboxRow.append(fastMoveToggle, fastMoveLabel)
 
@@ -917,7 +986,7 @@ export async function createGame(
     const teleportY = makeInput('0')
     teleportY.inputMode = 'numeric'
     teleportY.placeholder = 'y'
-    const teleportButton = makeButton('Teleport')
+    const teleportButton = makeButton(devText('teleport'))
     teleportButton.addEventListener('click', () => {
       const nextX = Number.parseInt(teleportX.value, 10)
       const nextY = Number.parseInt(teleportY.value, 10)
@@ -940,7 +1009,7 @@ export async function createGame(
         background: '#0c1e2b',
       } satisfies Partial<CSSStyleDeclaration>)
     }
-    const applyGearButton = makeButton('Equip')
+    const applyGearButton = makeButton(devText('equip'))
     gearRow.append(slotSelect, itemSelect, applyGearButton)
 
     const fillEquipmentOptions = () => {
@@ -950,7 +1019,7 @@ export async function createGame(
         const option = document.createElement('option')
         const slot = slotById.get(equipment.slotId)
         option.value = equipment.slotId
-        option.textContent = slot?.name ?? equipment.slotId
+        option.textContent = translateSlotName(equipment.slotId, slot?.name ?? equipment.slotId)
         slotSelect.appendChild(option)
       }
     }
@@ -960,13 +1029,13 @@ export async function createGame(
       const currentSlotId = slotSelect.value
       const emptyOption = document.createElement('option')
       emptyOption.value = ''
-      emptyOption.textContent = 'Unequip'
+      emptyOption.textContent = devText('unequip')
       itemSelect.appendChild(emptyOption)
       for (const item of content.characters.items) {
         if (!item.allowedSlots.includes(currentSlotId)) continue
         const option = document.createElement('option')
         option.value = item.id
-        option.textContent = item.name
+        option.textContent = translateItemName(item.id, item.name)
         itemSelect.appendChild(option)
       }
       const selected = explorer?.equipment.find((entry) => entry.slotId === currentSlotId)
@@ -982,7 +1051,10 @@ export async function createGame(
       selected.itemId = itemSelect.value || null
       const slot = slotById.get(currentSlotId)
       if (slot?.kind === 'weapon' && selected.itemId) explorer.activeWeaponSlot = currentSlotId
-      actionMessage = `${slot?.name ?? currentSlotId} set to ${itemSelect.selectedOptions[0]?.textContent ?? 'Unequip'}.`
+      actionMessage = formatI18n(devText('equipmentSet'), {
+        slotName: translateSlotName(currentSlotId, slot?.name ?? currentSlotId),
+        itemName: itemSelect.selectedOptions[0]?.textContent ?? devText('unequip'),
+      })
       actionMessageUntil = performance.now() + 1800
       updateStatus()
       drawExplorer(performance.now() / 1000)
@@ -992,7 +1064,7 @@ export async function createGame(
     fillItemOptions()
 
     const note = document.createElement('p')
-    note.textContent = 'Shift-click teleports. F toggles fast move.'
+    note.textContent = devText('note')
     Object.assign(note.style, {
       margin: '2px 0 0',
       fontSize: '11px',
@@ -1000,7 +1072,34 @@ export async function createGame(
     } satisfies Partial<CSSStyleDeclaration>)
     panel.appendChild(note)
 
-    return { panel, teleportX, teleportY, fastMoveToggle }
+    return {
+      panel,
+      heading,
+      battleShadowLabel,
+      fastMoveLabel,
+      teleportX,
+      teleportY,
+      teleportButton,
+      slotSelect,
+      itemSelect,
+      applyGearButton,
+      note,
+      fastMoveToggle,
+      fillEquipmentOptions,
+      fillItemOptions,
+    }
+  }
+
+  const renderDevPanelLocale = (panel: DevPanelControls | null) => {
+    if (!panel) return
+    panel.heading.textContent = devText('heading')
+    panel.battleShadowLabel.textContent = devText('battleShadow')
+    panel.fastMoveLabel.textContent = devText('fastMove')
+    panel.teleportButton.textContent = devText('teleport')
+    panel.applyGearButton.textContent = devText('equip')
+    panel.note.textContent = devText('note')
+    panel.fillEquipmentOptions()
+    panel.fillItemOptions()
   }
 
   const findSpawn = async () => {
@@ -1029,6 +1128,7 @@ export async function createGame(
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
   const devPanel = createDevPanel()
   if (devPanel) options.container.appendChild(devPanel.panel)
+  renderDevPanelLocale(devPanel)
 
   const surveyPixels = (activeChunkRadius * 2 + 1) * chunkSize * cellSize
   scale = clamp(
@@ -1050,6 +1150,7 @@ export async function createGame(
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
     devPanel.fastMoveToggle.checked = devFastMove
   }
+  status.text = uiText('surveying')
   updateStatus()
 
   const onPointerDown = (event: PointerEvent) => {
@@ -1079,12 +1180,19 @@ export async function createGame(
     const cellY = Math.floor((event.clientY - bounds.top - viewport.y) / scale / cellSize)
     const data = getCellData(cellX, cellY)
     if (!data) {
-      status.text = `Surveying frontier (${cellX}, ${cellY})...`
+      status.text = formatI18n(catalog().hud.surveyingFrontier, { x: cellX, y: cellY })
       return
     }
-    status.text = `${data.biome.name} / ${data.region}${data.areaId ? ` / ${data.areaId}` : ''} (${cellX}, ${cellY})  elevation ${
-      data.chunk.elevation[data.index]
-    }  moisture ${data.chunk.moisture[data.index]}  temperature ${data.chunk.temperature[data.index]}`
+    status.text = formatI18n(catalog().hud.tooltip, {
+      biome: translateBiomeName(data.biome),
+      region: translatedRegion(data.region),
+      areaSuffix: data.areaId ? formatI18n(catalog().hud.areaSuffix, { areaId: data.areaId }) : '',
+      x: cellX,
+      y: cellY,
+      elevation: data.chunk.elevation[data.index]!,
+      moisture: data.chunk.moisture[data.index]!,
+      temperature: data.chunk.temperature[data.index]!,
+    })
   }
 
   const onPointerUp = () => {
@@ -1152,12 +1260,18 @@ export async function createGame(
         nearestDistance = distance
       }
     }
+    const explorerName = translatedExplorerName()
+    const actionName = translateActionName(action.id, action.name)
     actionMessage =
       action.target === 'self'
-        ? `${explorer.name} uses ${action.name}.`
+        ? formatI18n(actionText('selfUse'), { explorerName, actionName })
         : nearest
-          ? `${explorer.name} examines ${nearest.name}: ${nearest.description}`
-          : `${explorer.name} uses ${action.name}, but nothing is within reach.`
+          ? formatI18n(actionText('inspect'), {
+              explorerName,
+              landmarkName: translateLandmarkName(nearest.id, nearest.name),
+              landmarkDescription: translateLandmarkDescription(nearest.id, nearest.description),
+            })
+          : formatI18n(actionText('noTarget'), { explorerName, actionName })
     actionMessageUntil = performance.now() + 2600
     updateStatus()
   }
@@ -1271,6 +1385,16 @@ export async function createGame(
       paused = false
       simulationStarted = performance.now()
       app.ticker.start()
+    },
+    setLocale(nextLocale) {
+      locale = normalizeLocale(nextLocale)
+      window.localStorage.setItem('alohayo-world:locale', locale)
+      actionMessage = ''
+      actionMessageUntil = 0
+      renderDevPanelLocale(devPanel)
+      drawMinimap()
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
     },
     async destroy() {
       if (destroyed) return

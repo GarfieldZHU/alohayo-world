@@ -19,6 +19,9 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - The engine may request chunks opportunistically, but it must tolerate frontier cells
   not being loaded yet and cleanly release evicted chunk display objects.
 - Verify browser-facing changes with E2E tests.
+- HUD, tooltip, and dev-panel strings must resolve through the shared locale helpers.
+- When adding a new visible label, put it in `i18n/` first and then thread the message
+  key or translated content ID through the engine.
 
 - Roads and settlements are renderer consumers of deterministic map output; do not let
   the view invent or mutate transport topology.

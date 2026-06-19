@@ -1,13 +1,31 @@
 import './style.css'
-import type { GameHandle } from '@alohayo/config'
+import {
+  getI18nCatalog,
+  LANGUAGE_OPTIONS,
+  normalizeLocale,
+  translateContentName,
+  type GameHandle,
+  type LocaleCode,
+} from '@alohayo/config'
 
 const form = document.querySelector<HTMLFormElement>('#launcher')!
 const seedInput = document.querySelector<HTMLInputElement>('#seed')!
 const sizeButton = document.querySelector<HTMLButtonElement>('#map-size')!
+const submitButton = document.querySelector<HTMLButtonElement>('#submit-button')!
 const container = document.querySelector<HTMLElement>('#game')!
+const languageLabel = document.querySelector<HTMLElement>('#language-label')!
+const eyebrow = document.querySelector<HTMLElement>('#eyebrow')!
+const heroTitle = document.querySelector<HTMLElement>('#hero-title')!
+const heroDescription = document.querySelector<HTMLElement>('#hero-description')!
+const seedLabel = document.querySelector<HTMLElement>('#seed-label')!
+const placeholder = document.querySelector<HTMLElement>('#placeholder')!
+const footerCopy = document.querySelector<HTMLElement>('#footer-copy')!
+const localeStorageKey = 'alohayo-world:locale'
 let handle: GameHandle | null = null
+let launcherState: 'idle' | 'loading' | 'running' | 'error' = 'idle'
 const sizePresets = [
   {
+    id: 'frontier',
     name: 'Frontier',
     width: 512,
     height: 384,
@@ -16,6 +34,7 @@ const sizePresets = [
     minimapChunkRadius: 6,
   },
   {
+    id: 'expanse',
     name: 'Expanse',
     width: 768,
     height: 576,
@@ -24,6 +43,7 @@ const sizePresets = [
     minimapChunkRadius: 8,
   },
   {
+    id: 'horizon',
     name: 'Horizon',
     width: 1024,
     height: 768,
@@ -33,26 +53,69 @@ const sizePresets = [
   },
 ] as const
 let sizeIndex = 0
+let locale = normalizeLocale(window.localStorage.getItem(localeStorageKey) || navigator.language)
 seedInput.value = window.localStorage.getItem('alohayo-world:last-seed') || 'alohayo'
+
+const catalog = () => getI18nCatalog(locale)
+const uiText = (key: string) => catalog().ui[key] ?? key
+const languageButtons = new Map<LocaleCode, HTMLButtonElement>(
+  LANGUAGE_OPTIONS.map((option) => [
+    option.code,
+    document.querySelector<HTMLButtonElement>(`#language-${option.code}`)!,
+  ])
+)
 
 const updateSizeButton = () => {
   const preset = sizePresets[sizeIndex]!
-  sizeButton.textContent =
+  const presetName = translateContentName(locale, 'worldSizePresets', preset.id, preset.name)
+  const action =
     sizeIndex === sizePresets.length - 1
-      ? `${preset.name} · ${preset.width}×${preset.height} / Maximum`
-      : `${preset.name} · ${preset.width}×${preset.height} / Enlarge`
+      ? catalog().ui.sizeActionMaximum
+      : catalog().ui.sizeActionEnlarge
+  sizeButton.textContent = `${presetName} · ${preset.width}×${preset.height} / ${action}`
+}
+
+const updateLanguageButtons = () => {
+  for (const [code, button] of languageButtons) {
+    button.disabled = code === locale
+    button.textContent = catalog().languageOptions[code]
+  }
+}
+
+const updateLauncherCopy = () => {
+  const messages = catalog()
+  document.documentElement.lang = locale
+  document.title = uiText('gameTitle')
+  languageLabel.textContent = uiText('language')
+  eyebrow.textContent = uiText('eyebrow')
+  heroTitle.textContent = uiText('heroTitle')
+  heroDescription.textContent = uiText('standaloneDescription')
+  seedLabel.textContent = uiText('seedLabel')
+  placeholder.textContent = uiText('standalonePlaceholder')
+  footerCopy.textContent = uiText('footerControlsStandalone')
+  submitButton.textContent =
+    launcherState === 'loading'
+      ? uiText('surveying')
+      : launcherState === 'running'
+        ? uiText('resurvey')
+        : launcherState === 'error'
+          ? uiText('retry')
+          : uiText('enterWorld')
+  updateLanguageButtons()
+  updateSizeButton()
 }
 
 const launch = async () => {
-  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!
-  button.disabled = true
-  button.textContent = 'Surveying...'
+  launcherState = 'loading'
+  submitButton.disabled = true
+  submitButton.textContent = uiText('surveying')
   await handle?.destroy()
   try {
     const { mountGame } = await import('@alohayo/embed')
     const preset = sizePresets[sizeIndex]!
     handle = await mountGame({
       container,
+      locale,
       initialWorld: {
         seed: seedInput.value.trim() || 'alohayo',
         width: preset.width,
@@ -62,12 +125,14 @@ const launch = async () => {
         minimapChunkRadius: preset.minimapChunkRadius,
       },
     })
-    button.textContent = 'Resurvey'
+    launcherState = 'running'
+    submitButton.textContent = uiText('resurvey')
   } catch (error) {
-    container.textContent = error instanceof Error ? error.message : 'Unable to start the world'
-    button.textContent = 'Retry'
+    container.textContent = error instanceof Error ? error.message : uiText('gameStartErrorStandalone')
+    launcherState = 'error'
+    submitButton.textContent = uiText('retry')
   } finally {
-    button.disabled = false
+    submitButton.disabled = false
   }
 }
 
@@ -82,4 +147,16 @@ form.addEventListener('submit', async (event) => {
   await launch()
 })
 
-updateSizeButton()
+for (const [code, button] of languageButtons) {
+  button.addEventListener('click', async () => {
+    locale = code
+    window.localStorage.setItem(localeStorageKey, code)
+    updateLauncherCopy()
+    if (handle) {
+      handle.setLocale?.(code)
+      if (!handle.setLocale) await launch()
+    }
+  })
+}
+
+updateLauncherCopy()

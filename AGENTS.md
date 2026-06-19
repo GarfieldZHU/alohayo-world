@@ -56,6 +56,18 @@ renderer.
 - New maps, terrain definitions, entities, and gameplay modes begin as data schemas and
   registries before bespoke code.
 
+## I18n Priority
+
+- Any new player-visible string must be added to the repository `i18n/` catalogs before
+  it is referenced from UI code.
+- English and Simplified Chinese are first-class locales. New work must preserve both.
+- Launcher UI, HUD text, dev panels, diagnostics, tooltips, and content-derived labels
+  should resolve through locale helpers keyed by stable IDs or stable message keys.
+- When a content entry is visible in the UI, prefer translating by the content ID rather
+  than duplicating raw display strings in runtime code.
+- Locale support must stay additive: adding a new language should mean adding a catalog
+  file and wiring it into the locale registry, not rewriting feature code.
+
 ## Common Change Recipes
 
 ### Add or change terrain
@@ -114,6 +126,15 @@ renderer.
    contracts so test behavior stays representative.
 4. Document the activation path and safety boundary in `docs/GAMEPLAY.md` and roadmap/issue
    notes before implementation.
+
+### Add or change visible UI text
+
+1. Add or update the message in `i18n/en.json` and `i18n/zh-CN.json`.
+2. If the text comes from content, translate it by stable content ID through the shared
+   i18n helpers.
+3. Only after the catalog exists should runtime UI code reference the message key.
+4. Verify both locales in the standalone app and the blog embed when the change affects
+   launcher or HUD surfaces.
 
 ### Change the embed contract
 
@@ -187,9 +208,9 @@ Released: `v0.1.0-demo`, published through GitHub Pages and embedded at
 `https://alohayo.me/game`.
 
 Active: `v0.2.0-world-foundation`. Current work expands geographic classification,
-world topology, scalable map sizes, streamed chunks, and agent-readable module plans.
-The next runtime priority after the active streamed-world slice is seam-safe global
-topology merging plus drainage and rivers.
+world topology, scalable map sizes, streamed chunks, i18n-first UI plumbing, and
+agent-readable module plans. The next runtime priority after the active streamed-world
+slice is seam-safe global topology merging plus drainage and rivers.
 
 Known boundary: the Rust crate defines and tests portable deterministic primitives, but
 the active browser generator is TypeScript until the worker-side Wasm loader and parity

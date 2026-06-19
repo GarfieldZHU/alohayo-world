@@ -7,3 +7,5 @@ This package owns public contracts. Changes have the widest compatibility cost.
 - Use namespaced stable IDs and explicit schema versions.
 - Mirror runtime constraints in content validation.
 - Update `docs/CONTENT_GUIDE.md`, examples, and contract tests with every schema change.
+- Locale IDs, supported-language registries, and translation helper signatures belong
+  here when they affect public runtime integration.

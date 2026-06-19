@@ -1,0 +1,212 @@
+{
+  "locale": "zh-CN",
+  "languageLabel": "中文",
+  "languageOptions": {
+    "en": "English",
+    "zh-CN": "中文"
+  },
+  "ui": {
+    "gameTitle": "Alohayo World",
+    "eyebrow": "Alohayo World / v0.1.0-demo",
+    "heroTitle": "一枚小小种子，展开一整个鲜活世界。",
+    "heroDescription": "生成一张地理世界图谱，探索不同生态地貌，并查看每个地格背后的气候数据。世界会按区块持续流式生成，偏好仅保存在本地，而且在你真正进入之前不会加载引擎或地图资源。游戏模式会让镜头跟随主角；开发模式则解锁调试控制。",
+    "standaloneDescription": "流式生成一个无限延展的本地世界。没有任何数据会离开你的浏览器。",
+    "seedLabel": "世界种子",
+    "enterWorld": "进入世界",
+    "resurvey": "重新勘测",
+    "surveying": "勘测中...",
+    "retry": "重试",
+    "placeholder": "PixiJS、生成 Worker、内容定义和地形资源都在按钮后按需等待加载。",
+    "standalonePlaceholder": "渲染器、Worker 与世界数据都会按需加载。",
+    "devMode": "开发模式",
+    "devModeEnabled": "已启用战斗阴影、快速移动、Shift 点击传送、自由镜头、缩放与装备测试。",
+    "developerToolingEnabled": "开发工具已启用",
+    "rendererChecking": "正在检查渲染器...",
+    "rendererReady": "WebGL2 已就绪",
+    "rendererFallback": "使用 Canvas 回退",
+    "localOnly": "数据仅保存在本地",
+    "onDemandLoading": "按需加载",
+    "infiniteWorld": "无限区块、小地图与探索迷雾",
+    "footerControls": "WASD 或方向键移动，按住 Shift 奔跑，E 或空格执行动作。游戏模式下镜头会跟随主角且缩放锁定。随着探索推进，小地图会逐步点亮。",
+    "footerControlsStandalone": "WASD 或方向键移动，按住 Shift 奔跑，E 或空格执行动作。拖拽可平移镜头，滚轮可缩放。随着探索推进，小地图会逐步点亮区块。",
+    "footerControlsDev": "开发模式下可拖拽平移镜头、滚轮缩放、按 F 切换快速移动、Shift 点击传送，并通过游戏内面板覆盖装备。",
+    "language": "语言",
+    "sizeActionEnlarge": "扩大",
+    "sizeActionMaximum": "最大",
+    "gameStartError": "世界启动失败。",
+    "gameStartErrorStandalone": "无法启动世界"
+  },
+  "hud": {
+    "devPrefix": "开发",
+    "fallbackExplorerName": "探索者",
+    "seed": "种子",
+    "loaded": "已加载",
+    "discovered": "已发现",
+    "cells": "地格",
+    "chunk": "区块",
+    "zoom": "缩放",
+    "fast": "快速",
+    "surveyingFrontier": "正在勘测边疆 ({x}, {y})...",
+    "tooltip": "{biome} / {region}{areaSuffix} ({x}, {y})  海拔 {elevation}  湿度 {moisture}  温度 {temperature}",
+    "areaSuffix": " / {areaId}",
+    "status": "{devPrefix}{explorerName}  {seedLabel} {seed}  {state}{fastSuffix}  {loadedCount} {loadedLabel}  {discoveredCount} {discoveredLabel}  {cellsCount} {cellsLabel}  {fps}fps  {chunkLabel} {chunkMs}ms  {zoomLabel} {zoomValue}x",
+    "regions": {
+      "sea": "海域",
+      "lake": "湖泊",
+      "mainland": "大陆",
+      "island": "岛屿"
+    },
+    "states": {
+      "idle": "待机",
+      "walk": "步行",
+      "run": "奔跑",
+      "action": "动作中"
+    }
+  },
+  "devPanel": {
+    "heading": "开发模式",
+    "battleShadow": "战斗阴影",
+    "fastMove": "快速移动",
+    "teleport": "传送",
+    "equip": "装备",
+    "unequip": "卸下",
+    "note": "Shift 点击可传送，按 F 可切换快速移动。",
+    "teleportBlocked": "无法传送到 ({x}, {y})；该地形不可通行。",
+    "teleported": "已传送到 ({x}, {y})。",
+    "equipmentSet": "{slotName} 已设置为 {itemName}。"
+  },
+  "actions": {
+    "selfUse": "{explorerName} 使用了 {actionName}。",
+    "inspect": "{explorerName} 查看了 {landmarkName}：{landmarkDescription}",
+    "noTarget": "{explorerName} 使用了 {actionName}，但周围没有可交互目标。"
+  },
+  "content": {
+    "worldSizePresets": {
+      "frontier": { "name": "边疆" },
+      "expanse": { "name": "辽原" },
+      "horizon": { "name": "天际" }
+    },
+    "biomes": {
+      "core:deep-ocean": { "name": "深海", "description": "远离大陆架的深层海水。" },
+      "core:ocean": { "name": "远洋", "description": "超出大陆架范围、适合航行的开阔海域。" },
+      "core:shallow-sea": { "name": "浅海", "description": "接近陆地、阳光能够照入的陆架海域。" },
+      "core:coast": { "name": "海岸", "description": "海滩、潮间带、沙洲与紧邻海岸的边缘地带。" },
+      "core:lake": { "name": "湖泊", "description": "与世界边缘海洋不相连的内陆水体。" },
+      "core:lowland": { "name": "低地平原", "description": "起伏较小、适合耕作和修路的大陆平原。" },
+      "core:grassland": { "name": "草原", "description": "开阔的温带草地与起伏缓和的大草原。" },
+      "core:forest": { "name": "森林", "description": "湿润而茂密的林地与混交林。" },
+      "core:desert": { "name": "沙漠", "description": "炎热干旱、植被稀少并伴有流动沙丘的地带。" },
+      "core:wetland": {
+        "name": "湿地",
+        "description": "位于湖岸、泛滥平原和回水洼地附近的低洼饱和地带。"
+      },
+      "core:highland": {
+        "name": "高地",
+        "description": "介于平原与高山之间、海拔较高且地势破碎的隆起地。"
+      },
+      "core:bare-rock": { "name": "裸岩", "description": "岩基裸露、碎石遍布且偏干燥的坡地。" },
+      "core:mountain": {
+        "name": "高山",
+        "description": "地势极高、坡陡岭峻并伴随山口的崎岖地形。"
+      },
+      "core:snow": { "name": "雪原", "description": "被季节性或常年积雪覆盖的高寒地带。" },
+      "core:tundra": {
+        "name": "苔原",
+        "description": "位于高纬或高海拔边缘、缺乏树木的寒冷地表。"
+      },
+      "core:savanna": {
+        "name": "稀树草原",
+        "description": "温暖季节性明显、散布稀疏树木的草原地带。"
+      },
+      "core:rainforest": {
+        "name": "雨林",
+        "description": "炎热潮湿、林冠封闭且生物量极高的森林。"
+      },
+      "core:marsh": { "name": "沼泽", "description": "芦苇、泥炭与浅层积水构成的平坦暖湿地。" },
+      "core:plateau": { "name": "高原", "description": "顶部相对平坦、边缘陡落的大型台地地貌。" },
+      "core:canyon": {
+        "name": "峡谷荒原",
+        "description": "被深切侵蚀的干旱地形，常见台地、孤丘与峡壁。"
+      },
+      "core:reef": { "name": "珊瑚礁", "description": "温暖浅海中的珊瑚结构与环礁泻湖环境。" },
+      "core:oasis": {
+        "name": "绿洲",
+        "description": "沙漠中罕见的水源口袋，可支撑棕榈、花园与补给点。"
+      },
+      "core:volcano": {
+        "name": "火山地",
+        "description": "年轻火山锥、破火山口边缘或被火山灰覆盖的熔岩地带。"
+      },
+      "core:glacier": {
+        "name": "冰川",
+        "description": "从高寒积雪区缓慢下移或常年存在的陆地冰体。"
+      }
+    },
+    "actions": {
+      "core:interact": { "name": "交互", "description": "查看或使用最近且可达的地标。" },
+      "core:ready": { "name": "备战", "description": "短暂整理当前装备而不指定目标。" }
+    },
+    "slots": {
+      "wear:head": { "name": "头部" },
+      "wear:face": { "name": "面部" },
+      "wear:torso": { "name": "上身" },
+      "wear:outer": { "name": "外套" },
+      "wear:hands": { "name": "双手" },
+      "wear:waist": { "name": "腰部" },
+      "wear:legs": { "name": "下装" },
+      "wear:feet": { "name": "足部" },
+      "decor:ears": { "name": "耳饰" },
+      "decor:neck": { "name": "颈部" },
+      "decor:wrist-left": { "name": "左手腕" },
+      "decor:wrist-right": { "name": "右手腕" },
+      "decor:finger-left": { "name": "左手戒指" },
+      "decor:finger-right": { "name": "右手戒指" },
+      "weapon:primary": { "name": "主武器" },
+      "weapon:secondary": { "name": "副武器" },
+      "weapon:ranged": { "name": "远程武器" },
+      "weapon:utility": { "name": "工具武器" }
+    },
+    "items": {
+      "core:wayfinder-cap": { "name": "寻路者便帽" },
+      "core:linen-shirt": { "name": "亚麻衬衫" },
+      "core:trail-coat": { "name": "旅途外套" },
+      "core:work-gloves": { "name": "工装手套" },
+      "core:utility-belt": { "name": "工具腰带" },
+      "core:travel-pants": { "name": "旅行长裤" },
+      "core:trail-boots": { "name": "旅靴" },
+      "core:round-glasses": { "name": "圆框眼镜" },
+      "core:beacon-pendant": { "name": "灯塔吊坠" },
+      "core:copper-earring": { "name": "铜耳坠" },
+      "core:field-watch": { "name": "野外腕表" },
+      "core:plain-ring": { "name": "素戒" },
+      "core:walking-staff": { "name": "步行杖" },
+      "core:short-blade": { "name": "短刃" },
+      "core:hunting-bow": { "name": "猎弓" },
+      "core:field-hatchet": { "name": "野外手斧" }
+    },
+    "archetypes": {
+      "core:explorer": {
+        "name": "寻路者",
+        "description": "首个可玩角色使用的均衡型可配置探索者。"
+      },
+      "core:beacon-keeper": {
+        "name": "灯塔守望者",
+        "description": "一个定制区域 NPC，证明 NPC 与玩家共享同一套能力、外观和装备系统。"
+      },
+      "core:shore-raider": {
+        "name": "岸袭者",
+        "description": "一个敌对原型，用于证明敌人也共享完整角色系统。"
+      }
+    },
+    "landmarks": {
+      "core:wayfinder-isle": {
+        "name": "寻路者之岛",
+        "description": "一座展示可复用地形补丁与地标的定制小岛。"
+      },
+      "core:wayfinder-beacon": {
+        "name": "寻路者灯塔",
+        "description": "立于岛屿高点、饱经风霜的信号塔。"
+      }
+    }
+  }
+}

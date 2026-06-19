@@ -1,0 +1,257 @@
+{
+  "locale": "en",
+  "languageLabel": "English",
+  "languageOptions": {
+    "en": "English",
+    "zh-CN": "中文"
+  },
+  "ui": {
+    "gameTitle": "Alohayo World",
+    "eyebrow": "Alohayo World / v0.1.0-demo",
+    "heroTitle": "A vivid world from one small seed.",
+    "heroDescription": "Generate a geography atlas, explore its biomes, and inspect the climate beneath every cell. The world streams in chunk by chunk, stores preferences locally, and loads no engine or map resources until you enter. Game mode keeps the camera centered on the explorer; dev mode unlocks survey controls.",
+    "standaloneDescription": "Stream an infinite local world. Nothing leaves your browser.",
+    "seedLabel": "World seed",
+    "enterWorld": "Enter the world",
+    "resurvey": "Resurvey",
+    "surveying": "Surveying...",
+    "retry": "Retry",
+    "placeholder": "PixiJS, the generation worker, content definitions, and terrain resources are waiting behind the button.",
+    "standalonePlaceholder": "The renderer, worker, and world data load on demand.",
+    "devMode": "Dev mode",
+    "devModeEnabled": "Battle shadow, fast move, shift-click teleport, free camera, zoom, and equipment testing are enabled.",
+    "developerToolingEnabled": "Developer tooling enabled",
+    "rendererChecking": "Checking renderer...",
+    "rendererReady": "WebGL2 ready",
+    "rendererFallback": "Canvas fallback",
+    "localOnly": "Local-only data",
+    "onDemandLoading": "On-demand loading",
+    "infiniteWorld": "Infinite chunks, minimap, and discovery",
+    "footerControls": "WASD or arrows walk. Hold Shift to run. E or Space acts. In game mode, the camera follows the explorer and zoom stays locked. The minimap fills as you discover the world.",
+    "footerControlsStandalone": "WASD or arrows walk. Hold Shift to run. E or Space acts. Drag pans the camera. Scroll zooms. The minimap fills as you discover chunks.",
+    "footerControlsDev": "In dev mode, drag pans the camera, scroll zooms, press F for fast move, shift-click teleports, and the in-game panel exposes equipment overrides.",
+    "language": "Language",
+    "sizeActionEnlarge": "Enlarge",
+    "sizeActionMaximum": "Maximum",
+    "gameStartError": "The world could not be started.",
+    "gameStartErrorStandalone": "Unable to start the world"
+  },
+  "hud": {
+    "devPrefix": "DEV",
+    "fallbackExplorerName": "Explorer",
+    "seed": "seed",
+    "loaded": "loaded",
+    "discovered": "discovered",
+    "cells": "cells",
+    "chunk": "chunk",
+    "zoom": "zoom",
+    "fast": "fast",
+    "surveyingFrontier": "Surveying frontier ({x}, {y})...",
+    "tooltip": "{biome} / {region}{areaSuffix} ({x}, {y})  elevation {elevation}  moisture {moisture}  temperature {temperature}",
+    "areaSuffix": " / {areaId}",
+    "status": "{devPrefix}{explorerName}  {seedLabel} {seed}  {state}{fastSuffix}  {loadedCount} {loadedLabel}  {discoveredCount} {discoveredLabel}  {cellsCount} {cellsLabel}  {fps}fps  {chunkLabel} {chunkMs}ms  {zoomLabel} {zoomValue}x",
+    "regions": {
+      "sea": "sea",
+      "lake": "lake",
+      "mainland": "mainland",
+      "island": "island"
+    },
+    "states": {
+      "idle": "idle",
+      "walk": "walk",
+      "run": "run",
+      "action": "action"
+    }
+  },
+  "devPanel": {
+    "heading": "Dev Mode",
+    "battleShadow": "Battle shadow",
+    "fastMove": "Fast move",
+    "teleport": "Teleport",
+    "equip": "Equip",
+    "unequip": "Unequip",
+    "note": "Shift-click teleports. F toggles fast move.",
+    "teleportBlocked": "Cannot teleport to ({x}, {y}); terrain is blocked.",
+    "teleported": "Teleported to ({x}, {y}).",
+    "equipmentSet": "{slotName} set to {itemName}."
+  },
+  "actions": {
+    "selfUse": "{explorerName} uses {actionName}.",
+    "inspect": "{explorerName} examines {landmarkName}: {landmarkDescription}",
+    "noTarget": "{explorerName} uses {actionName}, but nothing is within reach."
+  },
+  "content": {
+    "worldSizePresets": {
+      "frontier": { "name": "Frontier" },
+      "expanse": { "name": "Expanse" },
+      "horizon": { "name": "Horizon" }
+    },
+    "biomes": {
+      "core:deep-ocean": {
+        "name": "Deep Ocean",
+        "description": "Abyssal water far from continental shelves."
+      },
+      "core:ocean": {
+        "name": "Open Ocean",
+        "description": "Open navigable sea beyond the continental shelf."
+      },
+      "core:shallow-sea": {
+        "name": "Shallow Sea",
+        "description": "Sunlit shelf water approaching land."
+      },
+      "core:coast": {
+        "name": "Coast",
+        "description": "Beaches, tidal margins, barrier strands, and immediate shore."
+      },
+      "core:lake": {
+        "name": "Lake",
+        "description": "An inland waterbody disconnected from the world edge."
+      },
+      "core:lowland": {
+        "name": "Lowland Plain",
+        "description": "Low-relief continental plain suited to farming and roads."
+      },
+      "core:grassland": {
+        "name": "Grassland",
+        "description": "Open temperate grass country and rolling prairie."
+      },
+      "core:forest": { "name": "Forest", "description": "Dense moist woodland and mixed forest." },
+      "core:desert": {
+        "name": "Desert",
+        "description": "Hot arid terrain with sparse vegetation and shifting sands."
+      },
+      "core:wetland": {
+        "name": "Wetland",
+        "description": "Low saturated ground near lakeshores, floodplains, and backswamps."
+      },
+      "core:highland": {
+        "name": "Highland",
+        "description": "Elevated broken upland between plains and major mountains."
+      },
+      "core:bare-rock": {
+        "name": "Bare Rock",
+        "description": "Exposed bedrock, scree, and hard dry slopes."
+      },
+      "core:mountain": {
+        "name": "Mountain",
+        "description": "Very high rugged relief with steep slopes and passes."
+      },
+      "core:snow": {
+        "name": "Snowfield",
+        "description": "Frozen alpine terrain with seasonal or persistent snow cover."
+      },
+      "core:tundra": {
+        "name": "Tundra",
+        "description": "Cold treeless ground of high latitude or high elevation margins."
+      },
+      "core:savanna": {
+        "name": "Savanna",
+        "description": "Warm seasonal grassland with scattered trees."
+      },
+      "core:rainforest": {
+        "name": "Rainforest",
+        "description": "Hot humid closed-canopy forest with very high biomass."
+      },
+      "core:marsh": {
+        "name": "Marsh",
+        "description": "Flat warm wetland of reeds, peat, and shallow standing water."
+      },
+      "core:plateau": {
+        "name": "Plateau",
+        "description": "High flat-topped country with abrupt scarps and broad tablelands."
+      },
+      "core:canyon": {
+        "name": "Canyonlands",
+        "description": "Deeply incised dry terrain of mesas, buttes, and gorge walls."
+      },
+      "core:reef": {
+        "name": "Coral Reef",
+        "description": "Warm shallow marine shelf with coral structures and lagoons."
+      },
+      "core:oasis": {
+        "name": "Oasis",
+        "description": "Rare desert water pocket supporting palms, gardens, and rest stops."
+      },
+      "core:volcano": {
+        "name": "Volcanic Field",
+        "description": "Young volcanic cone, caldera rim, or ash-darkened lava country."
+      },
+      "core:glacier": {
+        "name": "Glacier",
+        "description": "Moving or persistent land ice descending from high cold accumulation zones."
+      }
+    },
+    "actions": {
+      "core:interact": {
+        "name": "Interact",
+        "description": "Inspect or use the nearest reachable landmark."
+      },
+      "core:ready": {
+        "name": "Ready",
+        "description": "Briefly ready the active equipment without selecting a target."
+      }
+    },
+    "slots": {
+      "wear:head": { "name": "Head" },
+      "wear:face": { "name": "Face" },
+      "wear:torso": { "name": "Torso" },
+      "wear:outer": { "name": "Outerwear" },
+      "wear:hands": { "name": "Hands" },
+      "wear:waist": { "name": "Waist" },
+      "wear:legs": { "name": "Legs" },
+      "wear:feet": { "name": "Feet" },
+      "decor:ears": { "name": "Ears" },
+      "decor:neck": { "name": "Neck" },
+      "decor:wrist-left": { "name": "Left Wrist" },
+      "decor:wrist-right": { "name": "Right Wrist" },
+      "decor:finger-left": { "name": "Left Hand Ring" },
+      "decor:finger-right": { "name": "Right Hand Ring" },
+      "weapon:primary": { "name": "Primary Weapon" },
+      "weapon:secondary": { "name": "Secondary Weapon" },
+      "weapon:ranged": { "name": "Ranged Weapon" },
+      "weapon:utility": { "name": "Utility Weapon" }
+    },
+    "items": {
+      "core:wayfinder-cap": { "name": "Wayfinder Cap" },
+      "core:linen-shirt": { "name": "Linen Shirt" },
+      "core:trail-coat": { "name": "Trail Coat" },
+      "core:work-gloves": { "name": "Work Gloves" },
+      "core:utility-belt": { "name": "Utility Belt" },
+      "core:travel-pants": { "name": "Travel Pants" },
+      "core:trail-boots": { "name": "Trail Boots" },
+      "core:round-glasses": { "name": "Round Glasses" },
+      "core:beacon-pendant": { "name": "Beacon Pendant" },
+      "core:copper-earring": { "name": "Copper Earring" },
+      "core:field-watch": { "name": "Field Watch" },
+      "core:plain-ring": { "name": "Plain Ring" },
+      "core:walking-staff": { "name": "Walking Staff" },
+      "core:short-blade": { "name": "Short Blade" },
+      "core:hunting-bow": { "name": "Hunting Bow" },
+      "core:field-hatchet": { "name": "Field Hatchet" }
+    },
+    "archetypes": {
+      "core:explorer": {
+        "name": "Wayfinder",
+        "description": "A balanced configurable explorer used by the first playable character."
+      },
+      "core:beacon-keeper": {
+        "name": "Beacon Keeper",
+        "description": "An authored-area NPC using the same abilities, appearance, and equipment model."
+      },
+      "core:shore-raider": {
+        "name": "Shore Raider",
+        "description": "A hostile archetype proving enemies share the complete character system."
+      }
+    },
+    "landmarks": {
+      "core:wayfinder-isle": {
+        "name": "Wayfinder Isle",
+        "description": "A small authored island demonstrating reusable terrain patches and landmarks."
+      },
+      "core:wayfinder-beacon": {
+        "name": "Wayfinder Beacon",
+        "description": "A weathered signal tower at the island's high point."
+      }
+    }
+  }
+}

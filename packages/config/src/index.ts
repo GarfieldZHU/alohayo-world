@@ -1,3 +1,5 @@
+import type { LocaleCode } from './i18n'
+
 export interface ContentPackManifest {
   schemaVersion: 1
   id: string
@@ -269,6 +271,7 @@ export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
   devMode?: boolean
+  locale?: LocaleCode
   initialWorld?: {
     seed?: string
     width?: number
@@ -283,5 +286,17 @@ export interface GameHandle {
   pause(): void
   resume(): void
   setDevMode?(enabled: boolean): void
+  setLocale?(locale: LocaleCode): void
   destroy(): Promise<void>
 }
+
+export type { I18nCatalog, LanguageOption, LocaleCode } from './i18n'
+export {
+  formatI18n,
+  getI18nCatalog,
+  LANGUAGE_OPTIONS,
+  normalizeLocale,
+  SUPPORTED_LOCALES,
+  translateContentDescription,
+  translateContentName,
+} from './i18n'
