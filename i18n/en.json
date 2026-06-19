@@ -7,7 +7,7 @@
   },
   "ui": {
     "gameTitle": "Alohayo World",
-    "eyebrow": "Alohayo World / v0.1.0-demo",
+    "eyebrow": "Alohayo World / v0.1.1",
     "heroTitle": "A vivid world from one small seed.",
     "heroDescription": "Generate a geography atlas, explore its biomes, and inspect the climate beneath every cell. The world streams in chunk by chunk, stores preferences locally, and loads no engine or map resources until you enter. Game mode keeps the camera centered on the explorer; dev mode unlocks survey controls.",
     "standaloneDescription": "Stream an infinite local world. Nothing leaves your browser.",
