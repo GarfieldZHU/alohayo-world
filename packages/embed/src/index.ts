@@ -85,6 +85,8 @@ export type {
   LocaleCode,
   MapAreaDefinition,
   MountGameOptions,
+  TerrainRuleDefinition,
+  TerrainRulePackDefinition,
   WorldDefinition,
   WorldManifest,
 } from '@alohayo/config'

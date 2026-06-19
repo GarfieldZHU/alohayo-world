@@ -3,6 +3,11 @@ import { readdirSync, readFileSync } from 'node:fs'
 const manifest = JSON.parse(readFileSync(new URL('../content/core/manifest.json', import.meta.url)))
 const world = JSON.parse(readFileSync(new URL('../content/core/world.json', import.meta.url)))
 const biomes = JSON.parse(readFileSync(new URL('../content/core/biomes.json', import.meta.url)))
+const terrainRules = JSON.parse(
+  readFileSync(new URL('../content/core/terrain-rules.json', import.meta.url))
+)
+const englishCatalog = JSON.parse(readFileSync(new URL('../i18n/en.json', import.meta.url)))
+const chineseCatalog = JSON.parse(readFileSync(new URL('../i18n/zh-CN.json', import.meta.url)))
 const mapAreaRoot = new URL('../content/maps/core/areas/', import.meta.url)
 const mapAreas = readdirSync(mapAreaRoot)
   .filter((name) => name.endsWith('.json'))
@@ -100,6 +105,54 @@ for (const biome of biomes) {
 }
 
 const terrainIds = new Set(biomes.map((biome) => biome.id))
+if (terrainRules.schemaVersion !== 1 || !Array.isArray(terrainRules.rules)) {
+  errors.push('invalid terrain rule pack')
+} else {
+  const ruleIds = new Set(terrainRules.rules.map((rule) => rule.terrainId))
+  if (ruleIds.size !== terrainRules.rules.length) errors.push('duplicate terrain rule id')
+  for (const terrainId of terrainIds) {
+    if (!ruleIds.has(terrainId)) errors.push(`missing terrain rule for ${terrainId}`)
+    if (!englishCatalog.content?.biomes?.[terrainId]?.name) {
+      errors.push(`missing English biome name for ${terrainId}`)
+    }
+    if (!chineseCatalog.content?.biomes?.[terrainId]?.name) {
+      errors.push(`missing Chinese biome name for ${terrainId}`)
+    }
+  }
+  for (const rule of terrainRules.rules) {
+    if (!terrainIds.has(rule.terrainId))
+      errors.push(`terrain rule uses unknown terrain ${rule.terrainId}`)
+    if (
+      !rule.realWorldDescription ||
+      !rule.alohayoBehavior ||
+      !['common', 'uncommon', 'rare', 'very-rare'].includes(rule.generation?.rarity) ||
+      !rule.generation?.possibility ||
+      !Array.isArray(rule.generation?.conditions) ||
+      rule.generation.conditions.length < 2 ||
+      !Array.isArray(rule.surfaceEffects) ||
+      rule.surfaceEffects.length < 1 ||
+      !rule.physicalBehavior?.movement ||
+      !rule.physicalBehavior?.control ||
+      !Array.isArray(rule.physicalBehavior?.hazards) ||
+      !Array.isArray(rule.physicalBehavior?.entryRequirements) ||
+      typeof rule.destruction?.destructible !== 'boolean' ||
+      !Array.isArray(rule.destruction?.methods)
+    ) {
+      errors.push(`invalid terrain rule for ${rule.terrainId || '<missing>'}`)
+      continue
+    }
+    for (const surface of rule.surfaceEffects) {
+      if (!surface.id || !surface.trigger || !surface.effect) {
+        errors.push(`invalid surface effect in ${rule.terrainId}`)
+      }
+    }
+    for (const method of rule.destruction.methods) {
+      if (!method.trigger || !method.notes || !terrainIds.has(method.becomes)) {
+        errors.push(`invalid destruction rule in ${rule.terrainId}`)
+      }
+    }
+  }
+}
 for (const area of mapAreas) {
   if (
     area.schemaVersion !== 1 ||
@@ -237,5 +290,5 @@ if (errors.length) {
   process.exit(1)
 }
 console.log(
-  `validated ${biomes.length} terrains, ${mapAreas.length} map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
+  `validated ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${mapAreas.length} map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
 )

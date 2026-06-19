@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '../packages/map/src'
 import type { MapAreaDefinition } from '../packages/config/src'
+import biomes from '../content/core/biomes.json'
+import terrainRules from '../content/core/terrain-rules.json'
+import englishCatalog from '../i18n/en.json'
+import chineseCatalog from '../i18n/zh-CN.json'
+import terrainShowcase from '../content/maps/core/areas/terrain-showcase.json'
 import wayfinderIsle from '../content/maps/core/areas/wayfinder-isle.json'
 
 const isWaterBiome = (biome: number) =>
@@ -9,8 +14,28 @@ const isWaterBiome = (biome: number) =>
   biome === BIOME.shallowSea ||
   biome === BIOME.lake ||
   biome === BIOME.reef
+const englishBiomeNames = englishCatalog.content.biomes as Record<string, { name: string }>
+const chineseBiomeNames = chineseCatalog.content.biomes as Record<string, { name: string }>
 
 describe('world generation', () => {
+  it('documents every terrain with rules and localized names', () => {
+    const biomeIds = new Set(biomes.map((biome) => biome.id))
+    const ruleIds = new Set(terrainRules.rules.map((rule) => rule.terrainId))
+
+    expect(ruleIds).toEqual(biomeIds)
+    for (const biome of biomes) {
+      expect(englishBiomeNames[biome.id]?.name).toBeTruthy()
+      expect(chineseBiomeNames[biome.id]?.name).toBeTruthy()
+      const rule = terrainRules.rules.find((candidate) => candidate.terrainId === biome.id)
+      expect(rule?.realWorldDescription.length).toBeGreaterThan(32)
+      expect(rule?.alohayoBehavior.length).toBeGreaterThan(32)
+      expect(rule?.generation.conditions.length).toBeGreaterThanOrEqual(2)
+      expect(rule?.surfaceEffects.length).toBeGreaterThan(0)
+      expect(rule?.physicalBehavior.movement).toBeTruthy()
+      expect(rule?.destruction.methods.length).toBeGreaterThan(0)
+    }
+  })
+
   it('is deterministic for a seed', () => {
     const first = generateWorld('alohayo', 32, 24)
     const second = generateWorld('alohayo', 32, 24)
@@ -105,5 +130,21 @@ describe('world generation', () => {
     expect(first.areaIds).toContain('core:wayfinder-isle')
     expect(first.landmarks[0]?.id).toBe('core:wayfinder-beacon')
     expect(first.authoredArea.some((area) => area > 0)).toBe(true)
+  })
+
+  it('can enable a dev terrain showcase containing every core terrain', () => {
+    const terrainCodes = Object.fromEntries(biomes.map((biome) => [biome.id, biome.code]))
+    const showcase = { ...(terrainShowcase as MapAreaDefinition), enabled: true }
+    const world = applyMapAreas(
+      generateWorld('terrain-showcase', 128, 96),
+      [showcase],
+      terrainCodes
+    )
+    const codes = new Set(world.biomes)
+
+    for (const biome of biomes) {
+      expect(codes.has(biome.code), biome.id).toBe(true)
+    }
+    expect(world.areaIds).toContain('core:terrain-showcase')
   })
 })

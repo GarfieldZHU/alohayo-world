@@ -24,6 +24,8 @@
 - [x] Configurable medieval road tiers with curved routing, movement bonuses, and
       terrain-aware surfacing.
 - [x] Basic deterministic weather surfacing over terrain and roads.
+- [x] Terrain material rule pack with English/Chinese coverage checks and a dev-only
+      all-terrain showcase map.
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by

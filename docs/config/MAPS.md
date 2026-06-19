@@ -16,6 +16,10 @@ world hash. Adding an area file requires no code change.
 Later files may overwrite cells from earlier files. Use that intentionally for small
 detail packs; avoid overlapping unrelated areas.
 
+Disabled files are still validated and bundled. They are useful for development fixtures
+or optional scenarios and can be activated by launchers through
+`initialWorld.mapAreaIds`, for example `core:terrain-showcase`.
+
 ## Minimal Area
 
 ```json
@@ -103,6 +107,9 @@ spawns, portals, quests, settlements, and map labels.
 4. Reference existing terrain IDs or add validated terrain definitions first.
 5. Add an optional `index.json` listing the area's intended order and purpose.
 6. Run validation, deterministic tests, build, and E2E.
+
+Use `"enabled": false` for dev/test fixtures. Do not globally enable a showcase or
+benchmark area unless it is intended to appear in normal generated worlds.
 
 ## Current Limits
 

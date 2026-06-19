@@ -254,6 +254,14 @@
       "core:wayfinder-beacon": {
         "name": "Wayfinder Beacon",
         "description": "A weathered signal tower at the island's high point."
+      },
+      "core:terrain-showcase": {
+        "name": "Terrain Showcase",
+        "description": "A dev-only authored area that places every core terrain type near the origin."
+      },
+      "core:terrain-showcase-marker": {
+        "name": "Terrain Showcase Marker",
+        "description": "A dev-only marker for the all-terrain showcase area."
       }
     }
   }

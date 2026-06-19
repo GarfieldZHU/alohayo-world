@@ -131,6 +131,10 @@ grassland, forest, shallow sea, and coast should dominate. Rare terrains such as
 oasis, volcanic fields, canyonlands, and glaciers are gated by narrower temperature,
 moisture, relief, and hotspot conditions.
 
+The current terrain material rules, surface effects, movement expectations, hazards,
+entry requirements, and destructibility are encoded in `content/core/terrain-rules.json`
+and summarized in `TERRAIN_RULES.md`.
+
 Settlements and roads should follow the same logic people use in the real world:
 
 - plains, grasslands, coasts, and lake margins attract denser towns and cheaper roads;

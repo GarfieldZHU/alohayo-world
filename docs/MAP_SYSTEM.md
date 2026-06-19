@@ -1,7 +1,7 @@
 # Map System
 
-Read `GIS_FOUNDATIONS.md` for the geographic reasoning and `modules/MAP.md` for the
-implementation boundary.
+Read `GIS_FOUNDATIONS.md` for the geographic reasoning, `TERRAIN_RULES.md` for
+terrain material/physics rules, and `modules/MAP.md` for the implementation boundary.
 
 ## Coordinates and Scale
 
@@ -37,6 +37,8 @@ savanna, forest, rainforest, desert, oasis, wetland, marsh, plateau, highland,
 canyonlands, bare rock, mountain, volcano, snowfield, tundra, and glacier.
 
 These codes are stable content identifiers, not the complete geographic truth.
+The gameplay and material rules for each code live in
+`content/core/terrain-rules.json` and are summarized in `TERRAIN_RULES.md`.
 
 ### Topology
 

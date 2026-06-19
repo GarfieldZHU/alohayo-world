@@ -209,6 +209,14 @@
       "core:wayfinder-beacon": {
         "name": "寻路者灯塔",
         "description": "立于岛屿高点、饱经风霜的信号塔。"
+      },
+      "core:terrain-showcase": {
+        "name": "地形展示区",
+        "description": "一个仅用于开发测试的定制区域，会在原点附近放置全部核心地形。"
+      },
+      "core:terrain-showcase-marker": {
+        "name": "地形展示标记",
+        "description": "全部地形展示区的开发专用标记。"
       }
     }
   }

@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "id": "core:terrain-showcase",
+  "name": "Terrain Showcase",
+  "description": "Disabled-by-default dev area that places every core terrain type near the origin for visual and gameplay testing.",
+  "enabled": false,
+  "placement": { "mode": "normalized", "x": 0.5, "y": 0.5 },
+  "width": 72,
+  "height": 48,
+  "terrainPatches": [
+    {
+      "shape": "rectangle",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:deep-ocean",
+      "elevation": 24,
+      "moisture": 230,
+      "temperature": 96
+    },
+    {
+      "shape": "rectangle",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:ocean",
+      "elevation": 60,
+      "moisture": 220,
+      "temperature": 128
+    },
+    {
+      "shape": "rectangle",
+      "x": 24,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:shallow-sea",
+      "elevation": 96,
+      "moisture": 210,
+      "temperature": 156
+    },
+    {
+      "shape": "rectangle",
+      "x": 36,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:reef",
+      "elevation": 102,
+      "moisture": 220,
+      "temperature": 220
+    },
+    {
+      "shape": "rectangle",
+      "x": 48,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:lake",
+      "elevation": 90,
+      "moisture": 220,
+      "temperature": 140
+    },
+    {
+      "shape": "rectangle",
+      "x": 60,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:coast",
+      "elevation": 122,
+      "moisture": 170,
+      "temperature": 170
+    },
+    {
+      "shape": "rectangle",
+      "x": 0,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:lowland",
+      "elevation": 138,
+      "moisture": 140,
+      "temperature": 150
+    },
+    {
+      "shape": "rectangle",
+      "x": 12,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:grassland",
+      "elevation": 150,
+      "moisture": 118,
+      "temperature": 165
+    },
+    {
+      "shape": "rectangle",
+      "x": 24,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:forest",
+      "elevation": 148,
+      "moisture": 180,
+      "temperature": 150
+    },
+    {
+      "shape": "rectangle",
+      "x": 36,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:rainforest",
+      "elevation": 145,
+      "moisture": 228,
+      "temperature": 220
+    },
+    {
+      "shape": "rectangle",
+      "x": 48,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:savanna",
+      "elevation": 150,
+      "moisture": 105,
+      "temperature": 218
+    },
+    {
+      "shape": "rectangle",
+      "x": 60,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:desert",
+      "elevation": 145,
+      "moisture": 40,
+      "temperature": 230
+    },
+    {
+      "shape": "rectangle",
+      "x": 0,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:oasis",
+      "elevation": 140,
+      "moisture": 170,
+      "temperature": 230
+    },
+    {
+      "shape": "rectangle",
+      "x": 12,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:wetland",
+      "elevation": 126,
+      "moisture": 215,
+      "temperature": 155
+    },
+    {
+      "shape": "rectangle",
+      "x": 24,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:marsh",
+      "elevation": 122,
+      "moisture": 235,
+      "temperature": 205
+    },
+    {
+      "shape": "rectangle",
+      "x": 36,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:tundra",
+      "elevation": 145,
+      "moisture": 120,
+      "temperature": 35
+    },
+    {
+      "shape": "rectangle",
+      "x": 48,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:snow",
+      "elevation": 210,
+      "moisture": 178,
+      "temperature": 24
+    },
+    {
+      "shape": "rectangle",
+      "x": 60,
+      "y": 16,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:glacier",
+      "elevation": 230,
+      "moisture": 215,
+      "temperature": 12
+    },
+    {
+      "shape": "rectangle",
+      "x": 0,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:highland",
+      "elevation": 174,
+      "moisture": 115,
+      "temperature": 118
+    },
+    {
+      "shape": "rectangle",
+      "x": 12,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:plateau",
+      "elevation": 190,
+      "moisture": 90,
+      "temperature": 145
+    },
+    {
+      "shape": "rectangle",
+      "x": 24,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:canyon",
+      "elevation": 180,
+      "moisture": 42,
+      "temperature": 210
+    },
+    {
+      "shape": "rectangle",
+      "x": 36,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:bare-rock",
+      "elevation": 205,
+      "moisture": 58,
+      "temperature": 150
+    },
+    {
+      "shape": "rectangle",
+      "x": 48,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:mountain",
+      "elevation": 228,
+      "moisture": 95,
+      "temperature": 82
+    },
+    {
+      "shape": "rectangle",
+      "x": 60,
+      "y": 24,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:volcano",
+      "elevation": 225,
+      "moisture": 52,
+      "temperature": 238
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "core:terrain-showcase-marker",
+      "name": "Terrain Showcase Marker",
+      "x": 36,
+      "y": 36,
+      "kind": "dev-marker",
+      "description": "A dev-only marker for the all-terrain showcase area."
+    }
+  ]
+}

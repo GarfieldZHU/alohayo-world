@@ -1,0 +1,1042 @@
+{
+  "schemaVersion": 1,
+  "id": "core:terrain-rules",
+  "name": "Core Terrain Rules",
+  "description": "Authoritative gameplay, material, and generation notes for terrain IDs. Biome display names live in i18n catalogs.",
+  "rules": [
+    {
+      "terrainId": "core:deep-ocean",
+      "realWorldDescription": "Deep ocean is abyssal water beyond the continental shelf, usually low elevation, far from land, and shaped by trenches, currents, and open-water circulation.",
+      "alohayoBehavior": "Acts as a major world barrier, long-range navigation space, and habitat for pelagic or abyssal creatures.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "High when the sea-level target is high or far from land; reduced in land-heavy worlds.",
+        "conditions": [
+          "very low elevation",
+          "connected to edge ocean",
+          "away from coast",
+          "any latitude"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "storm-swell",
+          "trigger": "strong wind or storm",
+          "effect": "higher wave texture and rougher navigation"
+        },
+        {
+          "id": "sea-ice",
+          "trigger": "polar cold",
+          "effect": "partial ice cover that slows ships and blocks small craft"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Impassable on foot; ships or flight required.",
+        "control": "Water drift and storm currents can push movement off course.",
+        "hazards": ["drowning", "storms", "deep-water monsters", "cold exposure in polar water"],
+        "entryRequirements": ["boat", "ship", "flight", "water-breathing magic"]
+      },
+      "destruction": {
+        "destructible": false,
+        "methods": [
+          {
+            "trigger": "large-scale terraforming",
+            "becomes": "core:ocean",
+            "notes": "Only world-scale magic or tectonic edits can raise abyssal water."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:ocean",
+      "realWorldDescription": "Open ocean is navigable marine water beyond coastal shallows, strongly influenced by currents, winds, and distance from shore.",
+      "alohayoBehavior": "Supports sea travel routes, island discovery, fishing grounds, and naval encounters.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common in most seeds; varies with the procedural ocean ratio.",
+        "conditions": [
+          "low elevation",
+          "edge-connected water",
+          "not shallow enough for reef or shelf",
+          "any latitude"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "whitecaps", "trigger": "wind", "effect": "animated bright caps on water" },
+        { "id": "fog-bank", "trigger": "humid cool air", "effect": "reduced visibility over sea" }
+      ],
+      "physicalBehavior": {
+        "movement": "Impassable on foot; medium ship speed.",
+        "control": "Currents and storms reduce steering.",
+        "hazards": ["drowning", "storms", "sea monsters"],
+        "entryRequirements": ["boat", "ship", "flight"]
+      },
+      "destruction": {
+        "destructible": false,
+        "methods": [
+          {
+            "trigger": "coastal uplift",
+            "becomes": "core:shallow-sea",
+            "notes": "Used by future tectonic/world-edit tools."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:shallow-sea",
+      "realWorldDescription": "Shallow sea is sunlit continental shelf water near land, often rich in sediment, kelp, shoals, and marine life.",
+      "alohayoBehavior": "Forms coastal approach zones, safer boat travel, and good fishing or reef transition areas.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common along coastlines and island shelves.",
+        "conditions": [
+          "water slightly below sea level",
+          "near land",
+          "edge-connected or coastal basin",
+          "any latitude"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "sandbar",
+          "trigger": "low tide or dry season",
+          "effect": "pale shoal texture and partial foot crossing later"
+        },
+        {
+          "id": "turbid-water",
+          "trigger": "river runoff or storm",
+          "effect": "brown-green surface layer"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Blocked on foot unless a ford/sandbar system allows it; fast for small boats.",
+        "control": "Reefs and shoals require careful steering.",
+        "hazards": ["drowning", "reef damage", "tidal current"],
+        "entryRequirements": ["boat", "swimming gear", "flight"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "sediment build-up",
+            "becomes": "core:coast",
+            "notes": "Delta or barrier systems can turn shallows into shore."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:coast",
+      "realWorldDescription": "Coasts include beaches, tidal flats, barrier strands, cliffs, and the immediate land-water boundary.",
+      "alohayoBehavior": "Prime settlement, port, road-end, ship landing, and amphibious encounter terrain.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Always appears where land meets ocean or lake margins.",
+        "conditions": ["near sea level", "touches water", "low to moderate slope", "any latitude"]
+      },
+      "surfaceEffects": [
+        {
+          "id": "wet-sand",
+          "trigger": "tide or rain",
+          "effect": "darker damp edge and slower carts"
+        },
+        {
+          "id": "storm-wrack",
+          "trigger": "storm",
+          "effect": "debris layer and temporary obstacles"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Easy on foot; roads and carts work well unless flooded.",
+        "control": "Wet sand can slightly reduce control.",
+        "hazards": ["storm surge", "soft sand", "coastal ambush"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "erosion or flood",
+            "becomes": "core:shallow-sea",
+            "notes": "Sea eats the coast."
+          },
+          {
+            "trigger": "stabilizing vegetation",
+            "becomes": "core:grassland",
+            "notes": "Dunes and backshore become dry land."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:lake",
+      "realWorldDescription": "Lakes are inland water bodies in basins, glacial depressions, volcanic calderas, or river floodplains.",
+      "alohayoBehavior": "Freshwater hub for towns, wildlife, fishing, and future river/drainage systems.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears when low water is disconnected from the world-edge ocean.",
+        "conditions": ["inland basin", "low elevation", "local moisture", "not ocean-connected"]
+      },
+      "surfaceEffects": [
+        {
+          "id": "ice-skin",
+          "trigger": "freezing temperature",
+          "effect": "thin ice layer that may become walkable later"
+        },
+        {
+          "id": "algae-bloom",
+          "trigger": "warm wet season",
+          "effect": "green surface tint and creature change"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Blocked on foot; boats or swimming gear required.",
+        "control": "Calmer than ocean but mud edges slow exits.",
+        "hazards": ["drowning", "thin ice", "leeches or lake monsters"],
+        "entryRequirements": ["boat", "swimming gear", "flight"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "drainage or drought",
+            "becomes": "core:wetland",
+            "notes": "Lake retreats into saturated low ground."
+          },
+          {
+            "trigger": "sediment fill",
+            "becomes": "core:lowland",
+            "notes": "Long-term fill creates fertile plain."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:lowland",
+      "realWorldDescription": "Lowlands are low-relief plains and basins, commonly fertile and easy for roads, farms, and dense settlement.",
+      "alohayoBehavior": "Best early-game travel, farming, towns, and road-network terrain.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common on land-heavy seeds with moderate climate values.",
+        "conditions": [
+          "low to mid elevation",
+          "gentle slope",
+          "moderate moisture",
+          "temperate temperature"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "grass-cover", "trigger": "normal season", "effect": "soft green ground layer" },
+        {
+          "id": "mud",
+          "trigger": "rain or flood",
+          "effect": "slower carts and visible wet texture"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Fastest wild-land walking and best road building.",
+        "control": "Stable except in mud.",
+        "hazards": ["flooding", "bandits near roads"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "flooding",
+            "becomes": "core:wetland",
+            "notes": "Low ground saturates into wetland."
+          },
+          {
+            "trigger": "overgrazing or drought",
+            "becomes": "core:grassland",
+            "notes": "Farmable plain becomes open dry grass."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:grassland",
+      "realWorldDescription": "Grasslands are open herbaceous regions with limited tree cover, often controlled by rainfall, grazing, and fire.",
+      "alohayoBehavior": "Readable travel terrain with roaming creatures, villages, and good mounted movement.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common fallback land when moisture and elevation are moderate.",
+        "conditions": [
+          "moderate elevation",
+          "moderate moisture",
+          "not too cold",
+          "not dense forest or desert"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "tall-grass",
+          "trigger": "wet growing season",
+          "effect": "slightly obscures small creatures"
+        },
+        { "id": "burn-scar", "trigger": "fire", "effect": "dark temporary surface that regrows" }
+      ],
+      "physicalBehavior": {
+        "movement": "Fast foot and mounted movement.",
+        "control": "Stable; tall grass may hide obstacles.",
+        "hazards": ["wildfire", "stampede", "exposure"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "tree growth",
+            "becomes": "core:forest",
+            "notes": "Moist protected grassland succeeds to forest."
+          },
+          {
+            "trigger": "aridity",
+            "becomes": "core:desert",
+            "notes": "Long drought strips vegetation."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:forest",
+      "realWorldDescription": "Forests are tree-dominated ecosystems, usually needing enough moisture and a climate that supports woody growth.",
+      "alohayoBehavior": "Dense exploration terrain for concealment, wood resources, animals, and slower roads.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common in moist mid-temperature lands.",
+        "conditions": [
+          "moderate elevation",
+          "high moisture",
+          "temperate to warm temperature",
+          "not waterlogged enough for wetland"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "leaf-litter", "trigger": "normal forest", "effect": "dark mottled floor" },
+        {
+          "id": "snow-laden-canopy",
+          "trigger": "snow",
+          "effect": "white canopy highlights and slower passage"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Moderately slow off-road; roads cut movement cost strongly.",
+        "control": "Reduced line of sight and tighter turning.",
+        "hazards": ["ambush", "falling branches", "wildfire"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "logging or fire",
+            "becomes": "core:grassland",
+            "notes": "Forest opens into grass or scrub."
+          },
+          {
+            "trigger": "flooding",
+            "becomes": "core:wetland",
+            "notes": "Saturated forest becomes wetland."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:desert",
+      "realWorldDescription": "Deserts are arid regions with very low precipitation, sparse vegetation, dunes, gravel plains, salt pans, or rocky flats.",
+      "alohayoBehavior": "High-risk travel terrain with heat, thirst, sand movement, and rare oasis targets.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears where heat is high and moisture is very low.",
+        "conditions": [
+          "high temperature",
+          "low moisture",
+          "rain-shadow or subtropical belt",
+          "low to mid elevation"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "sand-drift",
+          "trigger": "wind",
+          "effect": "moving dune highlights and softened roads"
+        },
+        {
+          "id": "flash-flood-track",
+          "trigger": "rare storm",
+          "effect": "temporary wet channels and mud"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow on sand; roads and mounts help.",
+        "control": "Loose ground reduces acceleration and turning.",
+        "hazards": ["heat damage without protection", "dehydration", "sandstorm"],
+        "entryRequirements": ["water supply for long travel", "heat protection recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "irrigation or magical rain",
+            "becomes": "core:oasis",
+            "notes": "Local water creates a green pocket."
+          },
+          {
+            "trigger": "cooling and moisture recovery",
+            "becomes": "core:grassland",
+            "notes": "Long-term climate shift restores cover."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:wetland",
+      "realWorldDescription": "Wetlands are saturated soils near floodplains, lake margins, deltas, or groundwater discharge zones.",
+      "alohayoBehavior": "Slow but resource-rich lowland with water birds, reeds, mud, and settlement edges.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears in moist low elevations near water or flooded basins.",
+        "conditions": ["low elevation", "high moisture", "near water", "not deep enough for lake"]
+      },
+      "surfaceEffects": [
+        {
+          "id": "standing-water",
+          "trigger": "rain or high water",
+          "effect": "shallow reflective puddles"
+        },
+        {
+          "id": "peat-mud",
+          "trigger": "warm saturation",
+          "effect": "dark mud layer and heavy slow"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow off-road; roads need raised causeways.",
+        "control": "Sticky mud reduces control.",
+        "hazards": ["disease", "leeches", "sinkholes", "flooding"],
+        "entryRequirements": ["waterproof boots recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "drainage",
+            "becomes": "core:lowland",
+            "notes": "Drained wetland becomes fertile plain."
+          },
+          {
+            "trigger": "deep flood",
+            "becomes": "core:lake",
+            "notes": "Persistent water turns it into open freshwater."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:highland",
+      "realWorldDescription": "Highlands are elevated broken terrain above plains but below major alpine zones, with ridges, moors, and rough grazing.",
+      "alohayoBehavior": "Transition terrain between plains and mountains, with passes, wind exposure, and scattered settlements.",
+      "generation": {
+        "rarity": "common",
+        "possibility": "Common around mountain belts and elevated interiors.",
+        "conditions": [
+          "moderately high elevation",
+          "variable moisture",
+          "ruggedness not extreme",
+          "near mountains or plateaus"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "heather-moor",
+          "trigger": "cool wet highland",
+          "effect": "purple-green rough vegetation tint"
+        },
+        {
+          "id": "frost",
+          "trigger": "cold night",
+          "effect": "pale edge highlights and slippery control"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Slower than plains; roads and passes matter.",
+        "control": "Uneven slope reduces control.",
+        "hazards": ["falls", "wind exposure", "cold rain"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "erosion",
+            "becomes": "core:lowland",
+            "notes": "Long erosion softens upland into lower relief."
+          },
+          {
+            "trigger": "uplift",
+            "becomes": "core:mountain",
+            "notes": "Tectonic edit raises highland into mountain."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:bare-rock",
+      "realWorldDescription": "Bare rock is exposed bedrock, scree, lava, or thin-soil slope where plants struggle to establish.",
+      "alohayoBehavior": "Hard, low-cover, resource-bearing terrain with poor roads but mineral interest.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears in dry or rugged uplands and mountain shoulders.",
+        "conditions": ["high elevation", "low to moderate moisture", "rugged slope", "thin soil"]
+      },
+      "surfaceEffects": [
+        {
+          "id": "scree",
+          "trigger": "steep ruggedness",
+          "effect": "loose stone texture and sliding risk"
+        },
+        { "id": "ice-glaze", "trigger": "freezing rain", "effect": "slippery blue-white surface" }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow and noisy; climbing gear helps.",
+        "control": "Slippery or loose under weather effects.",
+        "hazards": ["rockfall", "slip", "exposure"],
+        "entryRequirements": ["climbing gear recommended for steep routes"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "soil formation",
+            "becomes": "core:highland",
+            "notes": "Weathered rock gains enough soil for upland vegetation."
+          },
+          {
+            "trigger": "lava burial",
+            "becomes": "core:volcano",
+            "notes": "Volcanic activity resets the surface."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:mountain",
+      "realWorldDescription": "Mountains are high, rugged relief with steep slopes, ridges, cliffs, passes, and strong elevation climate gradients.",
+      "alohayoBehavior": "Major barrier, resource source, monster habitat, and pass/road challenge.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears at the upper elevation tail of land terrain.",
+        "conditions": [
+          "very high elevation",
+          "ruggedness",
+          "cooler temperature with altitude",
+          "often adjacent highland or snow"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "talus", "trigger": "steep slopes", "effect": "stone debris on lower slopes" },
+        {
+          "id": "snow-cap",
+          "trigger": "cold altitude",
+          "effect": "white cap texture and cold hazard"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Very slow unless following passes or roads.",
+        "control": "Steep control; falls matter.",
+        "hazards": ["fall damage", "altitude cold", "rockfall", "blocked passes"],
+        "entryRequirements": ["warm clothing recommended", "climbing gear recommended"]
+      },
+      "destruction": {
+        "destructible": false,
+        "methods": [
+          {
+            "trigger": "major mining or magic",
+            "becomes": "core:bare-rock",
+            "notes": "Only large projects can carve a mountain surface."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:snow",
+      "realWorldDescription": "Snowfields are cold alpine or polar surfaces with seasonal or persistent snow cover over ground.",
+      "alohayoBehavior": "Cold travel terrain, readable visually, and a bridge between mountains, tundra, and glacier.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears where elevation is high and temperature is low.",
+        "conditions": [
+          "high elevation",
+          "low temperature",
+          "enough moisture for snow",
+          "near mountain or polar regions"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "powder",
+          "trigger": "fresh snow",
+          "effect": "soft bright layer that slows movement"
+        },
+        { "id": "meltwater", "trigger": "warming", "effect": "wet slush and streams" }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow without snow gear.",
+        "control": "Slippery and momentum-heavy.",
+        "hazards": ["cold damage without clothing", "whiteout", "avalanche"],
+        "entryRequirements": ["warm clothing recommended", "snow boots recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "heat or spring melt",
+            "becomes": "core:highland",
+            "notes": "Snow melts to reveal upland ground."
+          },
+          {
+            "trigger": "compaction and accumulation",
+            "becomes": "core:glacier",
+            "notes": "Long accumulation can become ice."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:tundra",
+      "realWorldDescription": "Tundra is cold treeless terrain, often high-latitude or alpine, with permafrost, moss, sedge, and low shrubs.",
+      "alohayoBehavior": "Sparse cold land for hardy creatures, low settlements, and seasonal travel.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears in cold land that is not high enough or snowy enough for alpine snowfield.",
+        "conditions": [
+          "low temperature",
+          "low to moderate elevation",
+          "limited tree growth",
+          "often high latitude"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "permafrost",
+          "trigger": "deep cold",
+          "effect": "hard ground that resists digging"
+        },
+        { "id": "bog-thaw", "trigger": "summer thaw", "effect": "wet patches and insects" }
+      ],
+      "physicalBehavior": {
+        "movement": "Moderate when frozen, slow when thawed.",
+        "control": "Uneven frost hummocks.",
+        "hazards": ["cold exposure", "bog thaw", "scarce resources"],
+        "entryRequirements": ["warm clothing recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "warming and moisture",
+            "becomes": "core:grassland",
+            "notes": "Long-term warming creates cold grassland."
+          },
+          {
+            "trigger": "saturation",
+            "becomes": "core:wetland",
+            "notes": "Thawing permafrost becomes wet ground."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:savanna",
+      "realWorldDescription": "Savanna is warm seasonal grassland with scattered trees, shaped by wet/dry seasons, grazing, and fire.",
+      "alohayoBehavior": "Open warm biome for herds, speed, fire risk, and sparse shade.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears in warm regions with moderate but seasonal moisture.",
+        "conditions": [
+          "high temperature",
+          "moderate moisture",
+          "not humid enough for forest",
+          "low to mid elevation"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "dry-grass",
+          "trigger": "dry season",
+          "effect": "yellow grass and high fire spread"
+        },
+        {
+          "id": "green-flush",
+          "trigger": "rainy season",
+          "effect": "fresh green texture and more creatures"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Fast, especially mounted.",
+        "control": "Stable except during fire or heavy rain.",
+        "hazards": ["wildfire", "heat", "large predators"],
+        "entryRequirements": ["water supply recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "increased rainfall",
+            "becomes": "core:forest",
+            "notes": "Tree cover closes in."
+          },
+          { "trigger": "drought", "becomes": "core:desert", "notes": "Grass cover collapses." }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:rainforest",
+      "realWorldDescription": "Rainforest is warm, very humid, closed-canopy forest with layered vegetation and high biodiversity.",
+      "alohayoBehavior": "Dense high-biomass terrain, slow and dangerous but rich in creatures and rare resources.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Appears in the warmest and wettest land cells.",
+        "conditions": [
+          "high temperature",
+          "very high moisture",
+          "low to mid elevation",
+          "not waterlogged enough for marsh"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "canopy-shadow",
+          "trigger": "normal rainforest",
+          "effect": "deep green shadow layer"
+        },
+        {
+          "id": "monsoon-wet",
+          "trigger": "heavy rain",
+          "effect": "surface water and mud everywhere"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow without cut paths.",
+        "control": "Dense vegetation reduces line of sight and turning.",
+        "hazards": ["disease", "poisonous creatures", "flash flood", "ambush"],
+        "entryRequirements": ["machete or path recommended", "waterproof gear recommended"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "clearing or fire",
+            "becomes": "core:grassland",
+            "notes": "Opened canopy becomes secondary grass/scrub."
+          },
+          {
+            "trigger": "flooding",
+            "becomes": "core:marsh",
+            "notes": "Low rainforest can become marsh."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:marsh",
+      "realWorldDescription": "Marsh is flat wetland dominated by herbaceous plants, reeds, peat, and shallow standing water.",
+      "alohayoBehavior": "The wettest lowland terrain, excellent for amphibious creatures and very poor for roads.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Appears in very moist warm lowlands.",
+        "conditions": [
+          "very high moisture",
+          "low elevation",
+          "warm temperature",
+          "near lake, river, coast, or basin"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "reed-bed", "trigger": "normal marsh", "effect": "reed clusters and concealment" },
+        { "id": "black-mud", "trigger": "saturation", "effect": "deep mud and stuck risk" }
+      ],
+      "physicalBehavior": {
+        "movement": "Very slow on foot; raised paths needed.",
+        "control": "Sticky, unstable footing.",
+        "hazards": ["disease", "sink mud", "mosquitoes", "ambush"],
+        "entryRequirements": ["waterproof boots recommended", "boat useful"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          { "trigger": "drainage", "becomes": "core:wetland", "notes": "Standing water recedes." },
+          {
+            "trigger": "deep flooding",
+            "becomes": "core:lake",
+            "notes": "Marsh becomes open water."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:plateau",
+      "realWorldDescription": "Plateaus are elevated broad flat regions, often bounded by scarps, canyons, or escarpments.",
+      "alohayoBehavior": "Large elevated travel surfaces with dramatic edges, sparse settlements, and road passes.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Appears where elevation is high but ruggedness remains low.",
+        "conditions": [
+          "high elevation",
+          "low ruggedness",
+          "broad flat upland",
+          "often near canyon or mountain"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "windswept-grass",
+          "trigger": "dry high wind",
+          "effect": "short grass and dust streaks"
+        },
+        { "id": "snow-drift", "trigger": "cold storm", "effect": "wind-packed snow bands" }
+      ],
+      "physicalBehavior": {
+        "movement": "Moderate on top; cliffs at edges block routes.",
+        "control": "Stable on top, dangerous near scarps.",
+        "hazards": ["cliff falls", "wind exposure", "scarce water"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "river incision",
+            "becomes": "core:canyon",
+            "notes": "Water cuts into the plateau."
+          },
+          {
+            "trigger": "erosion",
+            "becomes": "core:highland",
+            "notes": "Edges soften over long time."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:canyon",
+      "realWorldDescription": "Canyonlands are deeply incised dry terrain with gorges, mesas, buttes, cliffs, and narrow river corridors.",
+      "alohayoBehavior": "Maze-like dry terrain with choke points, bridges, hidden paths, and dramatic vertical barriers.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Appears in rugged dry elevated regions.",
+        "conditions": [
+          "high ruggedness",
+          "moderate to high elevation",
+          "low moisture",
+          "erosional incision"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "red-rock", "trigger": "normal canyon", "effect": "warm sedimentary banding" },
+        { "id": "flash-flood", "trigger": "storm", "effect": "temporary water in narrow channels" }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow unless following canyon floors or roads.",
+        "control": "Edges and narrow turns constrain movement.",
+        "hazards": ["fall damage", "flash flood", "heat", "dead ends"],
+        "entryRequirements": ["climbing gear recommended"]
+      },
+      "destruction": {
+        "destructible": false,
+        "methods": [
+          {
+            "trigger": "sediment fill",
+            "becomes": "core:plateau",
+            "notes": "Only long geologic or magical filling smooths it."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:reef",
+      "realWorldDescription": "Reefs are warm shallow marine structures built by coral or rock, often forming lagoons, atolls, and hazards for ships.",
+      "alohayoBehavior": "Rare warm shallow-water terrain with high creature density, bright visuals, and navigation risk.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Appears in warm shallow seas with a seeded reef chance.",
+        "conditions": [
+          "shallow sea",
+          "high temperature",
+          "low water depth",
+          "away from cold or muddy runoff"
+        ]
+      },
+      "surfaceEffects": [
+        { "id": "lagoon", "trigger": "reef ring", "effect": "turquoise water and protected basin" },
+        {
+          "id": "bleaching",
+          "trigger": "heat stress",
+          "effect": "pale coral and reduced creatures"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Blocked on foot; slow and careful for boats.",
+        "control": "Sharp reef edges damage careless craft.",
+        "hazards": ["reef cuts", "ship damage", "venomous sea life"],
+        "entryRequirements": ["boat", "swimming gear", "reef-safe route"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "storm breakage or bleaching",
+            "becomes": "core:shallow-sea",
+            "notes": "Reef loses its structure."
+          },
+          {
+            "trigger": "uplift",
+            "becomes": "core:coast",
+            "notes": "Raised reef becomes limestone shore."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:oasis",
+      "realWorldDescription": "An oasis is a localized water and vegetation pocket in arid terrain, often fed by groundwater or springs.",
+      "alohayoBehavior": "Rare desert refuge, settlement seed, road node, and creature concentration point.",
+      "generation": {
+        "rarity": "rare",
+        "possibility": "Rare chance inside hot dry desert cells at suitable elevation.",
+        "conditions": [
+          "desert climate",
+          "low to mid elevation",
+          "seeded groundwater chance",
+          "not too rugged"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "spring-pool",
+          "trigger": "normal oasis",
+          "effect": "small water highlights and palms"
+        },
+        { "id": "drying-edge", "trigger": "drought", "effect": "shrinking green ring" }
+      ],
+      "physicalBehavior": {
+        "movement": "Easy inside the green pocket; surrounding desert remains slow.",
+        "control": "Stable near water, soft at wet sand edges.",
+        "hazards": ["ambush", "contested water", "disease if stagnant"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "spring dries or well is poisoned",
+            "becomes": "core:desert",
+            "notes": "Without water, vegetation collapses."
+          },
+          {
+            "trigger": "irrigation expansion",
+            "becomes": "core:grassland",
+            "notes": "Managed water grows a broader green zone."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:volcano",
+      "realWorldDescription": "Volcanic terrain includes cones, caldera rims, ash fields, lava flows, and geothermal ground from active or young volcanism.",
+      "alohayoBehavior": "High-danger rare terrain with heat, ash, unique minerals, monsters, and future eruption events.",
+      "generation": {
+        "rarity": "very-rare",
+        "possibility": "Very rare; requires high elevation, ruggedness, and a seeded hotspot.",
+        "conditions": ["high elevation", "high ruggedness", "hotspot noise", "often near mountains"]
+      },
+      "surfaceEffects": [
+        {
+          "id": "ash-fall",
+          "trigger": "eruption or wind",
+          "effect": "gray ash layer over nearby surfaces"
+        },
+        {
+          "id": "lava-crust",
+          "trigger": "recent flow",
+          "effect": "black rock with red cracks and heat hazard"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Slow and dangerous; roads are rare and unstable.",
+        "control": "Rubble and heat vents force detours.",
+        "hazards": ["heat damage", "poison gas", "lava", "ash blindness", "eruption"],
+        "entryRequirements": [
+          "heat protection recommended",
+          "gas protection recommended",
+          "flight useful"
+        ]
+      },
+      "destruction": {
+        "destructible": false,
+        "methods": [
+          {
+            "trigger": "cooling and weathering",
+            "becomes": "core:bare-rock",
+            "notes": "Old lava becomes bare rock."
+          },
+          {
+            "trigger": "soil formation",
+            "becomes": "core:highland",
+            "notes": "Long-lived volcanic soil supports upland cover."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:glacier",
+      "realWorldDescription": "Glaciers are persistent land ice masses that form where snow accumulation exceeds melt and slowly flow downhill.",
+      "alohayoBehavior": "Rare cold barrier and water source for future rivers, caves, crevasses, and ancient discoveries.",
+      "generation": {
+        "rarity": "very-rare",
+        "possibility": "Very rare; requires very cold, wet, high terrain.",
+        "conditions": [
+          "very high elevation",
+          "low temperature",
+          "high moisture",
+          "near snow or mountain"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "blue-ice",
+          "trigger": "clear hard ice",
+          "effect": "blue highlights and strong slide"
+        },
+        {
+          "id": "crevasse-shadow",
+          "trigger": "rugged glacier",
+          "effect": "dark cracks and fall risk"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Very slow and slippery without gear.",
+        "control": "Sliding inertia and poor braking.",
+        "hazards": ["cold damage", "crevasse fall", "avalanche", "whiteout"],
+        "entryRequirements": ["warm clothing", "ice gear recommended", "flight useful"]
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "warming",
+            "becomes": "core:snow",
+            "notes": "Ice retreats into snowfield first."
+          },
+          {
+            "trigger": "complete melt",
+            "becomes": "core:lake",
+            "notes": "Meltwater can leave a proglacial lake."
+          }
+        ]
+      }
+    }
+  ]
+}

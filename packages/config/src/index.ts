@@ -131,6 +131,50 @@ export interface BiomeDefinition {
   }
 }
 
+export type TerrainRuleRarity = 'common' | 'uncommon' | 'rare' | 'very-rare'
+
+export interface TerrainSurfaceEffectDefinition {
+  id: string
+  trigger: string
+  effect: string
+}
+
+export interface TerrainDestructionRuleDefinition {
+  trigger: string
+  becomes: string
+  notes: string
+}
+
+export interface TerrainRuleDefinition {
+  terrainId: string
+  realWorldDescription: string
+  alohayoBehavior: string
+  generation: {
+    rarity: TerrainRuleRarity
+    possibility: string
+    conditions: string[]
+  }
+  surfaceEffects: TerrainSurfaceEffectDefinition[]
+  physicalBehavior: {
+    movement: string
+    control: string
+    hazards: string[]
+    entryRequirements: string[]
+  }
+  destruction: {
+    destructible: boolean
+    methods: TerrainDestructionRuleDefinition[]
+  }
+}
+
+export interface TerrainRulePackDefinition {
+  schemaVersion: 1
+  id: string
+  name: string
+  description: string
+  rules: TerrainRuleDefinition[]
+}
+
 export interface MapAreaPackDefinition {
   schemaVersion: 1
   id: string
@@ -311,6 +355,7 @@ export interface WorldManifest {
   pack: ContentPackManifest
   world: WorldDefinition
   biomes: BiomeDefinition[]
+  terrainRules?: TerrainRulePackDefinition
   mapAreas?: MapAreaDefinition[]
   characters?: CharacterContentDefinition
 }
@@ -328,6 +373,7 @@ export interface MountGameOptions {
     chunkRadius?: number
     retainChunkRadius?: number
     minimapChunkRadius?: number
+    mapAreaIds?: string[]
   }
 }
 

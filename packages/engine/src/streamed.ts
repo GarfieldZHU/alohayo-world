@@ -261,6 +261,10 @@ export async function createGame(
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const roadProfiles = profileById(content.world)
   const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
+  const enabledMapAreaIds = new Set(options.initialWorld?.mapAreaIds ?? [])
+  const mapAreas = content.mapAreas
+    .filter((area) => area.enabled || enabledMapAreaIds.has(area.id))
+    .map((area) => (area.enabled ? area : { ...area, enabled: true }))
   const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
     text: 'Surveying...',
@@ -1008,7 +1012,7 @@ export async function createGame(
         chunkSize,
         surveyWidth,
         surveyHeight,
-        mapAreas: content.mapAreas,
+        mapAreas,
         terrainCodes,
         biomeDefinitions: content.biomes,
         roadSystem: content.world.roads,

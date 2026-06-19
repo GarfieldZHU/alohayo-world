@@ -3,5 +3,5 @@
   "id": "core:map-areas",
   "name": "Core Authored Areas",
   "description": "Drop-in authored areas applied after procedural geography.",
-  "areas": ["areas/wayfinder-isle.json"]
+  "areas": ["areas/wayfinder-isle.json", "areas/terrain-showcase.json"]
 }

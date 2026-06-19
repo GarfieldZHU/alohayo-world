@@ -12,16 +12,21 @@ whole-world generation and drawing.
 ## Geographic definitions
 
 Visible terrain definitions provide stable numeric codes, names, colors, movement
-costs, and descriptions. Physical fields and topology are generated data and must not
-be duplicated as fake biome combinations such as `mainland-forest`.
+costs, and descriptions. Terrain material behavior, generation notes, surface effects,
+physics, hazards, entry requirements, and transformations live in
+`content/core/terrain-rules.json`; see `TERRAIN_RULES.md`. Physical fields and topology
+are generated data and must not be duplicated as fake biome combinations such as
+`mainland-forest`.
 
 To add terrain:
 
 1. reserve a stable code and namespaced ID;
 2. update classification in `packages/map`;
 3. add color and movement data in `content/core/biomes.json`;
-4. document the geographic meaning and precedence;
-5. validate content and deterministic output.
+4. add material/physics rules in `content/core/terrain-rules.json`;
+5. add English and Chinese names in `i18n/`;
+6. document the geographic meaning and precedence;
+7. validate content and deterministic output.
 
 Content lives under `content/<pack-id>` and begins with `manifest.json`.
 
@@ -29,6 +34,8 @@ Content lives under `content/<pack-id>` and begins with `manifest.json`.
 - `world.json`: seed defaults, dimensions, chunk size, streamed runtime, road profiles,
   road-generation thresholds, and basic weather-cycle parameters.
 - `biomes.json`: ordered climate/elevation rules and painterly palette.
+- `terrain-rules.json`: material behavior, surface effects, physical hazards, entry
+  requirements, and destruction/transformation rules.
 - Future `entities.json`: component values, appearance and interaction tags.
 - Future `modes.json`: registered systems, panels, input map and goals.
 

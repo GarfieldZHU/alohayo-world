@@ -2,7 +2,8 @@
 
 This package owns deterministic geography and worker-safe data.
 
-- Read `docs/MAP_SYSTEM.md`, `docs/GIS_FOUNDATIONS.md`, and `docs/modules/MAP.md`.
+- Read `docs/MAP_SYSTEM.md`, `docs/TERRAIN_RULES.md`, `docs/GIS_FOUNDATIONS.md`, and
+  `docs/modules/MAP.md`.
 - Keep physical fields, hydrology, landform, ecology, and topology distinguishable.
 - Use typed arrays; avoid per-cell objects.
 - Iterate neighbors in a documented fixed order.

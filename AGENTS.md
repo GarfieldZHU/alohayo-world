@@ -93,9 +93,11 @@ renderer.
 
 1. Update the geographic model in `packages/map`.
 2. Update definitions in `content/core`.
-3. Update `docs/MAP_SYSTEM.md` and `docs/GIS_FOUNDATIONS.md`.
-4. Preserve deterministic tests and validate all terrain codes.
-5. Check rendering and inspection in both standalone and embedded launchers.
+3. Keep `content/core/biomes.json`, `content/core/terrain-rules.json`, and both
+   `i18n/` catalogs in lockstep.
+4. Update `docs/MAP_SYSTEM.md`, `docs/TERRAIN_RULES.md`, and `docs/GIS_FOUNDATIONS.md`.
+5. Preserve deterministic tests and validate all terrain codes.
+6. Check rendering and inspection in both standalone and embedded launchers.
 
 ### Add a gameplay module
 
