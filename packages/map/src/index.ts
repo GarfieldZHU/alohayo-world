@@ -1457,7 +1457,8 @@ function buildRiverNetwork(
       for (let x = minX; x <= maxX; x += Math.max(6, Math.floor(stride / 2))) {
         const cell = evaluateCell(x, y)
         if (isWaterBiome(cell.biome)) continue
-        const score = cell.elevationValue * 0.7 + cell.moistureValue * 0.3 - cell.ruggednessValue * 0.15
+        const score =
+          cell.elevationValue * 0.7 + cell.moistureValue * 0.3 - cell.ruggednessValue * 0.15
         if (!fallbackSource || score > fallbackSource.score) fallbackSource = { x, y, score }
       }
     }
@@ -1478,8 +1479,8 @@ function buildRiverNetwork(
           const next = evaluateCell(nextX, nextY)
           const value =
             next.elevationValue +
-            Math.abs(nextX - minX) / Math.max(1, maxX - minX) * 0.01 +
-            Math.abs(nextY - minY) / Math.max(1, maxY - minY) * 0.01
+            (Math.abs(nextX - minX) / Math.max(1, maxX - minX)) * 0.01 +
+            (Math.abs(nextY - minY) / Math.max(1, maxY - minY)) * 0.01
           if (!best || value < best.value) best = { x: nextX, y: nextY, value }
           if (isWaterBiome(next.biome)) {
             best = { x: nextX, y: nextY, value: -1 }
@@ -1492,7 +1493,11 @@ function buildRiverNetwork(
         points.push({ x: currentX, y: currentY })
         visited.add(`${currentX},${currentY}`)
         if (isWaterBiome(evaluateCell(currentX, currentY).biome)) break
-        if (best.value >= current.elevationValue && points.length >= riverSystem.generation.minLength) break
+        if (
+          best.value >= current.elevationValue &&
+          points.length >= riverSystem.generation.minLength
+        )
+          break
       }
 
       if (points.length >= riverSystem.generation.minLength) {

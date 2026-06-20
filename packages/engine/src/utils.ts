@@ -3,11 +3,7 @@ import type {
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
 } from '@alohayo/config'
-import type {
-  GeneratedChunk,
-  WorldWorkerRequest,
-  WorldWorkerResponse,
-} from '@alohayo/map'
+import type { GeneratedChunk, WorldWorkerRequest, WorldWorkerResponse } from '@alohayo/map'
 import type { RpcPending, UiTheme } from './types'
 
 export const REGION_NAME: Record<number, string> = {

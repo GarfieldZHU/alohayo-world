@@ -23,11 +23,7 @@ import {
   translateContentDescription,
   translateContentName,
 } from '@alohayo/config'
-import {
-  hashSeed,
-  type GeneratedChunk,
-  type GeneratedLandmark,
-} from '@alohayo/map'
+import { hashSeed, type GeneratedChunk, type GeneratedLandmark } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './dev-panel'
 import {
@@ -36,7 +32,13 @@ import {
   renderMinimapLocale,
 } from './minimap-controls'
 import { themePalette } from './theme'
-import type { ActiveWeatherState, ChunkView, DevPanelControls, EngineContent, UiTheme } from './types'
+import type {
+  ActiveWeatherState,
+  ChunkView,
+  DevPanelControls,
+  EngineContent,
+  UiTheme,
+} from './types'
 import {
   REGION_NAME,
   cellNoise,
