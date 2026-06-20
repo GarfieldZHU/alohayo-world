@@ -67,6 +67,25 @@
       "textureStep": 5
     }
   },
+  "rivers": {
+    "enabled": true,
+    "blockingMovement": true,
+    "bridgeRadius": 1,
+    "renderWidth": {
+      "minor": 0.72,
+      "major": 1.18
+    },
+    "generation": {
+      "sourceStride": 14,
+      "sourceChance": 0.46,
+      "sourceElevationMin": 0.48,
+      "sourceMoistureMin": 0.24,
+      "channelDepthMin": 0.03,
+      "traceMargin": 72,
+      "minLength": 6,
+      "maxLength": 108
+    }
+  },
   "weather": {
     "enabled": true,
     "cycleSeconds": 120,

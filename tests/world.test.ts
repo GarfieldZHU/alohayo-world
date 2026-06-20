@@ -63,11 +63,16 @@ describe('world generation', () => {
     const first = generateChunk('trade-routes', 1, -1, 64)
     const second = generateChunk('trade-routes', 1, -1, 64)
     expect(first.settlements).toEqual(second.settlements)
+    expect(first.rivers).toEqual(second.rivers)
     expect(first.roads).toEqual(second.roads)
     const world = generateWorld('trade-routes-network', 160, 120)
     expect(
       world.roads.some((road) => road.points.some((point) => !Number.isInteger(point.x)))
     ).toBe(true)
+    const riverSamples = Array.from({ length: 12 }, (_, index) =>
+      generateWorld(`river-sample-${index}`, 160, 120)
+    )
+    expect(riverSamples.some((sample) => sample.rivers.length > 0)).toBe(true)
   })
 
   it('exposes extended terrain families in generated worlds', () => {

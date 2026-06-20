@@ -10,12 +10,9 @@ import {
 } from '@alohayo/character'
 import type {
   BiomeDefinition,
-  CharacterContentDefinition,
   LocaleCode,
   GameHandle,
-  MapAreaDefinition,
   MountGameOptions,
-  WorldDefinition,
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
 } from '@alohayo/config'
@@ -27,243 +24,44 @@ import {
   translateContentName,
 } from '@alohayo/config'
 import {
-  CHUNK_REGION,
   hashSeed,
   type GeneratedChunk,
   type GeneratedLandmark,
-  type WorldWorkerRequest,
-  type WorldWorkerResponse,
 } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
-
-interface EngineContent {
-  world: WorldDefinition
-  biomes: BiomeDefinition[]
-  mapAreas: MapAreaDefinition[]
-  characters: CharacterContentDefinition
-}
-
-interface ChunkView {
-  container: Container
-  terrain: Graphics
-  transitions: Graphics
-  regionalDetails: Graphics
-  closeDetails: Graphics
-  surfaces: Graphics
-  roads: Graphics
-  settlements: Graphics
-  landmarks: Graphics
-  fog: Graphics
-}
-
-interface RpcPending {
-  resolve: (value: GeneratedChunk) => void
-  reject: (reason?: unknown) => void
-}
-
-interface ActiveWeatherState {
-  id: string
-  wetness: number
-  snowCover: number
-  mud: number
-  fade: number
-}
-
-interface DevPanelControls {
-  panel: HTMLDivElement
-  body: HTMLDivElement
-  heading: HTMLDivElement
-  collapseButton: HTMLButtonElement
-  battleShadowLabel: HTMLLabelElement
-  fastMoveLabel: HTMLLabelElement
-  flyLabel: HTMLLabelElement
-  teleportX: HTMLInputElement
-  teleportY: HTMLInputElement
-  teleportButton: HTMLButtonElement
-  slotSelect: HTMLSelectElement
-  itemSelect: HTMLSelectElement
-  applyGearButton: HTMLButtonElement
-  note: HTMLParagraphElement
-  fastMoveToggle: HTMLInputElement
-  flyToggle: HTMLInputElement
-  fillEquipmentOptions: () => void
-  fillItemOptions: () => void
-  setCollapsed: (collapsed: boolean) => void
-  isCollapsed: () => boolean
-}
-
-interface MinimapControls {
-  panel: HTMLDivElement
-  title: HTMLDivElement
-  compass: HTMLSpanElement
-  collapseButton: HTMLButtonElement
-  zoomOutButton: HTMLButtonElement
-  zoomInButton: HTMLButtonElement
-  fitButton: HTMLButtonElement
-  body: HTMLDivElement
-  setCollapsed: (collapsed: boolean) => void
-}
-
-type UiTheme = 'light' | 'dark'
-
-const REGION_NAME: Record<number, string> = {
-  [CHUNK_REGION.sea]: 'sea',
-  [CHUNK_REGION.lake]: 'lake',
-  [CHUNK_REGION.mainland]: 'mainland',
-  [CHUNK_REGION.island]: 'island',
-}
-
-function createWorkerRpc(worker: Worker) {
-  let nextId = 1
-  const pending = new Map<string, RpcPending>()
-
-  worker.onmessage = (event: MessageEvent<WorldWorkerResponse>) => {
-    if (event.data.type !== 'generated-chunk') return
-    const request = pending.get(event.data.id)
-    if (!request) return
-    pending.delete(event.data.id)
-    request.resolve(event.data.chunk)
-  }
-
-  worker.onerror = (event) => {
-    for (const request of pending.values()) {
-      request.reject(new Error(event.message || 'World worker failed'))
-    }
-    pending.clear()
-  }
-
-  return {
-    requestChunk(
-      payload: Omit<Extract<WorldWorkerRequest, { type: 'generate-chunk' }>, 'type' | 'id'>
-    ) {
-      return new Promise<GeneratedChunk>((resolve, reject) => {
-        const id = `chunk-${nextId++}`
-        pending.set(id, { resolve, reject })
-        worker.postMessage({ type: 'generate-chunk', id, ...payload })
-      })
-    },
-    rejectAll(reason: Error) {
-      for (const request of pending.values()) request.reject(reason)
-      pending.clear()
-    },
-  }
-}
-
-function chunkKey(chunkX: number, chunkY: number): string {
-  return `${chunkX},${chunkY}`
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-function normalizeTheme(input?: string | null): UiTheme {
-  return input === 'light' ? 'light' : 'dark'
-}
-
-function cellNoise(x: number, y: number, salt = 0) {
-  let value = Math.imul(x + salt, 374761393) ^ Math.imul(y - salt, 668265263)
-  value = Math.imul(value ^ (value >>> 13), 1274126177)
-  return (value ^ (value >>> 16)) >>> 0
-}
-
-function colorFromHex(value: string, fallback: number): number {
-  return /^#[0-9a-f]{6}$/i.test(value) ? Number.parseInt(value.slice(1), 16) : fallback
-}
-
-function profileById(world: WorldDefinition): Map<WorldRoadProfileId, WorldRoadProfileDefinition> {
-  return new Map(
-    world.roads.profiles.map(
-      (profile) => [profile.id, profile] satisfies [WorldRoadProfileId, WorldRoadProfileDefinition]
-    )
-  )
-}
-
-function toChunkCoord(cell: number, chunkSize: number): { chunk: number; local: number } {
-  const chunk = Math.floor(cell / chunkSize)
-  const local = cell - chunk * chunkSize
-  return { chunk, local }
-}
-
-function deriveChunkRadius(
-  width: number,
-  height: number,
-  chunkSize: number,
-  fallback: number
-): number {
-  const radius = Math.round(Math.max(width, height) / Math.max(1, chunkSize * 4))
-  return Math.max(fallback, radius)
-}
-
-function computeGameCameraScale(screenWidth: number, screenHeight: number, cellSize: number) {
-  const targetVisibleCellsX = 32
-  const targetVisibleCellsY = 22
-  return clamp(
-    Math.min(
-      screenWidth / (cellSize * targetVisibleCellsX),
-      screenHeight / (cellSize * targetVisibleCellsY)
-    ),
-    2.2,
-    9
-  )
-}
+import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './dev-panel'
+import {
+  applyThemeToMinimapControls,
+  createMinimapControls,
+  renderMinimapLocale,
+} from './minimap-controls'
+import { themePalette } from './theme'
+import type { ActiveWeatherState, ChunkView, DevPanelControls, EngineContent, UiTheme } from './types'
+import {
+  REGION_NAME,
+  cellNoise,
+  chunkKey,
+  clamp,
+  colorFromHex,
+  computeGameCameraScale,
+  createWorkerRpc,
+  deriveChunkRadius,
+  normalizeTheme,
+  profileById,
+  toChunkCoord,
+} from './utils'
 
 export async function createGame(
   options: MountGameOptions,
   content: EngineContent
 ): Promise<GameHandle> {
   let theme: UiTheme = normalizeTheme(options.theme)
-  const themePalette = () =>
-    theme === 'light'
-      ? {
-          containerBackground: '#e7eef8',
-          statusFill: '#143247',
-          minimapFill: 0xf6fbff,
-          minimapStroke: 0x3b82f6,
-          minimapExplorerStroke: 0xe7eef8,
-          minimapPanelBorder: 'rgba(59,130,246,0.18)',
-          minimapPanelBackground: 'rgba(255,255,255,0.78)',
-          minimapPanelText: '#143247',
-          minimapPanelMuted: '#476072',
-          minimapPanelButtonBackground: 'rgba(219, 234, 254, 0.95)',
-          minimapPanelButtonActive: '#2563eb',
-          devBorder: 'rgba(59,130,246,0.28)',
-          devBackground: 'rgba(255, 255, 255, 0.56)',
-          devBackgroundHover: 'rgba(255, 255, 255, 0.94)',
-          devText: '#143247',
-          devAccent: '#2563eb',
-          devMuted: '#476072',
-          devInputBackground: 'rgba(231, 238, 248, 0.92)',
-          devInputBorder: '#98b0c8',
-          devButtonBackground: 'rgba(219, 234, 254, 0.96)',
-        }
-      : {
-          containerBackground: '#07111f',
-          statusFill: '#d8f3ff',
-          minimapFill: 0x091725,
-          minimapStroke: 0x72d7c8,
-          minimapExplorerStroke: 0x10222f,
-          minimapPanelBorder: 'rgba(114,215,200,0.24)',
-          minimapPanelBackground: 'rgba(7,17,31,0.74)',
-          minimapPanelText: '#d8f3ff',
-          minimapPanelMuted: '#9bb2bf',
-          minimapPanelButtonBackground: '#173241',
-          minimapPanelButtonActive: '#72d7c8',
-          devBorder: 'rgba(114,215,200,0.35)',
-          devBackground: 'rgba(7, 17, 31, 0.42)',
-          devBackgroundHover: 'rgba(7, 17, 31, 0.92)',
-          devText: '#d8f3ff',
-          devAccent: '#72d7c8',
-          devMuted: '#9bb2bf',
-          devInputBackground: '#0c1e2b',
-          devInputBorder: '#315263',
-          devButtonBackground: '#173241',
-        }
+  const palette = () => themePalette(theme)
   const app = new Application()
   await app.init({
     resizeTo: options.container,
     antialias: false,
-    background: themePalette().containerBackground,
+    background: palette().containerBackground,
     preference: 'webgl',
   })
   options.container.replaceChildren(app.canvas)
@@ -292,7 +90,7 @@ export async function createGame(
   const slotById = new Map(content.characters.slots.map((slot) => [slot.id, slot]))
   const status = new Text({
     text: 'Surveying...',
-    style: { fill: themePalette().statusFill, fontFamily: 'monospace', fontSize: 13 },
+    style: { fill: palette().statusFill, fontFamily: 'monospace', fontSize: 13 },
   })
   status.position.set(14, 12)
   overlay.addChild(status)
@@ -314,6 +112,8 @@ export async function createGame(
   const chunks = new Map<string, GeneratedChunk>()
   const chunkViews = new Map<string, ChunkView>()
   const roadMasks = new Map<string, Uint8Array>()
+  const riverMasks = new Map<string, Uint8Array>()
+  const bridgeMasks = new Map<string, Uint8Array>()
   const pendingChunks = new Map<string, Promise<GeneratedChunk>>()
   const discovery = new Map<string, Uint8Array>()
   const dirtyFog = new Set<string>()
@@ -399,37 +199,15 @@ export async function createGame(
 
   const applyThemeToContainer = () => {
     options.container.dataset.alohayoWorldTheme = theme
-    options.container.style.background = themePalette().containerBackground
+    options.container.style.background = palette().containerBackground
   }
 
-  const applyThemeToDevPanel = (panel: DevPanelControls | null, interactive = false) => {
-    if (!panel) return
-    const palette = themePalette()
-    Object.assign(panel.panel.style, {
-      border: `1px solid ${palette.devBorder}`,
-      background: interactive ? palette.devBackgroundHover : palette.devBackground,
-      color: palette.devText,
-      opacity: interactive ? '1' : devPanelCollapsed ? '0.66' : '0.22',
-    } satisfies Partial<CSSStyleDeclaration>)
-    panel.heading.style.color = palette.devAccent
-    panel.note.style.color = palette.devMuted
-    panel.collapseButton.style.color = palette.devText
+  const applyCurrentDevPanelTheme = (panel: DevPanelControls | null, interactive = false) => {
+    applyThemeToDevPanel(panel, palette(), devPanelCollapsed, interactive)
+  }
 
-    for (const element of [panel.teleportX, panel.teleportY, panel.slotSelect, panel.itemSelect]) {
-      Object.assign(element.style, {
-        color: palette.devText,
-        background: palette.devInputBackground,
-        border: `1px solid ${palette.devInputBorder}`,
-      } satisfies Partial<CSSStyleDeclaration>)
-    }
-
-    for (const button of [panel.teleportButton, panel.applyGearButton]) {
-      Object.assign(button.style, {
-        color: palette.devText,
-        background: palette.devButtonBackground,
-        border: `1px solid ${palette.devInputBorder}`,
-      } satisfies Partial<CSSStyleDeclaration>)
-    }
+  const applyCurrentMinimapTheme = (controls: ReturnType<typeof createMinimapControls> | null) => {
+    applyThemeToMinimapControls(controls, palette(), devMode, minimapMode)
   }
 
   const updateDetailLevel = () => {
@@ -437,11 +215,66 @@ export async function createGame(
       view.regionalDetails.visible = scale >= 1.15
       view.closeDetails.visible = scale >= 2.15
       view.surfaces.visible = scale >= 1
+      view.rivers.visible = scale >= 0.95
       view.roads.visible = scale >= 1.05
       view.settlements.visible = scale >= 0.85
       view.landmarks.visible = scale >= 1.15
     }
   }
+
+  const buildDevPanel = () =>
+    devMode
+      ? createDevPanel({
+          getText: devText,
+          getSlotName: translateSlotName,
+          getItemName: translateItemName,
+          getUnequipName: () => devText('unequip'),
+          getExplorerEquipment: () => explorer?.equipment ?? null,
+          getSlotById: (slotId) => slotById.get(slotId),
+          getAvailableItems: () => content.characters.items,
+          getBattleShadow: () => devBattleShadow,
+          setBattleShadow: (enabled) => {
+            devBattleShadow = enabled
+            refreshFogVisibility()
+          },
+          getFastMove: () => devFastMove,
+          setFastMove: (enabled) => {
+            devFastMove = enabled
+          },
+          getFly: () => devFly,
+          setFly: (enabled) => {
+            devFly = enabled
+          },
+          teleport: (x, y) => {
+            void teleportExplorer(x, y)
+          },
+          applyEquipment: (slotId, itemId, itemName) => {
+            if (!explorer) return
+            const selected = explorer.equipment.find((entry) => entry.slotId === slotId)
+            if (!selected) return
+            selected.itemId = itemId
+            const slot = slotById.get(slotId)
+            if (slot?.kind === 'weapon' && selected.itemId) explorer.activeWeaponSlot = slotId
+            actionMessage = formatI18n(devText('equipmentSet'), {
+              slotName: translateSlotName(slotId, slot?.name ?? slotId),
+              itemName,
+            })
+            actionMessageUntil = performance.now() + 1800
+            updateStatus()
+            drawExplorer(performance.now() / 1000)
+          },
+          onRefreshVisuals: () => {
+            refreshFog()
+            drawExplorer(performance.now() / 1000)
+          },
+          onStatusChange: updateStatus,
+          getCollapsed: () => devPanelCollapsed,
+          setCollapsedState: (collapsed) => {
+            devPanelCollapsed = collapsed
+          },
+          storageKey: devPanelStateStorageKey,
+        })
+      : null
 
   const appearanceColor = (value: string, fallback: number) => {
     const colors: Record<string, number> = {
@@ -697,6 +530,51 @@ export async function createGame(
           : roadProfile('trail')
   }
 
+  const rebuildRiverMask = (chunk: GeneratedChunk) => {
+    const riverMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
+    const bridgeMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
+    for (const river of chunk.rivers) {
+      const radius = Math.max(0, Math.ceil(river.width))
+      for (let pointIndex = 1; pointIndex < river.points.length; pointIndex += 1) {
+        const from = river.points[pointIndex - 1]!
+        const to = river.points[pointIndex]!
+        const length = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * 2))
+        for (let step = 0; step <= length; step += 1) {
+          const t = step / length
+          const x = from.x + (to.x - from.x) * t
+          const y = from.y + (to.y - from.y) * t
+          const localX = Math.round(x - chunk.originX)
+          const localY = Math.round(y - chunk.originY)
+          for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+            for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+              const nx = localX + offsetX
+              const ny = localY + offsetY
+              if (nx < 0 || ny < 0 || nx >= chunk.chunkSize || ny >= chunk.chunkSize) continue
+              const index = ny * chunk.chunkSize + nx
+              riverMask[index] = 1
+            }
+          }
+        }
+      }
+    }
+
+    const roadMask = roadMasks.get(chunkKey(chunk.chunkX, chunk.chunkY))
+    if (roadMask) {
+      for (let index = 0; index < roadMask.length; index += 1) {
+        if (roadMask[index] && riverMask[index]) bridgeMask[index] = 1
+      }
+    }
+    riverMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), riverMask)
+    bridgeMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), bridgeMask)
+  }
+
+  const riverBlocksAt = (chunk: GeneratedChunk, index: number) => {
+    if (!content.world.rivers?.blockingMovement) return false
+    const riverMask = riverMasks.get(chunkKey(chunk.chunkX, chunk.chunkY))
+    const bridgeMask = bridgeMasks.get(chunkKey(chunk.chunkX, chunk.chunkY))
+    return Boolean(riverMask?.[index] && !bridgeMask?.[index])
+  }
+
   const roadTextureTint = (biome: BiomeDefinition, state: ActiveWeatherState) => {
     const snowTemperatureMax = content.world.weather?.snowTemperatureMax ?? 0.42
     if (state.snowCover > 0.2 && biome.temperature.max <= snowTemperatureMax + 0.2) {
@@ -842,6 +720,7 @@ export async function createGame(
       const regionalDetails = new Graphics()
       const closeDetails = new Graphics()
       const surfaces = new Graphics()
+      const rivers = new Graphics()
       const roads = new Graphics()
       const settlements = new Graphics()
       const landmarks = new Graphics()
@@ -852,6 +731,7 @@ export async function createGame(
         regionalDetails,
         closeDetails,
         surfaces,
+        rivers,
         roads,
         settlements,
         landmarks,
@@ -865,6 +745,7 @@ export async function createGame(
         regionalDetails,
         closeDetails,
         surfaces,
+        rivers,
         roads,
         settlements,
         landmarks,
@@ -879,11 +760,13 @@ export async function createGame(
     view.regionalDetails.clear()
     view.closeDetails.clear()
     view.surfaces.clear()
+    view.rivers.clear()
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
     view.fog.visible = !(devMode && devBattleShadow)
     rebuildRoadMask(chunk)
+    rebuildRiverMask(chunk)
 
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
@@ -966,6 +849,24 @@ export async function createGame(
       }
     }
 
+    for (const river of chunk.rivers) {
+      let started = false
+      for (const point of river.points) {
+        const x = (point.x - chunk.originX) * cellSize + cellSize / 2
+        const y = (point.y - chunk.originY) * cellSize + cellSize / 2
+        if (!started) {
+          view.rivers.moveTo(x, y)
+          started = true
+        } else {
+          view.rivers.lineTo(x, y)
+        }
+      }
+      if (started) {
+        view.rivers.stroke({ color: 0x123f66, width: river.width + 0.32, alpha: 0.95 })
+        view.rivers.stroke({ color: 0x4da6d8, width: river.width, alpha: 0.94 })
+      }
+    }
+
     for (const road of chunk.roads) {
       const profile = roadProfile(road.kind)
       const color = colorFromHex(profile.color, 0xc8b6a1)
@@ -1032,6 +933,7 @@ export async function createGame(
     view.regionalDetails.visible = scale >= 1.15
     view.closeDetails.visible = scale >= 2.15
     view.surfaces.visible = scale >= 1
+    view.rivers.visible = scale >= 0.95
     view.roads.visible = scale >= 1.05
     view.settlements.visible = scale >= 0.85
     view.landmarks.visible = scale >= 1.15
@@ -1057,6 +959,7 @@ export async function createGame(
         mapAreas,
         terrainCodes,
         biomeDefinitions: content.biomes,
+        riverSystem: content.world.rivers,
         roadSystem: content.world.roads,
       })
       .then((chunk) => {
@@ -1102,6 +1005,8 @@ export async function createGame(
       }
       chunks.delete(key)
       roadMasks.delete(key)
+      riverMasks.delete(key)
+      bridgeMasks.delete(key)
       dirtyFog.delete(key)
     }
   }
@@ -1146,6 +1051,7 @@ export async function createGame(
         }
         if (devMode && devFly) continue
         if (data.biome.movementCost >= 7) return false
+        if (riverBlocksAt(data.chunk, data.index)) return false
       }
     }
     return true
@@ -1194,8 +1100,8 @@ export async function createGame(
     const frameY = 68
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
-      .fill({ color: themePalette().minimapFill, alpha: 0.86 })
-      .stroke({ color: themePalette().minimapStroke, alpha: 0.8, width: 1.2 })
+      .fill({ color: palette().minimapFill, alpha: 0.86 })
+      .stroke({ color: palette().minimapStroke, alpha: 0.8, width: 1.2 })
 
     const centerChunkX =
       minimapMode === 'fit' && Number.isFinite(minChunkX)
@@ -1245,177 +1151,7 @@ export async function createGame(
         Math.max(2, tile * 0.22)
       )
       .fill({ color: 0xf6f2d6 })
-      .stroke({ color: themePalette().minimapExplorerStroke, width: 1 })
-  }
-
-  const createMinimapControls = () => {
-    const panel = document.createElement('div')
-    panel.dataset.alohayoWorldMinimap = 'true'
-    Object.assign(panel.style, {
-      position: 'absolute',
-      inset: '16px 16px auto auto',
-      zIndex: '18',
-      width: '170px',
-      borderRadius: '14px',
-      padding: '8px',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 12px 36px rgba(0,0,0,0.22)',
-    } satisfies Partial<CSSStyleDeclaration>)
-
-    const header = document.createElement('div')
-    Object.assign(header.style, {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      marginBottom: '6px',
-    } satisfies Partial<CSSStyleDeclaration>)
-    panel.appendChild(header)
-
-    const title = document.createElement('div')
-    Object.assign(title.style, {
-      flex: '1',
-      fontSize: '11px',
-      letterSpacing: '0.12em',
-      textTransform: 'uppercase',
-      fontWeight: '700',
-    } satisfies Partial<CSSStyleDeclaration>)
-    header.appendChild(title)
-
-    const compass = document.createElement('span')
-    Object.assign(compass.style, {
-      fontSize: '11px',
-      fontWeight: '700',
-      padding: '2px 6px',
-      borderRadius: '999px',
-    } satisfies Partial<CSSStyleDeclaration>)
-    header.appendChild(compass)
-
-    const collapseButton = document.createElement('button')
-    collapseButton.type = 'button'
-    Object.assign(collapseButton.style, {
-      border: '0',
-      cursor: 'pointer',
-      borderRadius: '999px',
-      padding: '2px 7px',
-      fontSize: '11px',
-      fontWeight: '700',
-    } satisfies Partial<CSSStyleDeclaration>)
-    header.appendChild(collapseButton)
-
-    const body = document.createElement('div')
-    Object.assign(body.style, {
-      display: 'flex',
-      gap: '6px',
-    } satisfies Partial<CSSStyleDeclaration>)
-    panel.appendChild(body)
-
-    const makeButton = () => {
-      const button = document.createElement('button')
-      button.type = 'button'
-      Object.assign(button.style, {
-        flex: '1',
-        border: '0',
-        cursor: 'pointer',
-        borderRadius: '8px',
-        padding: '7px 8px',
-        fontSize: '11px',
-        fontWeight: '700',
-      } satisfies Partial<CSSStyleDeclaration>)
-      body.appendChild(button)
-      return button
-    }
-
-    const zoomOutButton = makeButton()
-    zoomOutButton.addEventListener('click', () => {
-      minimapMode = 'manual'
-      minimapManualRadius = clamp(minimapManualRadius + 1, 2, Math.max(minimapChunkRadius * 3, 18))
-      drawMinimap()
-      applyThemeToMinimapControls(controls)
-    })
-
-    const zoomInButton = makeButton()
-    zoomInButton.addEventListener('click', () => {
-      minimapMode = 'manual'
-      minimapManualRadius = clamp(minimapManualRadius - 1, 2, Math.max(minimapChunkRadius * 3, 18))
-      drawMinimap()
-      applyThemeToMinimapControls(controls)
-    })
-
-    const fitButton = makeButton()
-    fitButton.addEventListener('click', () => {
-      minimapMode = 'fit'
-      drawMinimap()
-      applyThemeToMinimapControls(controls)
-    })
-
-    const controls: MinimapControls = {
-      panel,
-      title,
-      compass,
-      collapseButton,
-      zoomOutButton,
-      zoomInButton,
-      fitButton,
-      body,
-      setCollapsed(nextCollapsed) {
-        minimapCollapsed = nextCollapsed
-        body.style.display = minimapCollapsed ? 'none' : 'flex'
-        collapseButton.textContent = minimapCollapsed
-          ? minimapText('minimapExpand')
-          : minimapText('minimapCollapse')
-        window.localStorage.setItem(
-          'alohayo-world:minimap-collapsed',
-          minimapCollapsed ? 'true' : 'false'
-        )
-        drawMinimap()
-      },
-    }
-
-    collapseButton.addEventListener('click', () => {
-      controls.setCollapsed(!minimapCollapsed)
-      applyThemeToMinimapControls(controls)
-    })
-
-    return controls
-  }
-
-  const renderMinimapLocale = (controls: MinimapControls | null) => {
-    if (!controls) return
-    controls.title.textContent = minimapText('minimapTitle')
-    controls.compass.textContent = minimapText('minimapCompass')
-    controls.zoomOutButton.textContent = minimapText('minimapZoomOut')
-    controls.zoomInButton.textContent = minimapText('minimapZoomIn')
-    controls.fitButton.textContent = minimapText('minimapFit')
-    controls.setCollapsed(minimapCollapsed)
-  }
-
-  const applyThemeToMinimapControls = (controls: MinimapControls | null) => {
-    if (!controls) return
-    const palette = themePalette()
-    Object.assign(controls.panel.style, {
-      display: devMode ? 'none' : 'block',
-      border: `1px solid ${palette.minimapPanelBorder}`,
-      background: palette.minimapPanelBackground,
-      color: palette.minimapPanelText,
-    } satisfies Partial<CSSStyleDeclaration>)
-    Object.assign(controls.compass.style, {
-      background: palette.minimapPanelButtonBackground,
-      color: palette.minimapPanelMuted,
-    } satisfies Partial<CSSStyleDeclaration>)
-    for (const button of [
-      controls.collapseButton,
-      controls.zoomOutButton,
-      controls.zoomInButton,
-      controls.fitButton,
-    ]) {
-      Object.assign(button.style, {
-        background: palette.minimapPanelButtonBackground,
-        color: palette.minimapPanelText,
-      } satisfies Partial<CSSStyleDeclaration>)
-    }
-    controls.fitButton.style.outline =
-      minimapMode === 'fit' ? `1px solid ${palette.minimapPanelButtonActive}` : '0'
+      .stroke({ color: palette().minimapExplorerStroke, width: 1 })
   }
 
   const updateStatus = () => {
@@ -1531,291 +1267,6 @@ export async function createGame(
     updateStatus()
   }
 
-  const createDevPanel = (): DevPanelControls | null => {
-    if (!devMode) return null
-
-    const panel = document.createElement('div')
-    panel.dataset.alohayoWorldDevPanel = 'true'
-    Object.assign(panel.style, {
-      position: 'absolute',
-      inset: 'auto auto 16px 16px',
-      zIndex: '20',
-      width: 'min(280px, calc(100% - 32px))',
-      padding: '10px',
-      borderRadius: '12px',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 18px 44px rgba(0,0,0,0.28)',
-      transition: 'opacity 140ms ease, background 140ms ease, transform 140ms ease',
-    } satisfies Partial<CSSStyleDeclaration>)
-
-    const header = document.createElement('div')
-    Object.assign(header.style, {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '10px',
-      marginBottom: '8px',
-    } satisfies Partial<CSSStyleDeclaration>)
-    panel.appendChild(header)
-
-    const heading = document.createElement('div')
-    heading.textContent = devText('heading')
-    Object.assign(heading.style, {
-      fontSize: '12px',
-      letterSpacing: '0.14em',
-      textTransform: 'uppercase',
-      flex: '1',
-      marginBottom: '0',
-    } satisfies Partial<CSSStyleDeclaration>)
-    header.appendChild(heading)
-
-    const collapseButton = document.createElement('button')
-    collapseButton.type = 'button'
-    Object.assign(collapseButton.style, {
-      border: '0',
-      background: 'transparent',
-      cursor: 'pointer',
-      padding: '2px 6px',
-      borderRadius: '999px',
-      fontSize: '11px',
-      fontWeight: '700',
-    } satisfies Partial<CSSStyleDeclaration>)
-    header.appendChild(collapseButton)
-
-    const body = document.createElement('div')
-    panel.appendChild(body)
-
-    const makeRow = () => {
-      const row = document.createElement('div')
-      Object.assign(row.style, {
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '8px',
-        alignItems: 'center',
-      } satisfies Partial<CSSStyleDeclaration>)
-      body.appendChild(row)
-      return row
-    }
-
-    const makeInput = (value = '') => {
-      const input = document.createElement('input')
-      input.value = value
-      Object.assign(input.style, {
-        flex: '1',
-        minWidth: '0',
-        borderRadius: '8px',
-        padding: '8px 10px',
-      } satisfies Partial<CSSStyleDeclaration>)
-      return input
-    }
-
-    const makeButton = (text: string) => {
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.textContent = text
-      Object.assign(button.style, {
-        borderRadius: '8px',
-        padding: '8px 10px',
-        cursor: 'pointer',
-        fontWeight: '700',
-      } satisfies Partial<CSSStyleDeclaration>)
-      return button
-    }
-
-    const checkboxRow = makeRow()
-    const battleShadowToggle = document.createElement('input')
-    battleShadowToggle.type = 'checkbox'
-    battleShadowToggle.checked = devBattleShadow
-    battleShadowToggle.addEventListener('change', () => {
-      devBattleShadow = battleShadowToggle.checked
-      refreshFogVisibility()
-      updateStatus()
-      refreshFog()
-      drawExplorer(performance.now() / 1000)
-    })
-    const battleShadowLabel = document.createElement('label')
-    battleShadowLabel.textContent = devText('battleShadow')
-    battleShadowLabel.style.flex = '1'
-    checkboxRow.append(battleShadowToggle, battleShadowLabel)
-
-    const fastMoveToggle = document.createElement('input')
-    fastMoveToggle.type = 'checkbox'
-    fastMoveToggle.checked = devFastMove
-    fastMoveToggle.addEventListener('change', () => {
-      devFastMove = fastMoveToggle.checked
-      updateStatus()
-    })
-    const fastMoveLabel = document.createElement('label')
-    fastMoveLabel.textContent = devText('fastMove')
-    fastMoveLabel.style.flex = '1'
-    checkboxRow.append(fastMoveToggle, fastMoveLabel)
-
-    const flyRow = makeRow()
-    const flyToggle = document.createElement('input')
-    flyToggle.type = 'checkbox'
-    flyToggle.checked = devFly
-    flyToggle.addEventListener('change', () => {
-      devFly = flyToggle.checked
-      updateStatus()
-      drawExplorer(performance.now() / 1000)
-    })
-    const flyLabel = document.createElement('label')
-    flyLabel.textContent = devText('fly')
-    flyLabel.style.flex = '1'
-    flyRow.append(flyToggle, flyLabel)
-
-    const teleportRow = makeRow()
-    const teleportX = makeInput('0')
-    teleportX.inputMode = 'numeric'
-    teleportX.placeholder = 'x'
-    const teleportY = makeInput('0')
-    teleportY.inputMode = 'numeric'
-    teleportY.placeholder = 'y'
-    const teleportButton = makeButton(devText('teleport'))
-    teleportButton.addEventListener('click', () => {
-      const nextX = Number.parseInt(teleportX.value, 10)
-      const nextY = Number.parseInt(teleportY.value, 10)
-      if (Number.isNaN(nextX) || Number.isNaN(nextY)) return
-      void teleportExplorer(nextX, nextY)
-    })
-    teleportRow.append(teleportX, teleportY, teleportButton)
-
-    const gearRow = makeRow()
-    const slotSelect = document.createElement('select')
-    const itemSelect = document.createElement('select')
-    for (const select of [slotSelect, itemSelect]) {
-      Object.assign(select.style, {
-        flex: '1',
-        minWidth: '0',
-        borderRadius: '8px',
-        padding: '8px 10px',
-      } satisfies Partial<CSSStyleDeclaration>)
-    }
-    const applyGearButton = makeButton(devText('equip'))
-    gearRow.append(slotSelect, itemSelect, applyGearButton)
-
-    const fillEquipmentOptions = () => {
-      if (!explorer) return
-      slotSelect.replaceChildren()
-      for (const equipment of explorer.equipment) {
-        const option = document.createElement('option')
-        const slot = slotById.get(equipment.slotId)
-        option.value = equipment.slotId
-        option.textContent = translateSlotName(equipment.slotId, slot?.name ?? equipment.slotId)
-        slotSelect.appendChild(option)
-      }
-    }
-
-    const fillItemOptions = () => {
-      itemSelect.replaceChildren()
-      const currentSlotId = slotSelect.value
-      const emptyOption = document.createElement('option')
-      emptyOption.value = ''
-      emptyOption.textContent = devText('unequip')
-      itemSelect.appendChild(emptyOption)
-      for (const item of content.characters.items) {
-        if (!item.allowedSlots.includes(currentSlotId)) continue
-        const option = document.createElement('option')
-        option.value = item.id
-        option.textContent = translateItemName(item.id, item.name)
-        itemSelect.appendChild(option)
-      }
-      const selected = explorer?.equipment.find((entry) => entry.slotId === currentSlotId)
-      itemSelect.value = selected?.itemId ?? ''
-    }
-
-    slotSelect.addEventListener('change', fillItemOptions)
-    applyGearButton.addEventListener('click', () => {
-      if (!explorer) return
-      const currentSlotId = slotSelect.value
-      const selected = explorer.equipment.find((entry) => entry.slotId === currentSlotId)
-      if (!selected) return
-      selected.itemId = itemSelect.value || null
-      const slot = slotById.get(currentSlotId)
-      if (slot?.kind === 'weapon' && selected.itemId) explorer.activeWeaponSlot = currentSlotId
-      actionMessage = formatI18n(devText('equipmentSet'), {
-        slotName: translateSlotName(currentSlotId, slot?.name ?? currentSlotId),
-        itemName: itemSelect.selectedOptions[0]?.textContent ?? devText('unequip'),
-      })
-      actionMessageUntil = performance.now() + 1800
-      updateStatus()
-      drawExplorer(performance.now() / 1000)
-    })
-
-    fillEquipmentOptions()
-    fillItemOptions()
-
-    const note = document.createElement('p')
-    note.textContent = devText('note')
-    Object.assign(note.style, {
-      margin: '2px 0 0',
-      fontSize: '11px',
-    } satisfies Partial<CSSStyleDeclaration>)
-    body.appendChild(note)
-
-    const controls: DevPanelControls = {
-      panel,
-      body,
-      heading,
-      collapseButton,
-      battleShadowLabel,
-      fastMoveLabel,
-      flyLabel,
-      teleportX,
-      teleportY,
-      teleportButton,
-      slotSelect,
-      itemSelect,
-      applyGearButton,
-      note,
-      fastMoveToggle,
-      flyToggle,
-      fillEquipmentOptions,
-      fillItemOptions,
-      setCollapsed(nextCollapsed) {
-        devPanelCollapsed = nextCollapsed
-        body.style.display = devPanelCollapsed ? 'none' : 'block'
-        collapseButton.textContent = devPanelCollapsed ? devText('expand') : devText('collapse')
-        collapseButton.setAttribute('aria-expanded', devPanelCollapsed ? 'false' : 'true')
-        panel.style.transform = devPanelCollapsed ? 'translateY(2px)' : 'translateY(0)'
-        window.localStorage.setItem(devPanelStateStorageKey, devPanelCollapsed ? 'true' : 'false')
-        applyThemeToDevPanel(controls, false)
-      },
-      isCollapsed: () => devPanelCollapsed,
-    }
-
-    collapseButton.addEventListener('click', () => {
-      controls.setCollapsed(!devPanelCollapsed)
-    })
-    panel.addEventListener('mouseenter', () => applyThemeToDevPanel(controls, true))
-    panel.addEventListener('mouseleave', () => applyThemeToDevPanel(controls, false))
-    panel.addEventListener('focusin', () => applyThemeToDevPanel(controls, true))
-    panel.addEventListener('focusout', () => {
-      window.setTimeout(() => {
-        if (!panel.contains(document.activeElement)) applyThemeToDevPanel(controls, false)
-      }, 0)
-    })
-
-    controls.setCollapsed(devPanelCollapsed)
-    applyThemeToDevPanel(controls, false)
-    return controls
-  }
-
-  const renderDevPanelLocale = (panel: DevPanelControls | null) => {
-    if (!panel) return
-    panel.heading.textContent = devText('heading')
-    panel.setCollapsed(panel.isCollapsed())
-    panel.battleShadowLabel.textContent = devText('battleShadow')
-    panel.fastMoveLabel.textContent = devText('fastMove')
-    panel.flyLabel.textContent = devText('fly')
-    panel.teleportButton.textContent = devText('teleport')
-    panel.applyGearButton.textContent = devText('equip')
-    panel.note.textContent = devText('note')
-    panel.fillEquipmentOptions()
-    panel.fillItemOptions()
-  }
-
   const findSpawn = async () => {
     for (let radius = 0; radius <= activeChunkRadius + 2; radius += 1) {
       await ensureChunkNeighborhood(0, 0, radius)
@@ -1841,12 +1292,30 @@ export async function createGame(
   await ensureChunkNeighborhood(0, 0, activeChunkRadius)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
-  let devPanel = createDevPanel()
-  const minimapControls = createMinimapControls()
+  let devPanel = buildDevPanel()
+  const minimapControls = createMinimapControls({
+    minimapChunkRadius,
+    clamp,
+    getText: minimapText,
+    getCollapsed: () => minimapCollapsed,
+    setCollapsedState: (collapsed) => {
+      minimapCollapsed = collapsed
+    },
+    getMode: () => minimapMode,
+    setMode: (mode) => {
+      minimapMode = mode
+    },
+    getManualRadius: () => minimapManualRadius,
+    setManualRadius: (radius) => {
+      minimapManualRadius = radius
+    },
+    redraw: drawMinimap,
+    applyTheme: applyCurrentMinimapTheme,
+  })
   if (devPanel) options.container.appendChild(devPanel.panel)
   options.container.appendChild(minimapControls.panel)
-  renderDevPanelLocale(devPanel)
-  renderMinimapLocale(minimapControls)
+  renderDevPanelLocale(devPanel, devText)
+  renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
 
   const surveyPixels = (activeChunkRadius * 2 + 1) * chunkSize * cellSize
   scale = devMode
@@ -1867,8 +1336,19 @@ export async function createGame(
   refreshFogVisibility()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
-  applyThemeToDevPanel(devPanel)
-  applyThemeToMinimapControls(minimapControls)
+  applyCurrentDevPanelTheme(devPanel)
+  applyCurrentMinimapTheme(minimapControls)
+  if (devPanel) {
+    const panel = devPanel.panel
+    panel.addEventListener('mouseenter', () => applyCurrentDevPanelTheme(devPanel, true))
+    panel.addEventListener('mouseleave', () => applyCurrentDevPanelTheme(devPanel, false))
+    panel.addEventListener('focusin', () => applyCurrentDevPanelTheme(devPanel, true))
+    panel.addEventListener('focusout', () => {
+      window.setTimeout(() => {
+        if (!panel.contains(document.activeElement)) applyCurrentDevPanelTheme(devPanel, false)
+      }, 0)
+    })
+  }
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
@@ -2032,7 +1512,7 @@ export async function createGame(
     if (key === 'm' && !event.repeat && !devMode) {
       event.preventDefault()
       minimapControls.setCollapsed(!minimapCollapsed)
-      applyThemeToMinimapControls(minimapControls)
+      applyCurrentMinimapTheme(minimapControls)
     }
     if ((key === 'e' || key === ' ') && !event.repeat) {
       event.preventDefault()
@@ -2144,12 +1624,12 @@ export async function createGame(
       window.localStorage.setItem('alohayo-world:locale', locale)
       actionMessage = ''
       actionMessageUntil = 0
-      renderDevPanelLocale(devPanel)
-      renderMinimapLocale(minimapControls)
+      renderDevPanelLocale(devPanel, devText)
+      renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
-      applyThemeToMinimapControls(minimapControls)
+      applyCurrentMinimapTheme(minimapControls)
     },
     setDevMode(enabled) {
       devMode = enabled
@@ -2158,27 +1638,36 @@ export async function createGame(
         devBattleShadow = true
       }
       devPanel?.panel.remove()
-      devPanel = createDevPanel()
+      devPanel = buildDevPanel()
       if (devPanel) {
         options.container.appendChild(devPanel.panel)
-        renderDevPanelLocale(devPanel)
+        renderDevPanelLocale(devPanel, devText)
         devPanel.fastMoveToggle.checked = devFastMove
+        const panel = devPanel.panel
+        panel.addEventListener('mouseenter', () => applyCurrentDevPanelTheme(devPanel, true))
+        panel.addEventListener('mouseleave', () => applyCurrentDevPanelTheme(devPanel, false))
+        panel.addEventListener('focusin', () => applyCurrentDevPanelTheme(devPanel, true))
+        panel.addEventListener('focusout', () => {
+          window.setTimeout(() => {
+            if (!panel.contains(document.activeElement)) applyCurrentDevPanelTheme(devPanel, false)
+          }, 0)
+        })
       }
-      renderMinimapLocale(minimapControls)
+      renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
       refreshFog()
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
-      applyThemeToDevPanel(devPanel)
-      applyThemeToMinimapControls(minimapControls)
+      applyCurrentDevPanelTheme(devPanel)
+      applyCurrentMinimapTheme(minimapControls)
     },
     setTheme(nextTheme) {
       theme = normalizeTheme(nextTheme)
-      status.style.fill = themePalette().statusFill
+      status.style.fill = palette().statusFill
       applyThemeToContainer()
       drawMinimap()
-      applyThemeToDevPanel(devPanel)
-      applyThemeToMinimapControls(minimapControls)
+      applyCurrentDevPanelTheme(devPanel)
+      applyCurrentMinimapTheme(minimapControls)
     },
     async destroy() {
       if (destroyed) return

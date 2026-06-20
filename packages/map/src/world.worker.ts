@@ -18,6 +18,7 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.width,
       event.data.height,
       event.data.biomeDefinitions,
+      event.data.riverSystem,
       event.data.roadSystem
     )
     if (event.data.mapAreas?.length && event.data.terrainCodes) {
@@ -25,7 +26,9 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
         world,
         event.data.mapAreas,
         event.data.terrainCodes,
-        event.data.biomeDefinitions
+        event.data.biomeDefinitions,
+        event.data.riverSystem,
+        event.data.roadSystem
       )
     }
     workerScope.postMessage(
@@ -56,6 +59,7 @@ workerScope.onmessage = (event: MessageEvent<WorldWorkerRequest>) => {
     event.data.mapAreas ?? [],
     event.data.terrainCodes ?? {},
     event.data.biomeDefinitions,
+    event.data.riverSystem,
     event.data.roadSystem
   )
   workerScope.postMessage(

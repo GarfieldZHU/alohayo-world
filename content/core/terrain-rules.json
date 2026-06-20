@@ -212,6 +212,102 @@
       }
     },
     {
+      "terrainId": "core:beach",
+      "realWorldDescription": "Beaches are sandy or gravelly coastal margins built by waves, tides, longshore drift, and nearby sediment supply.",
+      "alohayoBehavior": "Serves as the softest shore terrain for landing, dune travel, coastal settlements, and sea-edge creature spawning.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears on warm or temperate low-slope coasts where sand can accumulate instead of forming cliffed shore.",
+        "conditions": [
+          "touches sea or lake margin",
+          "low slope",
+          "moderate to warm temperature",
+          "lower moisture than marshy coasts"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "dry-sand",
+          "trigger": "clear warm weather",
+          "effect": "bright loose surface that slightly slows wagons and mounts"
+        },
+        {
+          "id": "wet-sand",
+          "trigger": "tide, wave run-up, or rain",
+          "effect": "darker compact strip that improves footing but shows splash marks"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Walkable and buildable, but looser than compact coast or lowland roads.",
+        "control": "Loose sand slightly reduces acceleration and makes carts feel softer to steer.",
+        "hazards": ["storm surge", "shifting dunes", "heat glare on exposed shore"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "marine erosion or flood",
+            "becomes": "core:shallow-sea",
+            "notes": "A retreating beach is swallowed by coastal water."
+          },
+          {
+            "trigger": "vegetation stabilization or inland dune binding",
+            "becomes": "core:coast",
+            "notes": "Beach hardens into a more stable coastal strip."
+          }
+        ]
+      }
+    },
+    {
+      "terrainId": "core:basin",
+      "realWorldDescription": "Basins are low enclosed plains or depressions ringed by higher land, often collecting rivers, sediment, lakes, fog, and fertile soils.",
+      "alohayoBehavior": "Acts as a settlement-friendly inland bowl where drainage, wetlands, lakes, and future river systems naturally converge.",
+      "generation": {
+        "rarity": "uncommon",
+        "possibility": "Appears where local terrain is lower than surrounding highland, plateau, or mountain rims without dropping fully into open water.",
+        "conditions": [
+          "lower than nearby surrounding terrain",
+          "gentle local floor",
+          "mid moisture to high moisture",
+          "not already open lake or marsh water"
+        ]
+      },
+      "surfaceEffects": [
+        {
+          "id": "alluvial-soil",
+          "trigger": "normal basin floor",
+          "effect": "fertile sediment surface supporting crops and grass cover"
+        },
+        {
+          "id": "seasonal-flood",
+          "trigger": "heavy rain or upstream runoff",
+          "effect": "temporary shallow water, mud, and road slowdown on the basin floor"
+        }
+      ],
+      "physicalBehavior": {
+        "movement": "Usually easy on foot, but wetter enclosed basins become muddy after storms.",
+        "control": "Stable in dry seasons; slightly sticky in wet drainage pockets.",
+        "hazards": ["flood pooling", "fog", "poor drainage", "disease in stagnant pockets"],
+        "entryRequirements": []
+      },
+      "destruction": {
+        "destructible": true,
+        "methods": [
+          {
+            "trigger": "flooding and standing water expansion",
+            "becomes": "core:wetland",
+            "notes": "An overfilled basin turns into saturated ground."
+          },
+          {
+            "trigger": "sediment flattening and drainage improvement",
+            "becomes": "core:lowland",
+            "notes": "A stable basin floor broadens into a normal low plain."
+          }
+        ]
+      }
+    },
+    {
       "terrainId": "core:lowland",
       "realWorldDescription": "Lowlands are low-relief plains and basins, commonly fertile and easy for roads, farms, and dense settlement.",
       "alohayoBehavior": "Best early-game travel, farming, towns, and road-network terrain.",

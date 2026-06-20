@@ -32,9 +32,9 @@ Bathymetric depth is derived from elevation below sea level. `v0.2` adds slope.
 
 The compact `biomes` layer currently combines useful visible classes:
 
-deep ocean, open ocean, shallow sea, reef, coast, lake, lowland plain, grassland,
-savanna, forest, rainforest, desert, oasis, wetland, marsh, plateau, highland,
-canyonlands, bare rock, mountain, volcano, snowfield, tundra, and glacier.
+deep ocean, open ocean, shallow sea, reef, coast, beach, lake, basin, lowland plain,
+grassland, savanna, forest, rainforest, desert, oasis, wetland, marsh, plateau,
+highland, canyonlands, bare rock, mountain, volcano, snowfield, tundra, and glacier.
 
 These codes are stable content identifiers, not the complete geographic truth.
 The gameplay and material rules for each code live in
@@ -58,6 +58,10 @@ discovery, and movement decisions, but they are not yet cross-chunk global ident
 Slope, flow direction, accumulation, watershed, river, soil, resources, occupancy,
 discovery, borders, roads, settlements, creature habitats, and authored overlays are
 separate typed arrays or sparse chunk data.
+
+The current river system is generated as an overlay path, not as a duplicate biome. That
+lets a river cross basin, lowland, grassland, forest, canyon floor, or coast while preserving
+the underlying terrain and its own movement/material rules.
 
 ## Generation Pipeline
 

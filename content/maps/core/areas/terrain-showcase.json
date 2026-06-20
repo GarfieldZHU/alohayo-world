@@ -5,7 +5,7 @@
   "description": "Disabled-by-default dev area that places every core terrain type near the origin for visual and gameplay testing.",
   "enabled": false,
   "placement": { "mode": "normalized", "x": 0.5, "y": 0.5 },
-  "width": 72,
+  "width": 84,
   "height": 48,
   "terrainPatches": [
     {
@@ -76,7 +76,29 @@
     },
     {
       "shape": "rectangle",
+      "x": 72,
+      "y": 0,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:beach",
+      "elevation": 126,
+      "moisture": 104,
+      "temperature": 194
+    },
+    {
+      "shape": "rectangle",
       "x": 0,
+      "y": 8,
+      "width": 12,
+      "height": 8,
+      "terrainId": "core:basin",
+      "elevation": 136,
+      "moisture": 156,
+      "temperature": 154
+    },
+    {
+      "shape": "rectangle",
+      "x": 12,
       "y": 8,
       "width": 12,
       "height": 8,
@@ -87,7 +109,7 @@
     },
     {
       "shape": "rectangle",
-      "x": 12,
+      "x": 24,
       "y": 8,
       "width": 12,
       "height": 8,
@@ -98,7 +120,7 @@
     },
     {
       "shape": "rectangle",
-      "x": 24,
+      "x": 36,
       "y": 8,
       "width": 12,
       "height": 8,
@@ -109,7 +131,7 @@
     },
     {
       "shape": "rectangle",
-      "x": 36,
+      "x": 48,
       "y": 8,
       "width": 12,
       "height": 8,
@@ -120,7 +142,7 @@
     },
     {
       "shape": "rectangle",
-      "x": 48,
+      "x": 60,
       "y": 8,
       "width": 12,
       "height": 8,
@@ -131,7 +153,7 @@
     },
     {
       "shape": "rectangle",
-      "x": 60,
+      "x": 72,
       "y": 8,
       "width": 12,
       "height": 8,

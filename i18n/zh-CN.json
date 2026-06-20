@@ -102,6 +102,8 @@
       "core:shallow-sea": { "name": "浅海", "description": "接近陆地、阳光能够照入的陆架海域。" },
       "core:coast": { "name": "海岸", "description": "海滩、潮间带、沙洲与紧邻海岸的边缘地带。" },
       "core:lake": { "name": "湖泊", "description": "与世界边缘海洋不相连的内陆水体。" },
+      "core:beach": { "name": "海滩", "description": "以沙质为主、向海洋或湖水缓缓过渡的岸带。" },
+      "core:basin": { "name": "盆地", "description": "被更高地势围拢、排水相对封闭的低洼平原。" },
       "core:lowland": { "name": "低地平原", "description": "起伏较小、适合耕作和修路的大陆平原。" },
       "core:grassland": { "name": "草原", "description": "开阔的温带草地与起伏缓和的大草原。" },
       "core:forest": { "name": "森林", "description": "湿润而茂密的林地与混交林。" },

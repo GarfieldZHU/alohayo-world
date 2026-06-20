@@ -117,6 +117,14 @@
         "name": "Lake",
         "description": "An inland waterbody disconnected from the world edge."
       },
+      "core:beach": {
+        "name": "Beach",
+        "description": "A sandy shore where dry land eases into sea or lake water."
+      },
+      "core:basin": {
+        "name": "Basin",
+        "description": "A low enclosed plain surrounded by higher terrain and trapped drainage."
+      },
       "core:lowland": {
         "name": "Lowland Plain",
         "description": "Low-relief continental plain suited to farming and roads."

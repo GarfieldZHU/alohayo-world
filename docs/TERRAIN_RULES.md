@@ -26,11 +26,13 @@ these separate so AI agents and gameplay systems can reason clearly:
   strait, channel, river, waterfall, delta, basin, cave, peninsula, cape, valley, cliff,
   and archipelago.
 
-Today the 24 core terrain IDs below are implemented as cell terrain. Some image labels
+Today the 26 core terrain IDs below are implemented as cell terrain. Some image labels
 are already represented through topology or features: `lake`, `mainland`, and `island`
 come from topology; `canyon` covers canyon/valley gameplay for now; `reef` covers coral
-reef and lagoon-adjacent water. The remaining landforms should be implemented as
-feature overlays in `v0.2+`, not as duplicate biomes.
+reef and lagoon-adjacent water. `river` remains a generated linear overlay rather than a
+cell terrain so it can cross plains, basins, forests, and roads without duplicating the
+underlying biome. The remaining landforms should be implemented as feature overlays in
+`v0.2+`, not as duplicate biomes.
 
 ## Core Terrain Rules
 
@@ -46,6 +48,8 @@ hazards, and destruction/transformation rules. This table is the quick index.
 | `core:reef`        | Coral Reef     | 珊瑚礁   | rare      | warm shallow sea, low depth, seeded reef chance          | bright high-life water; dangerous for careless boats          |
 | `core:lake`        | Lake           | 湖泊     | uncommon  | inland basin water disconnected from edge ocean          | freshwater hub; boats needed; can drain to wetland/lowland    |
 | `core:coast`       | Coast          | 海岸     | common    | near sea level, touches water, gentle margin             | ports, beaches, tidal effects, good roads unless flooded      |
+| `core:beach`       | Beach          | 海滩     | uncommon  | low-slope sandy shore with moderate warmth               | softer landing shore; slower than compact coast roads         |
+| `core:basin`       | Basin          | 盆地     | uncommon  | enclosed low plain ringed by higher ground               | fertile bowl terrain with flood and wetland transition risk   |
 | `core:lowland`     | Lowland Plain  | 低地平原 | common    | low relief, moderate moisture and temperature            | fastest wild travel and best town/farm/road terrain           |
 | `core:grassland`   | Grassland      | 草原     | common    | moderate land where forest/desert do not dominate        | fast travel, herds, fire risk, easy mounted movement          |
 | `core:forest`      | Forest         | 森林     | common    | moist temperate land                                     | slower, dense, resource-rich, reduced visibility              |
@@ -73,6 +77,7 @@ replace the underlying terrain ID unless a long-term transformation rule says so
 Examples:
 
 - water on coast creates `wet-sand`;
+- water on beach creates `wet-sand` and dune-edge wash;
 - rain on lowland or roads creates `mud`;
 - snow on forest creates `snow-laden-canopy`;
 - heat on glacier creates melt and can eventually transform it to snow or lake;
@@ -85,7 +90,7 @@ material has changed.
 ## Dev Terrain Showcase
 
 `content/maps/core/areas/terrain-showcase.json` is disabled by default. It places all
-24 terrain IDs near the streamed origin for visual, movement, road, weather, and i18n
+26 terrain IDs near the streamed origin for visual, movement, road, weather, and i18n
 testing. Launchers can activate it with:
 
 ```ts
@@ -100,3 +105,13 @@ mountGame({
 ```
 
 Do not enable this area globally; it is a test fixture, not canonical world geography.
+
+## Rivers
+
+Rivers are not stored as a standalone terrain ID. They are generated as an overlay path
+from inland high/moist sources toward lakes or the sea, then rendered and collision-checked
+on top of the base biome.
+
+- They can cross lowland, basin, grassland, forest, canyon floor, or coastal terrain.
+- They block normal foot movement unless a road crossing produces a bridge overlap.
+- They should inform future wetlands, deltas, floodplains, fisheries, mills, and town siting.

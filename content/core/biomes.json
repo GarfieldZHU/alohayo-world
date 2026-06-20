@@ -198,8 +198,93 @@
     }
   },
   {
-    "id": "core:lowland",
+    "id": "core:beach",
     "code": 5,
+    "name": "Beach",
+    "family": "coast",
+    "color": "#e0c78f",
+    "accent": "#f6dfad",
+    "description": "A sandy littoral edge where dry land softens into sea or lake shore.",
+    "movementCost": 2,
+    "roadCost": 3,
+    "occurrence": 0.54,
+    "latitude": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "elevation": {
+      "min": 0.42,
+      "max": 0.51
+    },
+    "temperature": {
+      "min": 0.18,
+      "max": 1.0
+    },
+    "moisture": {
+      "min": 0.08,
+      "max": 0.62
+    },
+    "creatures": {
+      "habitatTags": ["shore", "sand", "dune-edge"],
+      "iconicSpecies": ["crab", "tern", "sand-lizard"],
+      "abundance": 0.72
+    },
+    "settlement": {
+      "suitability": 0.78,
+      "roleWeights": {
+        "port": 0.72,
+        "village": 0.42,
+        "town": 0.28
+      },
+      "roadAccess": 0.7
+    }
+  },
+  {
+    "id": "core:basin",
+    "code": 6,
+    "name": "Basin",
+    "family": "plain",
+    "color": "#89a96d",
+    "accent": "#b5ce8a",
+    "description": "A low enclosed plain ringed by higher ground and shaped by trapped drainage.",
+    "movementCost": 2,
+    "roadCost": 2,
+    "occurrence": 0.36,
+    "latitude": {
+      "min": 0.1,
+      "max": 0.9
+    },
+    "elevation": {
+      "min": 0.38,
+      "max": 0.58
+    },
+    "temperature": {
+      "min": 0.2,
+      "max": 0.84
+    },
+    "moisture": {
+      "min": 0.22,
+      "max": 0.82
+    },
+    "creatures": {
+      "habitatTags": ["basin", "enclosed-plain", "drainage-floor"],
+      "iconicSpecies": ["ibis", "wild-horse", "reed-cat"],
+      "abundance": 0.77
+    },
+    "settlement": {
+      "suitability": 0.88,
+      "roleWeights": {
+        "hamlet": 0.4,
+        "village": 0.7,
+        "town": 0.55,
+        "city": 0.35
+      },
+      "roadAccess": 0.82
+    }
+  },
+  {
+    "id": "core:lowland",
+    "code": 7,
     "name": "Lowland Plain",
     "family": "plain",
     "color": "#7fa85f",
@@ -242,7 +327,7 @@
   },
   {
     "id": "core:grassland",
-    "code": 6,
+    "code": 8,
     "name": "Grassland",
     "family": "grassland",
     "color": "#6e9d58",
@@ -284,7 +369,7 @@
   },
   {
     "id": "core:forest",
-    "code": 7,
+    "code": 9,
     "name": "Forest",
     "family": "forest",
     "color": "#315f45",
@@ -326,7 +411,7 @@
   },
   {
     "id": "core:desert",
-    "code": 8,
+    "code": 10,
     "name": "Desert",
     "family": "arid",
     "color": "#c48d4f",
@@ -367,7 +452,7 @@
   },
   {
     "id": "core:wetland",
-    "code": 9,
+    "code": 11,
     "name": "Wetland",
     "family": "wetland",
     "color": "#477a6a",
@@ -408,7 +493,7 @@
   },
   {
     "id": "core:highland",
-    "code": 10,
+    "code": 12,
     "name": "Highland",
     "family": "upland",
     "color": "#78805c",
@@ -450,7 +535,7 @@
   },
   {
     "id": "core:bare-rock",
-    "code": 11,
+    "code": 13,
     "name": "Bare Rock",
     "family": "upland",
     "color": "#746f67",
@@ -491,7 +576,7 @@
   },
   {
     "id": "core:mountain",
-    "code": 12,
+    "code": 14,
     "name": "Mountain",
     "family": "mountain",
     "color": "#555b63",
@@ -533,7 +618,7 @@
   },
   {
     "id": "core:snow",
-    "code": 13,
+    "code": 15,
     "name": "Snowfield",
     "family": "cryosphere",
     "color": "#d9e5e7",
@@ -574,7 +659,7 @@
   },
   {
     "id": "core:tundra",
-    "code": 14,
+    "code": 16,
     "name": "Tundra",
     "family": "cryosphere",
     "color": "#8c9975",
@@ -615,7 +700,7 @@
   },
   {
     "id": "core:savanna",
-    "code": 15,
+    "code": 17,
     "name": "Savanna",
     "family": "grassland",
     "color": "#9aa657",
@@ -657,7 +742,7 @@
   },
   {
     "id": "core:rainforest",
-    "code": 16,
+    "code": 18,
     "name": "Rainforest",
     "family": "forest",
     "color": "#1f5a36",
@@ -698,7 +783,7 @@
   },
   {
     "id": "core:marsh",
-    "code": 17,
+    "code": 19,
     "name": "Marsh",
     "family": "wetland",
     "color": "#5a846d",
@@ -739,7 +824,7 @@
   },
   {
     "id": "core:plateau",
-    "code": 18,
+    "code": 20,
     "name": "Plateau",
     "family": "upland",
     "color": "#9b8560",
@@ -781,7 +866,7 @@
   },
   {
     "id": "core:canyon",
-    "code": 19,
+    "code": 21,
     "name": "Canyonlands",
     "family": "upland",
     "color": "#9e6547",
@@ -822,7 +907,7 @@
   },
   {
     "id": "core:reef",
-    "code": 20,
+    "code": 22,
     "name": "Coral Reef",
     "family": "coast",
     "color": "#49b7c2",
@@ -860,7 +945,7 @@
   },
   {
     "id": "core:oasis",
-    "code": 21,
+    "code": 23,
     "name": "Oasis",
     "family": "wetland",
     "color": "#3f8f63",
@@ -902,7 +987,7 @@
   },
   {
     "id": "core:volcano",
-    "code": 22,
+    "code": 24,
     "name": "Volcanic Field",
     "family": "volcanic",
     "color": "#5f5049",
@@ -943,7 +1028,7 @@
   },
   {
     "id": "core:glacier",
-    "code": 23,
+    "code": 25,
     "name": "Glacier",
     "family": "cryosphere",
     "color": "#b8d8e8",

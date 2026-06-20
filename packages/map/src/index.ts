@@ -2,6 +2,7 @@ import type {
   BiomeDefinition,
   MapAreaDefinition,
   MapLandmarkDefinition,
+  WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
 } from '@alohayo/config'
 
@@ -11,25 +12,27 @@ export const BIOME = {
   shallowSea: 2,
   coast: 3,
   lake: 4,
-  lowland: 5,
-  grassland: 6,
-  forest: 7,
-  desert: 8,
-  wetland: 9,
-  highland: 10,
-  bareRock: 11,
-  mountain: 12,
-  snow: 13,
-  tundra: 14,
-  savanna: 15,
-  rainforest: 16,
-  marsh: 17,
-  plateau: 18,
-  canyon: 19,
-  reef: 20,
-  oasis: 21,
-  volcano: 22,
-  glacier: 23,
+  beach: 5,
+  basin: 6,
+  lowland: 7,
+  grassland: 8,
+  forest: 9,
+  desert: 10,
+  wetland: 11,
+  highland: 12,
+  bareRock: 13,
+  mountain: 14,
+  snow: 15,
+  tundra: 16,
+  savanna: 17,
+  rainforest: 18,
+  marsh: 19,
+  plateau: 20,
+  canyon: 21,
+  reef: 22,
+  oasis: 23,
+  volcano: 24,
+  glacier: 25,
 } as const
 
 export const CHUNK_REGION = {
@@ -56,6 +59,7 @@ export interface GeneratedWorld {
   areaIds: string[]
   landmarks: GeneratedLandmark[]
   settlements: GeneratedSettlement[]
+  rivers: GeneratedRiver[]
   roads: GeneratedRoad[]
 }
 
@@ -77,6 +81,7 @@ export interface GeneratedChunk {
   areaIds: string[]
   landmarks: GeneratedLandmark[]
   settlements: GeneratedSettlement[]
+  rivers: GeneratedRiver[]
   roads: GeneratedRoad[]
 }
 
@@ -120,6 +125,15 @@ export interface GeneratedRoad {
   points: Array<{ x: number; y: number }>
 }
 
+export interface GeneratedRiver {
+  id: string
+  width: number
+  flow: number
+  source: { x: number; y: number }
+  mouth: { x: number; y: number }
+  points: Array<{ x: number; y: number }>
+}
+
 export interface GenerateWorldRequest {
   type: 'generate'
   id: string
@@ -129,6 +143,7 @@ export interface GenerateWorldRequest {
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
   biomeDefinitions?: BiomeDefinition[]
+  riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
 }
 
@@ -144,6 +159,7 @@ export interface GenerateChunkRequest {
   mapAreas?: MapAreaDefinition[]
   terrainCodes?: Record<string, number>
   biomeDefinitions?: BiomeDefinition[]
+  riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
 }
 
@@ -512,6 +528,32 @@ function resolveRoadSystem(roadSystem?: WorldRoadSystemDefinition): WorldRoadSys
   return roadSystem ?? defaultRoadSystem()
 }
 
+function defaultRiverSystem(): WorldRiverSystemDefinition {
+  return {
+    enabled: true,
+    blockingMovement: true,
+    bridgeRadius: 1,
+    renderWidth: {
+      minor: 0.72,
+      major: 1.18,
+    },
+    generation: {
+      sourceStride: 14,
+      sourceChance: 0.46,
+      sourceElevationMin: 0.48,
+      sourceMoistureMin: 0.24,
+      channelDepthMin: 0.03,
+      traceMargin: 72,
+      minLength: 6,
+      maxLength: 108,
+    },
+  }
+}
+
+function resolveRiverSystem(riverSystem?: WorldRiverSystemDefinition): WorldRiverSystemDefinition {
+  return riverSystem ?? defaultRiverSystem()
+}
+
 function streamHotspotValue(globalX: number, globalY: number, seed: number): number {
   return clamp01(
     valueNoise(globalX - 410, globalY + 270, 210, seed + 7001) * 0.7 +
@@ -525,6 +567,30 @@ function streamRuggednessValue(globalX: number, globalY: number, seed: number): 
   return clamp01(ridge * 0.72 + breaks * 0.28)
 }
 
+function streamBasinValue(
+  globalX: number,
+  globalY: number,
+  seed: number,
+  elevationValue: number
+): number {
+  const offsets = [
+    [12, 0],
+    [-12, 0],
+    [0, 12],
+    [0, -12],
+    [9, 9],
+    [-9, 9],
+    [9, -9],
+    [-9, -9],
+  ] as const
+  let rimElevation = 0
+  for (const [offsetX, offsetY] of offsets) {
+    rimElevation += streamElevationValue(globalX + offsetX, globalY + offsetY, seed)
+  }
+  rimElevation /= offsets.length
+  return clamp01((rimElevation - elevationValue - 0.06) * 4.5)
+}
+
 function classifyTerrain(args: {
   elevationValue: number
   seaLevel: number
@@ -532,6 +598,7 @@ function classifyTerrain(args: {
   temperatureValue: number
   ruggednessValue: number
   hotspotValue: number
+  basinValue: number
   water: boolean
   oceanConnected: boolean
   touchingWater: boolean
@@ -545,6 +612,7 @@ function classifyTerrain(args: {
     temperatureValue,
     ruggednessValue,
     hotspotValue,
+    basinValue,
     water,
     oceanConnected,
     touchingWater,
@@ -561,7 +629,10 @@ function classifyTerrain(args: {
     return BIOME.shallowSea
   }
 
-  if (touchingWater || elevationValue < seaLevel + 0.05) return BIOME.coast
+  if (touchingWater || elevationValue < seaLevel + 0.05) {
+    if (temperatureValue > 0.4 && moistureValue < 0.6 && ruggednessValue < 0.34) return BIOME.beach
+    return BIOME.coast
+  }
   if (hotspotValue > 0.82 && elevationValue > 0.79 && ruggednessValue > 0.48) return BIOME.volcano
   if (elevationValue > 0.87 && temperatureValue < 0.3 && moistureValue > 0.58) return BIOME.glacier
   if (elevationValue > 0.83 && temperatureValue < 0.44) return BIOME.snow
@@ -571,6 +642,7 @@ function classifyTerrain(args: {
   if (elevationValue > 0.81) return BIOME.mountain
   if (elevationValue > 0.74 && moistureValue < 0.56) return BIOME.bareRock
   if (elevationValue > 0.64) return BIOME.highland
+  if (basinValue > 0.66 && elevationValue < 0.58 && ruggednessValue < 0.5) return BIOME.basin
   if (moistureValue > 0.82 && temperatureValue > 0.5 && elevationValue < 0.58) return BIOME.marsh
   if (moistureValue > 0.74 && elevationValue < 0.58) return BIOME.wetland
   if (temperatureValue > 0.72 && moistureValue < 0.26) {
@@ -606,6 +678,7 @@ function classifyStreamBiome(
     temperatureValue,
     ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
     hotspotValue: streamHotspotValue(globalX, globalY, seed),
+    basinValue: streamBasinValue(globalX, globalY, seed, elevationValue),
     water,
     oceanConnected: !enclosed,
     touchingWater: west || east || north || south,
@@ -732,12 +805,14 @@ function populateChunkFeatures(
   chunk: GeneratedChunk,
   seedText: string,
   biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
   const roadsConfig = resolveRoadSystem(roadSystem)
+  const riversConfig = resolveRiverSystem(riverSystem)
   const seed = hashSeed(seedText)
-  const featureMargin = 48
+  const featureMargin = Math.max(48, riversConfig.generation.traceMargin)
   const minX = chunk.originX - featureMargin
   const maxX = chunk.originX + chunk.chunkSize - 1 + featureMargin
   const minY = chunk.originY - featureMargin
@@ -793,6 +868,9 @@ function populateChunkFeatures(
     evaluate,
     biomeMap
   )
+  const rivers = buildRiverNetwork(seedText, minX, minY, maxX, maxY, evaluate, riversConfig).filter(
+    (river) => riverTouchesChunk(river, chunk.originX, chunk.originY, chunk.chunkSize)
+  )
   const roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter((road) =>
     roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize)
   )
@@ -803,6 +881,7 @@ function populateChunkFeatures(
       settlement.x < chunk.originX + chunk.chunkSize &&
       settlement.y < chunk.originY + chunk.chunkSize
   )
+  chunk.rivers = rivers
   chunk.roads = roads
   chunk.landmarks = [...chunk.landmarks, ...chunk.settlements.map(settlementToLandmark)]
   return chunk
@@ -812,10 +891,12 @@ function populateWorldFeatures(
   world: GeneratedWorld,
   seedText: string,
   biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition
 ): GeneratedWorld {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
   const roadsConfig = resolveRoadSystem(roadSystem)
+  const riversConfig = resolveRiverSystem(riverSystem)
   const seed = hashSeed(seedText)
   const evaluate = (x: number, y: number): EvaluatedCell => {
     const clampedX = Math.max(0, Math.min(world.width - 1, x))
@@ -848,6 +929,15 @@ function populateWorldFeatures(
     biomeMap
   )
   world.settlements = settlements
+  world.rivers = buildRiverNetwork(
+    seedText,
+    0,
+    0,
+    world.width - 1,
+    world.height - 1,
+    evaluate,
+    riversConfig
+  )
   world.roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig)
   world.landmarks = [...world.landmarks, ...settlements.map(settlementToLandmark)]
   return world
@@ -1245,6 +1335,183 @@ function buildRoadNetwork(
   return roads
 }
 
+function traceRiverPath(
+  sourceX: number,
+  sourceY: number,
+  evaluateCell: (x: number, y: number) => EvaluatedCell,
+  riverSystem: WorldRiverSystemDefinition
+): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = [{ x: sourceX, y: sourceY }]
+  const visited = new Set<string>([`${sourceX},${sourceY}`])
+  const source = evaluateCell(sourceX, sourceY)
+  let currentX = sourceX
+  let currentY = sourceY
+
+  for (let step = 0; step < riverSystem.generation.maxLength; step += 1) {
+    const current = evaluateCell(currentX, currentY)
+    if (isWaterBiome(current.biome)) break
+
+    let best: { x: number; y: number; score: number; water: boolean } | null = null
+    for (const [dx, dy] of EIGHT_NEIGHBORS) {
+      const nextX = currentX + dx
+      const nextY = currentY + dy
+      const key = `${nextX},${nextY}`
+      if (visited.has(key)) continue
+      const candidate = evaluateCell(nextX, nextY)
+      const water = isWaterBiome(candidate.biome)
+      const depthDrop =
+        current.elevationValue -
+        candidate.elevationValue +
+        (candidate.moistureValue - current.moistureValue) * 0.12
+      const score =
+        (water ? 10 : 0) +
+        depthDrop * 8 -
+        candidate.ruggednessValue * 0.15 -
+        Math.abs(dx) * 0.03 -
+        Math.abs(dy) * 0.03
+      if (!best || score > best.score) {
+        best = { x: nextX, y: nextY, score, water }
+      }
+    }
+
+    if (!best) break
+    if (!best.water && best.score < riverSystem.generation.channelDepthMin * 8) break
+    currentX = best.x
+    currentY = best.y
+    points.push({ x: currentX, y: currentY })
+    visited.add(`${currentX},${currentY}`)
+    if (best.water) break
+  }
+
+  const last = points[points.length - 1]
+  if (!last) return []
+  const mouth = evaluateCell(last.x, last.y)
+  if (isWaterBiome(mouth.biome)) return points
+  if (mouth.elevationValue <= source.elevationValue - riverSystem.generation.channelDepthMin * 4) {
+    return points
+  }
+  return []
+}
+
+function riverTouchesChunk(
+  river: GeneratedRiver,
+  originX: number,
+  originY: number,
+  chunkSize: number
+): boolean {
+  const maxX = originX + chunkSize - 1
+  const maxY = originY + chunkSize - 1
+  return river.points.some(
+    (point) => point.x >= originX && point.x <= maxX && point.y >= originY && point.y <= maxY
+  )
+}
+
+function buildRiverNetwork(
+  seedText: string,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  evaluateCell: (x: number, y: number) => EvaluatedCell,
+  riverSystem: WorldRiverSystemDefinition
+): GeneratedRiver[] {
+  if (!riverSystem.enabled) return []
+  const seed = hashSeed(seedText)
+  const rivers: GeneratedRiver[] = []
+  const seenMouths = new Set<string>()
+  const stride = riverSystem.generation.sourceStride
+  const startX = Math.floor(minX / stride) * stride
+  const startY = Math.floor(minY / stride) * stride
+
+  for (let y = startY; y <= maxY; y += stride) {
+    for (let x = startX; x <= maxX; x += stride) {
+      const chance = random2d(x, y, seed + 12031)
+      if (chance > riverSystem.generation.sourceChance) continue
+      const source = evaluateCell(x, y)
+      if (isWaterBiome(source.biome)) continue
+      if (source.elevationValue < riverSystem.generation.sourceElevationMin) continue
+      if (source.moistureValue < riverSystem.generation.sourceMoistureMin) continue
+      const path = traceRiverPath(x, y, evaluateCell, riverSystem)
+      if (path.length < riverSystem.generation.minLength) continue
+      const mouth = path[path.length - 1]!
+      const mouthKey = `${mouth.x},${mouth.y}`
+      if (seenMouths.has(mouthKey)) continue
+      seenMouths.add(mouthKey)
+      rivers.push({
+        id: `river:${x}:${y}`,
+        width:
+          path.length > riverSystem.generation.minLength * 2
+            ? riverSystem.renderWidth.major
+            : riverSystem.renderWidth.minor,
+        flow: clamp01(path.length / riverSystem.generation.maxLength),
+        source: { x, y },
+        mouth: { x: mouth.x, y: mouth.y },
+        points: path,
+      })
+    }
+  }
+
+  if (!rivers.length) {
+    let fallbackSource: { x: number; y: number; score: number } | null = null
+    for (let y = minY; y <= maxY; y += Math.max(6, Math.floor(stride / 2))) {
+      for (let x = minX; x <= maxX; x += Math.max(6, Math.floor(stride / 2))) {
+        const cell = evaluateCell(x, y)
+        if (isWaterBiome(cell.biome)) continue
+        const score = cell.elevationValue * 0.7 + cell.moistureValue * 0.3 - cell.ruggednessValue * 0.15
+        if (!fallbackSource || score > fallbackSource.score) fallbackSource = { x, y, score }
+      }
+    }
+
+    if (fallbackSource) {
+      const points: Array<{ x: number; y: number }> = [{ x: fallbackSource.x, y: fallbackSource.y }]
+      const visited = new Set<string>([`${fallbackSource.x},${fallbackSource.y}`])
+      let currentX = fallbackSource.x
+      let currentY = fallbackSource.y
+      for (let step = 0; step < riverSystem.generation.maxLength; step += 1) {
+        const current = evaluateCell(currentX, currentY)
+        let best: { x: number; y: number; value: number } | null = null
+        for (const [dx, dy] of EIGHT_NEIGHBORS) {
+          const nextX = currentX + dx
+          const nextY = currentY + dy
+          const key = `${nextX},${nextY}`
+          if (visited.has(key)) continue
+          const next = evaluateCell(nextX, nextY)
+          const value =
+            next.elevationValue +
+            Math.abs(nextX - minX) / Math.max(1, maxX - minX) * 0.01 +
+            Math.abs(nextY - minY) / Math.max(1, maxY - minY) * 0.01
+          if (!best || value < best.value) best = { x: nextX, y: nextY, value }
+          if (isWaterBiome(next.biome)) {
+            best = { x: nextX, y: nextY, value: -1 }
+            break
+          }
+        }
+        if (!best) break
+        currentX = best.x
+        currentY = best.y
+        points.push({ x: currentX, y: currentY })
+        visited.add(`${currentX},${currentY}`)
+        if (isWaterBiome(evaluateCell(currentX, currentY).biome)) break
+        if (best.value >= current.elevationValue && points.length >= riverSystem.generation.minLength) break
+      }
+
+      if (points.length >= riverSystem.generation.minLength) {
+        const mouth = points[points.length - 1]!
+        rivers.push({
+          id: `river:fallback:${fallbackSource.x}:${fallbackSource.y}`,
+          width: riverSystem.renderWidth.minor,
+          flow: clamp01(points.length / riverSystem.generation.maxLength),
+          source: { x: fallbackSource.x, y: fallbackSource.y },
+          mouth: { x: mouth.x, y: mouth.y },
+          points,
+        })
+      }
+    }
+  }
+
+  return rivers
+}
+
 function roadTouchesChunk(
   road: GeneratedRoad,
   originX: number,
@@ -1275,7 +1542,9 @@ export function applyMapAreas(
   world: GeneratedWorld,
   areas: MapAreaDefinition[],
   terrainCodes: Record<string, number>,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedWorld {
   const authoredArea = new Uint16Array(world.biomes.length)
   const areaIds = ['']
@@ -1354,8 +1623,9 @@ export function applyMapAreas(
   world.areaIds = areaIds
   world.landmarks = landmarks
   world.settlements = []
+  world.rivers = []
   world.roads = []
-  populateWorldFeatures(world, world.seed, biomeDefinitions)
+  populateWorldFeatures(world, world.seed, biomeDefinitions, riverSystem, roadSystem)
 
   let worldHash = 2166136261
   for (let index = 0; index < world.biomes.length; index += 1) {
@@ -1377,7 +1647,9 @@ function applyAreasToChunk(
   terrainCodes: Record<string, number>,
   surveyWidth: number,
   surveyHeight: number,
-  biomeDefinitions?: BiomeDefinition[]
+  biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
+  roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
@@ -1484,8 +1756,9 @@ function applyAreasToChunk(
   chunk.landmarks = landmarks
   chunk.region = classifyChunkRegions(chunk.biomes, chunk.chunkSize)
   chunk.settlements = []
+  chunk.rivers = []
   chunk.roads = []
-  populateChunkFeatures(chunk, chunk.seed, biomeDefinitions)
+  populateChunkFeatures(chunk, chunk.seed, biomeDefinitions, riverSystem, roadSystem)
 
   let chunkHash = 2166136261
   for (let index = 0; index < chunk.biomes.length; index += 1) {
@@ -1528,6 +1801,7 @@ export function generateWorld(
   width: number,
   height: number,
   biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition
 ): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
@@ -1581,6 +1855,7 @@ export function generateWorld(
         localRuggednessFromElevation(elevation, width, height, x, y) +
         streamHotspotValue(x * 4, y * 4, seed) * 0.08,
       hotspotValue: streamHotspotValue(x * 4, y * 4, seed),
+      basinValue: streamBasinValue(x * 4, y * 4, seed, elevationValue),
       water: Boolean(topology.waterbody[index]),
       oceanConnected: Boolean(topology.ocean[index]),
       touchingWater: touchesWater(index, width, height, topology.waterbody),
@@ -1610,9 +1885,10 @@ export function generateWorld(
     areaIds: [''],
     landmarks: [],
     settlements: [],
+    rivers: [],
     roads: [],
   }
-  return populateWorldFeatures(world, seedText, biomeDefinitions, roadSystem)
+  return populateWorldFeatures(world, seedText, biomeDefinitions, riverSystem, roadSystem)
 }
 
 export function generateChunk(
@@ -1621,6 +1897,7 @@ export function generateChunk(
   chunkY: number,
   chunkSize: number,
   biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
@@ -1681,9 +1958,10 @@ export function generateChunk(
     areaIds: [''],
     landmarks: [],
     settlements: [],
+    rivers: [],
     roads: [],
   }
-  return populateChunkFeatures(chunk, seedText, biomeDefinitions, roadSystem)
+  return populateChunkFeatures(chunk, seedText, biomeDefinitions, riverSystem, roadSystem)
 }
 
 export function generateChunkWithAreas(
@@ -1696,8 +1974,26 @@ export function generateChunkWithAreas(
   areas: MapAreaDefinition[],
   terrainCodes: Record<string, number>,
   biomeDefinitions?: BiomeDefinition[],
+  riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition
 ): GeneratedChunk {
-  const chunk = generateChunk(seedText, chunkX, chunkY, chunkSize, biomeDefinitions, roadSystem)
-  return applyAreasToChunk(chunk, areas, terrainCodes, surveyWidth, surveyHeight, biomeDefinitions)
+  const chunk = generateChunk(
+    seedText,
+    chunkX,
+    chunkY,
+    chunkSize,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem
+  )
+  return applyAreasToChunk(
+    chunk,
+    areas,
+    terrainCodes,
+    surveyWidth,
+    surveyHeight,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem
+  )
 }

@@ -25,6 +25,7 @@ export interface WorldDefinition {
   generator: 'continental-v1'
   stream: WorldStreamDefinition
   roads: WorldRoadSystemDefinition
+  rivers?: WorldRiverSystemDefinition
   weather?: WorldWeatherDefinition
   sizePresets?: WorldSizePreset[]
 }
@@ -72,6 +73,28 @@ export interface WorldRoadGenerationDefinition {
 export interface WorldRoadSystemDefinition {
   profiles: WorldRoadProfileDefinition[]
   generation: WorldRoadGenerationDefinition
+}
+
+export interface WorldRiverGenerationDefinition {
+  sourceStride: number
+  sourceChance: number
+  sourceElevationMin: number
+  sourceMoistureMin: number
+  channelDepthMin: number
+  traceMargin: number
+  minLength: number
+  maxLength: number
+}
+
+export interface WorldRiverSystemDefinition {
+  enabled: boolean
+  blockingMovement: boolean
+  bridgeRadius: number
+  renderWidth: {
+    minor: number
+    major: number
+  }
+  generation: WorldRiverGenerationDefinition
 }
 
 export interface WorldWeatherStateDefinition {
