@@ -92,6 +92,18 @@ interface DevPanelControls {
   isCollapsed: () => boolean
 }
 
+interface MinimapControls {
+  panel: HTMLDivElement
+  title: HTMLDivElement
+  compass: HTMLSpanElement
+  collapseButton: HTMLButtonElement
+  zoomOutButton: HTMLButtonElement
+  zoomInButton: HTMLButtonElement
+  fitButton: HTMLButtonElement
+  body: HTMLDivElement
+  setCollapsed: (collapsed: boolean) => void
+}
+
 type UiTheme = 'light' | 'dark'
 
 const REGION_NAME: Record<number, string> = {
@@ -209,6 +221,12 @@ export async function createGame(
           minimapFill: 0xf6fbff,
           minimapStroke: 0x3b82f6,
           minimapExplorerStroke: 0xe7eef8,
+          minimapPanelBorder: 'rgba(59,130,246,0.18)',
+          minimapPanelBackground: 'rgba(255,255,255,0.78)',
+          minimapPanelText: '#143247',
+          minimapPanelMuted: '#476072',
+          minimapPanelButtonBackground: 'rgba(219, 234, 254, 0.95)',
+          minimapPanelButtonActive: '#2563eb',
           devBorder: 'rgba(59,130,246,0.28)',
           devBackground: 'rgba(255, 255, 255, 0.56)',
           devBackgroundHover: 'rgba(255, 255, 255, 0.94)',
@@ -225,6 +243,12 @@ export async function createGame(
           minimapFill: 0x091725,
           minimapStroke: 0x72d7c8,
           minimapExplorerStroke: 0x10222f,
+          minimapPanelBorder: 'rgba(114,215,200,0.24)',
+          minimapPanelBackground: 'rgba(7,17,31,0.74)',
+          minimapPanelText: '#d8f3ff',
+          minimapPanelMuted: '#9bb2bf',
+          minimapPanelButtonBackground: '#173241',
+          minimapPanelButtonActive: '#72d7c8',
           devBorder: 'rgba(114,215,200,0.35)',
           devBackground: 'rgba(7, 17, 31, 0.42)',
           devBackgroundHover: 'rgba(7, 17, 31, 0.92)',
@@ -307,6 +331,8 @@ export async function createGame(
   let devFly = false
   let devBattleShadow = true
   let devPanelCollapsed = window.localStorage.getItem('alohayo-world:dev-panel-collapsed') === '1'
+  let minimapCollapsed = window.localStorage.getItem('alohayo-world:minimap-collapsed') === 'true'
+  let minimapMode: 'fit' | 'manual' = 'fit'
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
   const fixedStep = 1 / 60
@@ -339,6 +365,7 @@ export async function createGame(
     options.initialWorld?.minimapChunkRadius ?? content.world.stream.minimapChunkRadius,
     activeChunkRadius + 2
   )
+  let minimapManualRadius = minimapChunkRadius
   const worldSeed = options.initialWorld?.seed?.trim() || content.world.defaultSeed
   window.localStorage.setItem('alohayo-world:last-seed', worldSeed)
   window.localStorage.setItem('alohayo-world:locale', locale)
@@ -347,6 +374,7 @@ export async function createGame(
   const catalog = () => getI18nCatalog(locale)
   const uiText = (key: string) => catalog().ui[key] ?? key
   const devText = (key: string) => catalog().devPanel[key] ?? key
+  const minimapText = (key: string) => catalog().ui[key] ?? key
   const actionText = (key: string) => catalog().actions[key] ?? key
   const translateBiomeName = (biome: BiomeDefinition) =>
     translateContentName(locale, 'biomes', biome.id, biome.name)
@@ -555,8 +583,22 @@ export async function createGame(
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
         const index = localY * chunk.chunkSize + localX
         if (discovered[index]) continue
+        const north = localY > 0 && !discovered[index - chunk.chunkSize]
+        const south = localY < chunk.chunkSize - 1 && !discovered[index + chunk.chunkSize]
+        const west = localX > 0 && !discovered[index - 1]
+        const east = localX < chunk.chunkSize - 1 && !discovered[index + 1]
+        if (north && south && west && east) {
+          view.fog
+            .rect(localX * cellSize, localY * cellSize, cellSize + 0.25, cellSize + 0.25)
+            .fill({ color: 0x05101a, alpha: 0.82 })
+          continue
+        }
         view.fog
-          .rect(localX * cellSize, localY * cellSize, cellSize + 0.25, cellSize + 0.25)
+          .circle(
+            localX * cellSize + cellSize / 2,
+            localY * cellSize + cellSize / 2,
+            cellSize * 0.76
+          )
           .fill({ color: 0x05101a, alpha: 0.82 })
       }
     }
@@ -1120,24 +1162,55 @@ export async function createGame(
 
   const drawMinimap = () => {
     minimapLayer.clear()
-    if (!explorerMotion) return
+    if (!explorerMotion || devMode || minimapCollapsed) return
+    let minChunkX = Number.POSITIVE_INFINITY
+    let maxChunkX = Number.NEGATIVE_INFINITY
+    let minChunkY = Number.POSITIVE_INFINITY
+    let maxChunkY = Number.NEGATIVE_INFINITY
+    for (const key of discoveredChunks) {
+      const [chunkXText, chunkYText] = key.split(',')
+      const chunkX = Number.parseInt(chunkXText ?? '', 10)
+      const chunkY = Number.parseInt(chunkYText ?? '', 10)
+      if (Number.isNaN(chunkX) || Number.isNaN(chunkY)) continue
+      minChunkX = Math.min(minChunkX, chunkX)
+      maxChunkX = Math.max(maxChunkX, chunkX)
+      minChunkY = Math.min(minChunkY, chunkY)
+      maxChunkY = Math.max(maxChunkY, chunkY)
+    }
+    const activeRadius =
+      minimapMode === 'fit' && Number.isFinite(minChunkX)
+        ? clamp(
+            Math.max(
+              Math.ceil((maxChunkX - minChunkX + 1) / 2),
+              Math.ceil((maxChunkY - minChunkY + 1) / 2)
+            ) + 1,
+            2,
+            Math.max(minimapChunkRadius * 3, 18)
+          )
+        : minimapManualRadius
     const minimapSize = 154
-    const tile = Math.max(4, Math.floor(minimapSize / (minimapChunkRadius * 2 + 1)))
+    const tile = Math.max(3, Math.floor(minimapSize / (activeRadius * 2 + 1)))
     const frameX = app.screen.width - minimapSize - 18
-    const frameY = 16
+    const frameY = 68
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
       .fill({ color: themePalette().minimapFill, alpha: 0.86 })
       .stroke({ color: themePalette().minimapStroke, alpha: 0.8, width: 1.2 })
 
-    const centerChunkX = Math.floor(explorerMotion.x / chunkSize)
-    const centerChunkY = Math.floor(explorerMotion.y / chunkSize)
-    const centerOffset = minimapChunkRadius * tile + Math.floor(tile / 2)
+    const centerChunkX =
+      minimapMode === 'fit' && Number.isFinite(minChunkX)
+        ? Math.floor((minChunkX + maxChunkX) / 2)
+        : Math.floor(explorerMotion.x / chunkSize)
+    const centerChunkY =
+      minimapMode === 'fit' && Number.isFinite(minChunkY)
+        ? Math.floor((minChunkY + maxChunkY) / 2)
+        : Math.floor(explorerMotion.y / chunkSize)
+    const centerOffset = activeRadius * tile + Math.floor(tile / 2)
 
     for (const chunk of chunks.values()) {
       const dx = chunk.chunkX - centerChunkX
       const dy = chunk.chunkY - centerChunkY
-      if (Math.abs(dx) > minimapChunkRadius || Math.abs(dy) > minimapChunkRadius) continue
+      if (Math.abs(dx) > activeRadius || Math.abs(dy) > activeRadius) continue
       const key = chunkKey(chunk.chunkX, chunk.chunkY)
       const discovered = discovery.get(key)
       const discoveredCount = discovered?.reduce((total, value) => total + value, 0) ?? 0
@@ -1173,6 +1246,176 @@ export async function createGame(
       )
       .fill({ color: 0xf6f2d6 })
       .stroke({ color: themePalette().minimapExplorerStroke, width: 1 })
+  }
+
+  const createMinimapControls = () => {
+    const panel = document.createElement('div')
+    panel.dataset.alohayoWorldMinimap = 'true'
+    Object.assign(panel.style, {
+      position: 'absolute',
+      inset: '16px 16px auto auto',
+      zIndex: '18',
+      width: '170px',
+      borderRadius: '14px',
+      padding: '8px',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      backdropFilter: 'blur(8px)',
+      boxShadow: '0 12px 36px rgba(0,0,0,0.22)',
+    } satisfies Partial<CSSStyleDeclaration>)
+
+    const header = document.createElement('div')
+    Object.assign(header.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      marginBottom: '6px',
+    } satisfies Partial<CSSStyleDeclaration>)
+    panel.appendChild(header)
+
+    const title = document.createElement('div')
+    Object.assign(title.style, {
+      flex: '1',
+      fontSize: '11px',
+      letterSpacing: '0.12em',
+      textTransform: 'uppercase',
+      fontWeight: '700',
+    } satisfies Partial<CSSStyleDeclaration>)
+    header.appendChild(title)
+
+    const compass = document.createElement('span')
+    Object.assign(compass.style, {
+      fontSize: '11px',
+      fontWeight: '700',
+      padding: '2px 6px',
+      borderRadius: '999px',
+    } satisfies Partial<CSSStyleDeclaration>)
+    header.appendChild(compass)
+
+    const collapseButton = document.createElement('button')
+    collapseButton.type = 'button'
+    Object.assign(collapseButton.style, {
+      border: '0',
+      cursor: 'pointer',
+      borderRadius: '999px',
+      padding: '2px 7px',
+      fontSize: '11px',
+      fontWeight: '700',
+    } satisfies Partial<CSSStyleDeclaration>)
+    header.appendChild(collapseButton)
+
+    const body = document.createElement('div')
+    Object.assign(body.style, {
+      display: 'flex',
+      gap: '6px',
+    } satisfies Partial<CSSStyleDeclaration>)
+    panel.appendChild(body)
+
+    const makeButton = () => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      Object.assign(button.style, {
+        flex: '1',
+        border: '0',
+        cursor: 'pointer',
+        borderRadius: '8px',
+        padding: '7px 8px',
+        fontSize: '11px',
+        fontWeight: '700',
+      } satisfies Partial<CSSStyleDeclaration>)
+      body.appendChild(button)
+      return button
+    }
+
+    const zoomOutButton = makeButton()
+    zoomOutButton.addEventListener('click', () => {
+      minimapMode = 'manual'
+      minimapManualRadius = clamp(minimapManualRadius + 1, 2, Math.max(minimapChunkRadius * 3, 18))
+      drawMinimap()
+      applyThemeToMinimapControls(controls)
+    })
+
+    const zoomInButton = makeButton()
+    zoomInButton.addEventListener('click', () => {
+      minimapMode = 'manual'
+      minimapManualRadius = clamp(minimapManualRadius - 1, 2, Math.max(minimapChunkRadius * 3, 18))
+      drawMinimap()
+      applyThemeToMinimapControls(controls)
+    })
+
+    const fitButton = makeButton()
+    fitButton.addEventListener('click', () => {
+      minimapMode = 'fit'
+      drawMinimap()
+      applyThemeToMinimapControls(controls)
+    })
+
+    const controls: MinimapControls = {
+      panel,
+      title,
+      compass,
+      collapseButton,
+      zoomOutButton,
+      zoomInButton,
+      fitButton,
+      body,
+      setCollapsed(nextCollapsed) {
+        minimapCollapsed = nextCollapsed
+        body.style.display = minimapCollapsed ? 'none' : 'flex'
+        collapseButton.textContent = minimapCollapsed
+          ? minimapText('minimapExpand')
+          : minimapText('minimapCollapse')
+        window.localStorage.setItem(
+          'alohayo-world:minimap-collapsed',
+          minimapCollapsed ? 'true' : 'false'
+        )
+        drawMinimap()
+      },
+    }
+
+    collapseButton.addEventListener('click', () => {
+      controls.setCollapsed(!minimapCollapsed)
+      applyThemeToMinimapControls(controls)
+    })
+
+    return controls
+  }
+
+  const renderMinimapLocale = (controls: MinimapControls | null) => {
+    if (!controls) return
+    controls.title.textContent = minimapText('minimapTitle')
+    controls.compass.textContent = minimapText('minimapCompass')
+    controls.zoomOutButton.textContent = minimapText('minimapZoomOut')
+    controls.zoomInButton.textContent = minimapText('minimapZoomIn')
+    controls.fitButton.textContent = minimapText('minimapFit')
+    controls.setCollapsed(minimapCollapsed)
+  }
+
+  const applyThemeToMinimapControls = (controls: MinimapControls | null) => {
+    if (!controls) return
+    const palette = themePalette()
+    Object.assign(controls.panel.style, {
+      display: devMode ? 'none' : 'block',
+      border: `1px solid ${palette.minimapPanelBorder}`,
+      background: palette.minimapPanelBackground,
+      color: palette.minimapPanelText,
+    } satisfies Partial<CSSStyleDeclaration>)
+    Object.assign(controls.compass.style, {
+      background: palette.minimapPanelButtonBackground,
+      color: palette.minimapPanelMuted,
+    } satisfies Partial<CSSStyleDeclaration>)
+    for (const button of [
+      controls.collapseButton,
+      controls.zoomOutButton,
+      controls.zoomInButton,
+      controls.fitButton,
+    ]) {
+      Object.assign(button.style, {
+        background: palette.minimapPanelButtonBackground,
+        color: palette.minimapPanelText,
+      } satisfies Partial<CSSStyleDeclaration>)
+    }
+    controls.fitButton.style.outline =
+      minimapMode === 'fit' ? `1px solid ${palette.minimapPanelButtonActive}` : '0'
   }
 
   const updateStatus = () => {
@@ -1599,8 +1842,11 @@ export async function createGame(
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
   let devPanel = createDevPanel()
+  const minimapControls = createMinimapControls()
   if (devPanel) options.container.appendChild(devPanel.panel)
+  options.container.appendChild(minimapControls.panel)
   renderDevPanelLocale(devPanel)
+  renderMinimapLocale(minimapControls)
 
   const surveyPixels = (activeChunkRadius * 2 + 1) * chunkSize * cellSize
   scale = devMode
@@ -1622,6 +1868,7 @@ export async function createGame(
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
   applyThemeToDevPanel(devPanel)
+  applyThemeToMinimapControls(minimapControls)
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
@@ -1782,6 +2029,11 @@ export async function createGame(
       updateStatus()
       drawExplorer(performance.now() / 1000)
     }
+    if (key === 'm' && !event.repeat && !devMode) {
+      event.preventDefault()
+      minimapControls.setCollapsed(!minimapCollapsed)
+      applyThemeToMinimapControls(minimapControls)
+    }
     if ((key === 'e' || key === ' ') && !event.repeat) {
       event.preventDefault()
       performAction()
@@ -1893,9 +2145,11 @@ export async function createGame(
       actionMessage = ''
       actionMessageUntil = 0
       renderDevPanelLocale(devPanel)
+      renderMinimapLocale(minimapControls)
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      applyThemeToMinimapControls(minimapControls)
     },
     setDevMode(enabled) {
       devMode = enabled
@@ -1910,11 +2164,13 @@ export async function createGame(
         renderDevPanelLocale(devPanel)
         devPanel.fastMoveToggle.checked = devFastMove
       }
+      renderMinimapLocale(minimapControls)
       refreshFog()
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
       applyThemeToDevPanel(devPanel)
+      applyThemeToMinimapControls(minimapControls)
     },
     setTheme(nextTheme) {
       theme = normalizeTheme(nextTheme)
@@ -1922,6 +2178,7 @@ export async function createGame(
       applyThemeToContainer()
       drawMinimap()
       applyThemeToDevPanel(devPanel)
+      applyThemeToMinimapControls(minimapControls)
     },
     async destroy() {
       if (destroyed) return
@@ -1929,6 +2186,7 @@ export async function createGame(
       rpc.rejectAll(new Error('Game destroyed'))
       worker.terminate()
       devPanel?.panel.remove()
+      minimapControls.panel.remove()
       app.canvas.removeEventListener('pointerdown', onPointerDown)
       app.canvas.removeEventListener('pointermove', onPointerMove)
       app.canvas.removeEventListener('pointerup', onPointerUp)
