@@ -26,7 +26,9 @@ export interface ChunkView {
   roads: Graphics
   settlements: Graphics
   landmarks: Graphics
-  fog: Graphics
+  fog: Container
+  fogFill: Graphics
+  fogCutout: Graphics
 }
 
 export interface RpcPending {

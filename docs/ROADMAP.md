@@ -26,6 +26,10 @@
 - [x] Basic deterministic weather surfacing over terrain and roads.
 - [x] Terrain material rule pack with English/Chinese coverage checks and a dev-only
       all-terrain showcase map.
+- [x] Extracted shared water-render helpers and added deterministic river path shaping
+      for the first natural-water foundation slice.
+- [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
+      rendering instead of cell-derived edge decoration.
 - [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by
@@ -44,7 +48,8 @@
 ## Staged Modules
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
-settlements, economy, combat, vehicles, and creatures. The next implementation target
-is global topology continuity plus drainage; gameplay plugins now wait on stable
+settlements, economy, combat, vehicles, creatures, and water. The next implementation
+target is global topology continuity plus drainage, with natural-water contour work
+running beside it as the main visual polish track. Gameplay plugins now wait on stable
 cross-chunk spatial queries and persistence. Dev-demo tooling should stay debug-only and
 must never weaken the public embed contract or lazy-load boundary.

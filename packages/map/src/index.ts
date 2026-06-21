@@ -546,6 +546,8 @@ function defaultRiverSystem(): WorldRiverSystemDefinition {
       traceMargin: 72,
       minLength: 6,
       maxLength: 108,
+      meanderStrength: 0.4,
+      smoothingSamples: 4,
     },
   }
 }
@@ -1393,6 +1395,66 @@ function traceRiverPath(
   return []
 }
 
+function catmullRom(a: number, b: number, c: number, d: number, t: number) {
+  const t2 = t * t
+  const t3 = t2 * t
+  return (
+    0.5 *
+    ((2 * b) +
+      (-a + c) * t +
+      (2 * a - 5 * b + 4 * c - d) * t2 +
+      (-a + 3 * b - 3 * c + d) * t3)
+  )
+}
+
+function shapeRiverPath(
+  points: Array<{ x: number; y: number }>,
+  seed: number,
+  riverSystem: WorldRiverSystemDefinition
+): Array<{ x: number; y: number }> {
+  if (points.length < 2) return points
+  const anchors: Array<{ x: number; y: number }> = [points[0]!]
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1]!
+    const to = points[index]!
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const length = Math.hypot(dx, dy)
+    const normalX = length > 0 ? -dy / length : 0
+    const normalY = length > 0 ? dx / length : 0
+    const offsetNoise = random2d(from.x + index * 17, to.y - index * 23, seed + 22091)
+    const offset =
+      (offsetNoise - 0.5) *
+      2 *
+      Math.min(0.4, length * 0.22) *
+      riverSystem.generation.meanderStrength
+    anchors.push(
+      {
+        x: (from.x + to.x) / 2 + normalX * offset,
+        y: (from.y + to.y) / 2 + normalY * offset,
+      },
+      to
+    )
+  }
+
+  const smoothingSamples = Math.max(1, Math.floor(riverSystem.generation.smoothingSamples))
+  const smoothed: Array<{ x: number; y: number }> = [anchors[0]!]
+  for (let index = 0; index < anchors.length - 1; index += 1) {
+    const previous = anchors[index - 1] ?? anchors[index]!
+    const start = anchors[index]!
+    const end = anchors[index + 1]!
+    const next = anchors[index + 2] ?? anchors[index + 1]!
+    for (let sample = 1; sample <= smoothingSamples; sample += 1) {
+      const t = sample / smoothingSamples
+      smoothed.push({
+        x: catmullRom(previous.x, start.x, end.x, next.x, t),
+        y: catmullRom(previous.y, start.y, end.y, next.y, t),
+      })
+    }
+  }
+  return smoothed
+}
+
 function riverTouchesChunk(
   river: GeneratedRiver,
   originX: number,
@@ -1437,6 +1499,7 @@ function buildRiverNetwork(
       const mouthKey = `${mouth.x},${mouth.y}`
       if (seenMouths.has(mouthKey)) continue
       seenMouths.add(mouthKey)
+      const shapedPath = shapeRiverPath(path, seed + x * 31 + y * 17, riverSystem)
       rivers.push({
         id: `river:${x}:${y}`,
         width:
@@ -1446,7 +1509,7 @@ function buildRiverNetwork(
         flow: clamp01(path.length / riverSystem.generation.maxLength),
         source: { x, y },
         mouth: { x: mouth.x, y: mouth.y },
-        points: path,
+        points: shapedPath,
       })
     }
   }
@@ -1502,13 +1565,18 @@ function buildRiverNetwork(
 
       if (points.length >= riverSystem.generation.minLength) {
         const mouth = points[points.length - 1]!
+        const shapedPath = shapeRiverPath(
+          points,
+          seed + fallbackSource.x * 29 + fallbackSource.y * 19,
+          riverSystem
+        )
         rivers.push({
           id: `river:fallback:${fallbackSource.x}:${fallbackSource.y}`,
           width: riverSystem.renderWidth.minor,
           flow: clamp01(points.length / riverSystem.generation.maxLength),
           source: { x: fallbackSource.x, y: fallbackSource.y },
           mouth: { x: mouth.x, y: mouth.y },
-          points,
+          points: shapedPath,
         })
       }
     }

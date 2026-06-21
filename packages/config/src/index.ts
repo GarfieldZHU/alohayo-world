@@ -84,6 +84,8 @@ export interface WorldRiverGenerationDefinition {
   traceMargin: number
   minLength: number
   maxLength: number
+  meanderStrength: number
+  smoothingSamples: number
 }
 
 export interface WorldRiverSystemDefinition {

@@ -31,3 +31,6 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
   the view invent or mutate transport topology.
 - When new terrain classes land, extend terrain accents, roads, and settlement markers
   together so the world still reads clearly at low and medium zoom.
+- Keep water presentation logic centralized. Coast, lake, and river polish should flow
+  through `water-render.ts` or a successor module rather than scattering new drawing
+  rules across `streamed.ts`.

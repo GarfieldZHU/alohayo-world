@@ -24,7 +24,8 @@ labels, discovery-ready authored overlays, and worker-applied landmark configs.
 ## Next Slice
 
 Global topology continuity, real slope, drainage, rivers, watersheds, persisted
-discovery, minimap LOD, and benchmark budgets.
+discovery, minimap LOD, benchmark budgets, and shared shape hints consumed by the
+water module.
 
 ## Tests
 

@@ -99,6 +99,14 @@ renderer.
 5. Preserve deterministic tests and validate all terrain codes.
 6. Check rendering and inspection in both standalone and embedded launchers.
 
+### Change water, coast, river, or lake presentation
+
+1. Read `docs/modules/WATER.md`, `docs/MAP_SYSTEM.md`, and `docs/NATURAL_WORLD_POLISH.md`.
+2. Keep generation hints in `packages/map` and rendering language in `packages/engine`.
+3. Prefer shared helpers or submodules over growing `streamed.ts` inline water logic.
+4. Treat natural visual polish as contour/shape work, not just more per-cell decoration.
+5. Re-check chunk seams, movement masks, and game-mode readability after every change.
+
 ### Add a gameplay module
 
 1. Start with its file in `docs/modules/`.

@@ -83,7 +83,9 @@
       "channelDepthMin": 0.03,
       "traceMargin": 72,
       "minLength": 6,
-      "maxLength": 108
+      "maxLength": 108,
+      "meanderStrength": 0.4,
+      "smoothingSamples": 4
     }
   },
   "weather": {

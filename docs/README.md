@@ -14,6 +14,8 @@ blindly.
 
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
+- `NATURAL_WORLD_POLISH.md`: the path from blended prototype visuals to natural fog,
+  shoreline, lake, and river presentation.
 - `TERRAIN_RULES.md`: terrain material rules, i18n contract, surface effects, physics,
   transformations, and dev showcase.
 - `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.
@@ -29,6 +31,7 @@ Each file in `modules/` is independently implementable and records purpose, cont
 dependencies, first vertical slice, tests, and deferred work.
 
 - `modules/MAP.md`
+- `modules/WATER.md`
 - `modules/ROADS.md`
 - `modules/CHARACTERS.md`
 - `modules/WEATHER.md`

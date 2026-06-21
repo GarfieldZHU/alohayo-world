@@ -22,40 +22,47 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     position: 'absolute',
     inset: '16px 16px auto auto',
     zIndex: '18',
-    width: '170px',
-    borderRadius: '14px',
-    padding: '8px',
+    width: '154px',
+    borderRadius: '16px',
+    padding: '0',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    backdropFilter: 'blur(8px)',
-    boxShadow: '0 12px 36px rgba(0,0,0,0.22)',
+    display: 'grid',
+    gap: '6px',
   } satisfies Partial<CSSStyleDeclaration>)
 
   const header = document.createElement('div')
   Object.assign(header.style, {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginBottom: '6px',
+    gap: '6px',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(header)
 
   const title = document.createElement('div')
   Object.assign(title.style, {
     flex: '1',
-    fontSize: '11px',
-    letterSpacing: '0.12em',
+    fontSize: '9px',
+    letterSpacing: '0.14em',
     textTransform: 'uppercase',
     fontWeight: '700',
+    paddingLeft: '2px',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(title)
 
   const compass = document.createElement('span')
   Object.assign(compass.style, {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '34px',
+    height: '28px',
     fontSize: '11px',
     fontWeight: '700',
-    padding: '2px 6px',
+    padding: '0 8px',
     borderRadius: '999px',
+    transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
+  compass.setAttribute('role', 'img')
   header.appendChild(compass)
 
   const collapseButton = document.createElement('button')
@@ -64,15 +71,23 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
-    padding: '2px 7px',
-    fontSize: '11px',
+    width: '28px',
+    height: '28px',
+    padding: '0',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '13px',
     fontWeight: '700',
+    transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(collapseButton)
 
   const body = document.createElement('div')
+  body.id = 'alohayo-world-minimap-toolbar'
   Object.assign(body.style, {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: '6px',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(body)
@@ -81,13 +96,17 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     const button = document.createElement('button')
     button.type = 'button'
     Object.assign(button.style, {
-      flex: '1',
       border: '0',
       cursor: 'pointer',
-      borderRadius: '8px',
-      padding: '7px 8px',
-      fontSize: '11px',
+      borderRadius: '10px',
+      minHeight: '32px',
+      padding: '0',
+      fontSize: '14px',
       fontWeight: '700',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
     } satisfies Partial<CSSStyleDeclaration>)
     body.appendChild(button)
     return button
@@ -108,13 +127,25 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     body,
     setCollapsed(collapsed) {
       args.setCollapsedState(collapsed)
-      body.style.display = collapsed ? 'none' : 'flex'
-      collapseButton.textContent = collapsed
+      body.style.display = collapsed ? 'none' : 'grid'
+      collapseButton.textContent = collapsed ? '▸' : '▾'
+      collapseButton.title = collapsed
         ? args.getText('minimapExpand')
         : args.getText('minimapCollapse')
+      collapseButton.setAttribute('aria-label', collapseButton.title)
+      collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+      collapseButton.setAttribute('aria-controls', body.id)
       window.localStorage.setItem('alohayo-world:minimap-collapsed', collapsed ? 'true' : 'false')
       args.redraw()
     },
+  }
+
+  const interactiveControls = [collapseButton, zoomOutButton, zoomInButton, fitButton]
+  for (const button of interactiveControls) {
+    button.addEventListener('mouseenter', () => args.applyTheme(controls))
+    button.addEventListener('mouseleave', () => args.applyTheme(controls))
+    button.addEventListener('focus', () => args.applyTheme(controls))
+    button.addEventListener('blur', () => args.applyTheme(controls))
   }
 
   zoomOutButton.addEventListener('click', () => {
@@ -156,10 +187,18 @@ export function renderMinimapLocale(
 ) {
   if (!controls) return
   controls.title.textContent = getText('minimapTitle')
-  controls.compass.textContent = getText('minimapCompass')
-  controls.zoomOutButton.textContent = getText('minimapZoomOut')
-  controls.zoomInButton.textContent = getText('minimapZoomIn')
-  controls.fitButton.textContent = getText('minimapFit')
+  controls.compass.textContent = `▲ ${getText('minimapCompass')}`
+  controls.zoomOutButton.textContent = '−'
+  controls.zoomInButton.textContent = '+'
+  controls.fitButton.textContent = '◎'
+  controls.zoomOutButton.title = getText('minimapZoomOut')
+  controls.zoomInButton.title = getText('minimapZoomIn')
+  controls.fitButton.title = getText('minimapFit')
+  controls.compass.title = getText('minimapCompass')
+  controls.compass.setAttribute('aria-label', getText('minimapCompass'))
+  controls.zoomOutButton.setAttribute('aria-label', getText('minimapZoomOut'))
+  controls.zoomInButton.setAttribute('aria-label', getText('minimapZoomIn'))
+  controls.fitButton.setAttribute('aria-label', getText('minimapFit'))
   controls.setCollapsed(collapsed)
 }
 
@@ -171,14 +210,17 @@ export function applyThemeToMinimapControls(
 ) {
   if (!controls) return
   Object.assign(controls.panel.style, {
-    display: devMode ? 'none' : 'block',
-    border: `1px solid ${palette.minimapPanelBorder}`,
-    background: palette.minimapPanelBackground,
+    display: devMode ? 'none' : 'grid',
+    border: '0',
+    background: 'transparent',
     color: palette.minimapPanelText,
   } satisfies Partial<CSSStyleDeclaration>)
   Object.assign(controls.compass.style, {
     background: palette.minimapPanelButtonBackground,
     color: palette.minimapPanelMuted,
+    boxShadow: controls.compass.matches(':hover')
+      ? `0 0 0 1px ${palette.minimapPanelBorder}`
+      : 'none',
   } satisfies Partial<CSSStyleDeclaration>)
   for (const button of [
     controls.collapseButton,
@@ -189,8 +231,16 @@ export function applyThemeToMinimapControls(
     Object.assign(button.style, {
       background: palette.minimapPanelButtonBackground,
       color: palette.minimapPanelText,
+      transform: button.matches(':hover') ? 'translateY(-1px)' : 'translateY(0)',
+      boxShadow:
+        button.matches(':focus-visible') || button.matches(':hover')
+          ? `0 0 0 1px ${palette.minimapPanelButtonActive}`
+          : 'none',
     } satisfies Partial<CSSStyleDeclaration>)
   }
+  Object.assign(controls.fitButton.style, {
+    fontSize: '13px',
+  } satisfies Partial<CSSStyleDeclaration>)
   controls.fitButton.style.outline =
     mode === 'fit' ? `1px solid ${palette.minimapPanelButtonActive}` : '0'
 }

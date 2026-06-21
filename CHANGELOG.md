@@ -29,6 +29,11 @@
   without yet promoting weather to full gameplay simulation.
 - Added authoritative terrain material rules, locale coverage checks, and a dev-only
   all-terrain showcase area.
+- Improved fog-of-war and minimap UI polish, including lighter controls, better control
+  states, and a cleaner hidden-side mist model.
+- Added the first natural-water foundation: extracted shared water render helpers,
+  shaped river paths with deterministic meander/smoothing settings, and documented the
+  contour-based next step for coasts, lakes, rivers, and fog.
 - Documented the safe Wasm refactor target for streamed chunk terrain generation and the
   current Rust tooling/build-order blockers.
 

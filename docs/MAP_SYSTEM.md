@@ -1,7 +1,8 @@
 # Map System
 
 Read `GIS_FOUNDATIONS.md` for the geographic reasoning, `TERRAIN_RULES.md` for
-terrain material/physics rules, and `modules/MAP.md` for the implementation boundary.
+terrain material/physics rules, `modules/MAP.md` for the implementation boundary, and
+`modules/WATER.md` plus `NATURAL_WORLD_POLISH.md` for the next natural-rendering slice.
 
 ## Coordinates and Scale
 
@@ -63,6 +64,9 @@ The current river system is generated as an overlay path, not as a duplicate bio
 lets a river cross basin, lowland, grassland, forest, canyon floor, or coast while preserving
 the underlying terrain and its own movement/material rules.
 
+The current river path is now shaped before rendering through deterministic meander and
+smoothing parameters. This is a foundation step, not the final hydrology model.
+
 ## Generation Pipeline
 
 1. Hash seed and versioned generator inputs.
@@ -100,6 +104,7 @@ Still pending:
 - global landmass, waterbody, and watershed identity merge across chunk boundaries;
 - chunk persistence in IndexedDB;
 - benchmarked memory budgets for larger retention radii.
+- contour-based fog and shoreline rendering that no longer reads as cell-decorated edges.
 
 ## Hydrology
 
@@ -112,6 +117,11 @@ from a moisture heuristic to drainage and saturation evidence.
 The demo uses layered PixiJS graphics and automatically fits the initial streamed survey.
 Neighboring terrain classes receive deterministic edge strips and sparse accent pixels
 so boundaries read as natural transitions instead of a hard checkerboard.
+
+Water rendering is now partially centralized in `packages/engine/src/water-render.ts`.
+The current stage provides shared coast and river drawing helpers plus deterministic
+river shaping. The next stage replaces repeated per-cell water edges with contour-driven
+shoreline and bank geometry.
 
 Zoom is cursor-anchored and reveals detail in stages:
 

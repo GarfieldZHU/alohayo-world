@@ -20,3 +20,6 @@ This package owns deterministic geography and worker-safe data.
 - The first Wasm production path should be chunk-layer generation as one coarse worker
   call, not per-cell calls from TypeScript. Preserve typed-array transfer semantics and
   keep the TypeScript fallback as the reference until CI runs Rust and Wasm parity.
+- Water generation should separate hydrology truth from renderer polish hints. River
+  meanders, lake outlines, shoreline distance, and future drainage fields must remain
+  deterministic and config-driven.

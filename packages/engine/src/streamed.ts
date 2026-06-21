@@ -52,6 +52,7 @@ import {
   profileById,
   toChunkCoord,
 } from './utils'
+import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
 
 export async function createGame(
   options: MountGameOptions,
@@ -214,8 +215,8 @@ export async function createGame(
 
   const updateDetailLevel = () => {
     for (const view of chunkViews.values()) {
-      view.regionalDetails.visible = scale >= 1.15
-      view.closeDetails.visible = scale >= 2.15
+      view.regionalDetails.visible = devMode ? scale >= 1.15 : scale >= 2.05
+      view.closeDetails.visible = devMode ? scale >= 2.15 : scale >= 3.35
       view.surfaces.visible = scale >= 1
       view.rivers.visible = scale >= 0.95
       view.roads.visible = scale >= 1.05
@@ -412,29 +413,56 @@ export async function createGame(
     const view = chunkViews.get(key)
     const discovered = discovery.get(key)
     if (!chunk || !view || !discovered) return
-    view.fog.clear()
+    view.fogFill.clear()
+    view.fogCutout.clear()
     if (devMode && !devBattleShadow) return
+    const fogColor = 0x05101a
+    const chunkPixels = chunk.chunkSize * cellSize
+    const revealFeather = cellSize * 0.32
+    const softenFeather = cellSize * 0.18
+    const isDiscoveredCell = (cellX: number, cellY: number) => {
+      const chunkX = Math.floor(cellX / chunkSize)
+      const chunkY = Math.floor(cellY / chunkSize)
+      const cells = discovery.get(chunkKey(chunkX, chunkY))
+      if (!cells) return false
+      const localX = cellX - chunkX * chunkSize
+      const localY = cellY - chunkY * chunkSize
+      return Boolean(cells[localY * chunkSize + localX])
+    }
+    view.fogFill.rect(0, 0, chunkPixels + 0.5, chunkPixels + 0.5).fill({ color: fogColor, alpha: 0.82 })
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
         const index = localY * chunk.chunkSize + localX
-        if (discovered[index]) continue
-        const north = localY > 0 && !discovered[index - chunk.chunkSize]
-        const south = localY < chunk.chunkSize - 1 && !discovered[index + chunk.chunkSize]
-        const west = localX > 0 && !discovered[index - 1]
-        const east = localX < chunk.chunkSize - 1 && !discovered[index + 1]
-        if (north && south && west && east) {
-          view.fog
-            .rect(localX * cellSize, localY * cellSize, cellSize + 0.25, cellSize + 0.25)
-            .fill({ color: 0x05101a, alpha: 0.82 })
-          continue
-        }
-        view.fog
-          .circle(
-            localX * cellSize + cellSize / 2,
-            localY * cellSize + cellSize / 2,
-            cellSize * 0.76
+        if (!discovered[index]) continue
+        const cellX = chunk.originX + localX
+        const cellY = chunk.originY + localY
+        const north = isDiscoveredCell(cellX, cellY - 1)
+        const south = isDiscoveredCell(cellX, cellY + 1)
+        const west = isDiscoveredCell(cellX - 1, cellY)
+        const east = isDiscoveredCell(cellX + 1, cellY)
+        const originX = localX * cellSize
+        const originY = localY * cellSize
+        const hasHiddenEdge = !(north && south && west && east)
+        view.fogCutout
+          .roundRect(
+            originX - (west ? revealFeather : 0),
+            originY - (north ? revealFeather : 0),
+            cellSize + (west ? revealFeather : 0) + (east ? revealFeather : 0) + 0.2,
+            cellSize + (north ? revealFeather : 0) + (south ? revealFeather : 0) + 0.2,
+            cellSize * 0.42
           )
-          .fill({ color: 0x05101a, alpha: 0.82 })
+          .fill({ color: 0xffffff, alpha: 1 })
+        if (hasHiddenEdge) {
+          view.fogCutout
+            .roundRect(
+              originX - (west ? softenFeather : 0),
+              originY - (north ? softenFeather : 0),
+              cellSize + (west ? softenFeather : 0) + (east ? softenFeather : 0) + 0.15,
+              cellSize + (north ? softenFeather : 0) + (south ? softenFeather : 0) + 0.15,
+              cellSize * 0.32
+            )
+            .fill({ color: 0xffffff, alpha: 0.38 })
+        }
       }
     }
   }
@@ -726,7 +754,11 @@ export async function createGame(
       const roads = new Graphics()
       const settlements = new Graphics()
       const landmarks = new Graphics()
-      const fog = new Graphics()
+      const fog = new Container()
+      const fogFill = new Graphics()
+      const fogCutout = new Graphics()
+      fogCutout.blendMode = 'erase'
+      fog.addChild(fogFill, fogCutout)
       container.addChild(
         terrain,
         transitions,
@@ -752,6 +784,8 @@ export async function createGame(
         settlements,
         landmarks,
         fog,
+        fogFill,
+        fogCutout,
       }
       chunkViews.set(key, view)
     }
@@ -767,6 +801,8 @@ export async function createGame(
     view.settlements.clear()
     view.landmarks.clear()
     view.fog.visible = !(devMode && devBattleShadow)
+    view.fogFill.clear()
+    view.fogCutout.clear()
     rebuildRoadMask(chunk)
     rebuildRiverMask(chunk)
 
@@ -781,46 +817,60 @@ export async function createGame(
         )
         const originX = localX * cellSize
         const originY = localY * cellSize
-        view.terrain.rect(originX, originY, cellSize + 0.5, cellSize + 0.5).fill(biome.color)
+        view.terrain.rect(originX, originY, cellSize, cellSize).fill(biome.color)
 
-        const rightIndex = localX + 1 < chunk.chunkSize ? index + 1 : -1
-        if (rightIndex >= 0 && chunk.biomes[rightIndex] !== chunk.biomes[index]) {
-          const rightBiome = biomeByCode.get(chunk.biomes[rightIndex]!) ?? biome
-          const offset = noise % Math.max(1, cellSize - 1)
-          view.transitions
-            .rect(originX + cellSize - 0.65, originY, 1.3, cellSize)
-            .fill({ color: rightBiome.color, alpha: 0.34 })
-          view.transitions
-            .rect(originX + cellSize - 1, originY + offset, 1.5, 1)
-            .fill({ color: rightBiome.accent, alpha: 0.48 })
+        const rightBiome =
+          localX + 1 < chunk.chunkSize
+            ? (biomeByCode.get(chunk.biomes[index + 1]!) ?? biome)
+            : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
+        if (rightBiome && rightBiome.code !== biome.code) {
+          drawBoundaryBlend(
+            view.transitions,
+            'east',
+            originX,
+            originY,
+            cellSize,
+            noise,
+            biome,
+            rightBiome
+          )
         }
 
-        const belowIndex = localY + 1 < chunk.chunkSize ? index + chunk.chunkSize : -1
-        if (belowIndex >= 0 && chunk.biomes[belowIndex] !== chunk.biomes[index]) {
-          const belowBiome = biomeByCode.get(chunk.biomes[belowIndex]!) ?? biome
-          const offset = (noise >>> 4) % Math.max(1, cellSize - 1)
-          view.transitions
-            .rect(originX, originY + cellSize - 0.65, cellSize, 1.3)
-            .fill({ color: belowBiome.color, alpha: 0.34 })
-          view.transitions
-            .rect(originX + offset, originY + cellSize - 1, 1, 1.5)
-            .fill({ color: belowBiome.accent, alpha: 0.48 })
+        const belowBiome =
+          localY + 1 < chunk.chunkSize
+            ? (biomeByCode.get(chunk.biomes[index + chunk.chunkSize]!) ?? biome)
+            : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
+        if (belowBiome && belowBiome.code !== biome.code) {
+          drawBoundaryBlend(
+            view.transitions,
+            'south',
+            originX,
+            originY,
+            cellSize,
+            noise,
+            biome,
+            belowBiome
+          )
         }
 
-        if (noise % 11 === 0) {
+        if ((devMode || scale >= 2.05) && noise % 11 === 0) {
           view.regionalDetails
             .rect(originX + 1, originY + 1, Math.max(1, cellSize - 2), 0.5)
             .fill({ color: biome.accent, alpha: 0.52 })
         }
 
-        if (noise % 7 === 0) {
+        if ((devMode || scale >= 3.35) && noise % 7 === 0) {
           const detailX = originX + 1 + ((noise >>> 7) % Math.max(1, cellSize - 2))
           const detailY = originY + 1 + ((noise >>> 11) % Math.max(1, cellSize - 2))
           if (biome.id.includes('ocean') || biome.id.includes('sea') || biome.id.includes('lake')) {
-            view.closeDetails.rect(originX + 0.5, detailY, cellSize - 1, 0.45).fill({
-              color: biome.accent,
-              alpha: 0.7,
-            })
+            drawWaterCloseDetail(
+              view.closeDetails,
+              originX,
+              originY,
+              cellSize,
+              noise,
+              colorFromHex(biome.accent, 0x7bd3f7)
+            )
           } else if (biome.id.includes('forest')) {
             view.closeDetails.circle(detailX, detailY, 0.8).fill({
               color: biome.accent,
@@ -852,21 +902,7 @@ export async function createGame(
     }
 
     for (const river of chunk.rivers) {
-      let started = false
-      for (const point of river.points) {
-        const x = (point.x - chunk.originX) * cellSize + cellSize / 2
-        const y = (point.y - chunk.originY) * cellSize + cellSize / 2
-        if (!started) {
-          view.rivers.moveTo(x, y)
-          started = true
-        } else {
-          view.rivers.lineTo(x, y)
-        }
-      }
-      if (started) {
-        view.rivers.stroke({ color: 0x123f66, width: river.width + 0.32, alpha: 0.95 })
-        view.rivers.stroke({ color: 0x4da6d8, width: river.width, alpha: 0.94 })
-      }
+      drawRiver(view.rivers, river, chunk.originX, chunk.originY, cellSize, content.world.rivers)
     }
 
     for (const road of chunk.roads) {
@@ -932,8 +968,8 @@ export async function createGame(
         .stroke({ color: 0xffffff, width: 0.45, alpha: 0.8 })
     }
 
-    view.regionalDetails.visible = scale >= 1.15
-    view.closeDetails.visible = scale >= 2.15
+    view.regionalDetails.visible = devMode ? scale >= 1.15 : scale >= 2.05
+    view.closeDetails.visible = devMode ? scale >= 2.15 : scale >= 3.35
     view.surfaces.visible = scale >= 1
     view.rivers.visible = scale >= 0.95
     view.roads.visible = scale >= 1.05
@@ -1099,7 +1135,7 @@ export async function createGame(
     const minimapSize = 154
     const tile = Math.max(3, Math.floor(minimapSize / (activeRadius * 2 + 1)))
     const frameX = app.screen.width - minimapSize - 18
-    const frameY = 68
+    const frameY = minimapCollapsed ? 58 : 96
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
       .fill({ color: palette().minimapFill, alpha: 0.86 })
@@ -1185,6 +1221,26 @@ export async function createGame(
 
   const refreshFog = () => {
     for (const key of chunkViews.keys()) redrawChunkFog(key)
+  }
+
+  const biomeAtCell = (cellX: number, cellY: number) => {
+    const targetChunkX = Math.floor(cellX / chunkSize)
+    const targetChunkY = Math.floor(cellY / chunkSize)
+    const targetChunk = chunks.get(chunkKey(targetChunkX, targetChunkY))
+    if (!targetChunk) return null
+    const localX = cellX - targetChunk.originX
+    const localY = cellY - targetChunk.originY
+    if (
+      localX < 0 ||
+      localY < 0 ||
+      localX >= targetChunk.chunkSize ||
+      localY >= targetChunk.chunkSize
+    ) {
+      return null
+    }
+    const biomeCode = targetChunk.biomes[localY * targetChunk.chunkSize + localX]
+    if (biomeCode === undefined) return null
+    return biomeByCode.get(biomeCode) ?? null
   }
 
   const revealAroundExplorer = () => {
