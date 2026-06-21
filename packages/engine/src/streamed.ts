@@ -78,10 +78,11 @@ export async function createGame(
   const devLayer = new Graphics()
   const characterLayer = new Graphics()
   const overlay = new Container()
+  const visionOverlay = new Graphics()
   const minimapLayer = new Graphics()
   viewport.addChild(chunkLayer, devLayer, characterLayer)
   app.stage.addChild(viewport, overlay)
-  overlay.addChild(minimapLayer)
+  overlay.addChild(visionOverlay, minimapLayer)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const roadProfiles = profileById(content.world)
@@ -361,13 +362,6 @@ export async function createGame(
           : 0
     const actionPulse =
       explorerMotion.state === 'action' ? 1 + Math.sin(elapsedSeconds * 24) * 0.15 : 1
-    if (devMode && devBattleShadow) {
-      devLayer
-        .circle(centerPixelX, centerPixelY, cellSize * 2.1)
-        .stroke({ color: 0xff667a, width: Math.max(0.4, cellSize * 0.1), alpha: 0.9 })
-        .circle(centerPixelX, centerPixelY, cellSize * 1.55)
-        .fill({ color: 0x7a1022, alpha: 0.12 })
-    }
     if (devMode && devFly) {
       devLayer
         .circle(centerPixelX, centerPixelY, cellSize * 2.6)
@@ -448,11 +442,72 @@ export async function createGame(
   }
 
   const refreshFogVisibility = () => {
-    const fogVisible = !devMode || devBattleShadow
+    const fogVisible = !devMode
     for (const view of chunkViews.values()) {
       view.fog.visible = fogVisible
     }
+    visionOverlay.visible = devMode && devBattleShadow
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
+  }
+
+  const drawBattleShadow = () => {
+    visionOverlay.clear()
+    if (!devMode || !devBattleShadow || !explorerMotion) return
+
+    const centerX = viewport.x + explorerMotion.x * cellSize * scale
+    const centerY = viewport.y + explorerMotion.y * cellSize * scale
+    const revealRadius = Math.max(cellSize * scale * 3.1, 92)
+    const chamfer = revealRadius * 0.38
+    const left = centerX - revealRadius
+    const right = centerX + revealRadius
+    const top = centerY - revealRadius
+    const bottom = centerY + revealRadius
+    const width = app.screen.width
+    const height = app.screen.height
+    const shadowFill = { color: 0x02060b, alpha: 0.72 }
+
+    visionOverlay.rect(0, 0, width, Math.max(0, top)).fill(shadowFill)
+    visionOverlay.rect(0, Math.min(height, bottom), width, Math.max(0, height - bottom)).fill(shadowFill)
+    visionOverlay.rect(0, Math.max(0, top), Math.max(0, left), Math.max(0, bottom - top)).fill(shadowFill)
+    visionOverlay
+      .rect(Math.min(width, right), Math.max(0, top), Math.max(0, width - right), Math.max(0, bottom - top))
+      .fill(shadowFill)
+    visionOverlay
+      .poly([left, top, centerX - chamfer, top, left, centerY - chamfer])
+      .fill(shadowFill)
+    visionOverlay
+      .poly([right, top, centerX + chamfer, top, right, centerY - chamfer])
+      .fill(shadowFill)
+    visionOverlay
+      .poly([left, bottom, centerX - chamfer, bottom, left, centerY + chamfer])
+      .fill(shadowFill)
+    visionOverlay
+      .poly([right, bottom, centerX + chamfer, bottom, right, centerY + chamfer])
+      .fill(shadowFill)
+    visionOverlay
+      .poly([
+        centerX,
+        top + 4,
+        right - chamfer,
+        centerY,
+        centerX,
+        bottom - 4,
+        left + chamfer,
+        centerY,
+      ])
+      .stroke({ color: 0xff6a86, width: Math.max(1.5, cellSize * scale * 0.12), alpha: 0.9 })
+    visionOverlay
+      .poly([
+        centerX,
+        top + 14,
+        right - chamfer * 0.75,
+        centerY,
+        centerX,
+        bottom - 14,
+        left + chamfer * 0.75,
+        centerY,
+      ])
+      .fill({ color: 0x6f1020, alpha: 0.12 })
   }
 
   const activeWeather = (nowMs = performance.now()): ActiveWeatherState => {
@@ -1372,6 +1427,7 @@ export async function createGame(
   revealAroundExplorer()
   drawExplorer()
   refreshFogVisibility()
+  drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
   applyCurrentDevPanelTheme(devPanel)
@@ -1571,8 +1627,14 @@ export async function createGame(
     syncGameCameraScale()
     updateCamera(true)
     drawMinimap()
+    drawBattleShadow()
     updateStatus()
   }
+
+  const resizeObserver = new ResizeObserver(() => {
+    onResize()
+  })
+  resizeObserver.observe(options.container)
 
   const stepSimulation = (deltaSeconds: number) => {
     if (!explorer || !explorerMotion) return
@@ -1637,6 +1699,7 @@ export async function createGame(
     if (!devMode) updateCamera()
     refreshWeatherLayers(simulationNow)
     drawExplorer(simulationNow / 1000)
+    drawBattleShadow()
     frameCount += 1
     const now = performance.now()
     if (now - fpsStarted >= 1000) {
@@ -1667,6 +1730,7 @@ export async function createGame(
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      drawBattleShadow()
       applyCurrentMinimapTheme(minimapControls)
     },
     setDevMode(enabled) {
@@ -1696,6 +1760,7 @@ export async function createGame(
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      drawBattleShadow()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
     },
@@ -1712,6 +1777,7 @@ export async function createGame(
       destroyed = true
       rpc.rejectAll(new Error('Game destroyed'))
       worker.terminate()
+      resizeObserver.disconnect()
       devPanel?.panel.remove()
       minimapControls.panel.remove()
       app.canvas.removeEventListener('pointerdown', onPointerDown)
