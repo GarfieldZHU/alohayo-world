@@ -417,52 +417,32 @@ export async function createGame(
     view.fogCutout.clear()
     if (devMode && !devBattleShadow) return
     const fogColor = 0x05101a
-    const chunkPixels = chunk.chunkSize * cellSize
-    const revealFeather = cellSize * 0.32
-    const softenFeather = cellSize * 0.18
-    const isDiscoveredCell = (cellX: number, cellY: number) => {
-      const chunkX = Math.floor(cellX / chunkSize)
-      const chunkY = Math.floor(cellY / chunkSize)
-      const cells = discovery.get(chunkKey(chunkX, chunkY))
-      if (!cells) return false
-      const localX = cellX - chunkX * chunkSize
-      const localY = cellY - chunkY * chunkSize
-      return Boolean(cells[localY * chunkSize + localX])
-    }
-    view.fogFill.rect(0, 0, chunkPixels + 0.5, chunkPixels + 0.5).fill({ color: fogColor, alpha: 0.82 })
+    const edgeFeather = cellSize * 0.28
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
         const index = localY * chunk.chunkSize + localX
-        if (!discovered[index]) continue
-        const cellX = chunk.originX + localX
-        const cellY = chunk.originY + localY
-        const north = isDiscoveredCell(cellX, cellY - 1)
-        const south = isDiscoveredCell(cellX, cellY + 1)
-        const west = isDiscoveredCell(cellX - 1, cellY)
-        const east = isDiscoveredCell(cellX + 1, cellY)
+        if (discovered[index]) continue
+        const north = localY > 0 && !discovered[index - chunk.chunkSize]
+        const south = localY < chunk.chunkSize - 1 && !discovered[index + chunk.chunkSize]
+        const west = localX > 0 && !discovered[index - 1]
+        const east = localX < chunk.chunkSize - 1 && !discovered[index + 1]
         const originX = localX * cellSize
         const originY = localY * cellSize
-        const hasHiddenEdge = !(north && south && west && east)
-        view.fogCutout
-          .roundRect(
-            originX - (west ? revealFeather : 0),
-            originY - (north ? revealFeather : 0),
-            cellSize + (west ? revealFeather : 0) + (east ? revealFeather : 0) + 0.2,
-            cellSize + (north ? revealFeather : 0) + (south ? revealFeather : 0) + 0.2,
-            cellSize * 0.42
-          )
-          .fill({ color: 0xffffff, alpha: 1 })
-        if (hasHiddenEdge) {
-          view.fogCutout
-            .roundRect(
-              originX - (west ? softenFeather : 0),
-              originY - (north ? softenFeather : 0),
-              cellSize + (west ? softenFeather : 0) + (east ? softenFeather : 0) + 0.15,
-              cellSize + (north ? softenFeather : 0) + (south ? softenFeather : 0) + 0.15,
-              cellSize * 0.32
-            )
-            .fill({ color: 0xffffff, alpha: 0.38 })
+        if (north && south && west && east) {
+          view.fogFill
+            .rect(originX, originY, cellSize + 0.2, cellSize + 0.2)
+            .fill({ color: fogColor, alpha: 0.84 })
+          continue
         }
+        view.fogFill
+          .roundRect(
+            originX - (west ? edgeFeather : 0),
+            originY - (north ? edgeFeather : 0),
+            cellSize + (west ? edgeFeather : 0) + (east ? edgeFeather : 0) + 0.2,
+            cellSize + (north ? edgeFeather : 0) + (south ? edgeFeather : 0) + 0.2,
+            cellSize * 0.34
+          )
+          .fill({ color: fogColor, alpha: 0.84 })
       }
     }
   }
