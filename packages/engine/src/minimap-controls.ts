@@ -60,7 +60,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     fontWeight: '700',
     padding: '0 8px',
     borderRadius: '999px',
-    transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+    transition:
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   compass.setAttribute('role', 'img')
   header.appendChild(compass)
@@ -79,7 +80,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     justifyContent: 'center',
     fontSize: '13px',
     fontWeight: '700',
-    transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+    transition:
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(collapseButton)
 
@@ -106,7 +108,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+      transition:
+        'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
     } satisfies Partial<CSSStyleDeclaration>)
     body.appendChild(button)
     return button

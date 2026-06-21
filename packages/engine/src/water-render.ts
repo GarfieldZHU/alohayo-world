@@ -5,14 +5,14 @@ import type { Graphics } from 'pixi.js'
 export function isWaterBiome(biome: BiomeDefinition | undefined) {
   return Boolean(
     biome &&
-      (biome.id.includes('ocean') ||
-        biome.id.includes('sea') ||
-        biome.id.includes('coast') ||
-        biome.id.includes('beach') ||
-        biome.id.includes('lake') ||
-        biome.id.includes('reef') ||
-        biome.id.includes('marsh') ||
-        biome.id.includes('wetland'))
+    (biome.id.includes('ocean') ||
+      biome.id.includes('sea') ||
+      biome.id.includes('coast') ||
+      biome.id.includes('beach') ||
+      biome.id.includes('lake') ||
+      biome.id.includes('reef') ||
+      biome.id.includes('marsh') ||
+      biome.id.includes('wetland'))
   )
 }
 
@@ -153,11 +153,7 @@ function catmullRom(a: number, b: number, c: number, d: number, t: number) {
   const t2 = t * t
   const t3 = t2 * t
   return (
-    0.5 *
-    ((2 * b) +
-      (-a + c) * t +
-      (2 * a - 5 * b + 4 * c - d) * t2 +
-      (-a + 3 * b - 3 * c + d) * t3)
+    0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3)
   )
 }
 

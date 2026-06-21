@@ -467,10 +467,19 @@ export async function createGame(
     const shadowFill = { color: 0x02060b, alpha: 0.72 }
 
     visionOverlay.rect(0, 0, width, Math.max(0, top)).fill(shadowFill)
-    visionOverlay.rect(0, Math.min(height, bottom), width, Math.max(0, height - bottom)).fill(shadowFill)
-    visionOverlay.rect(0, Math.max(0, top), Math.max(0, left), Math.max(0, bottom - top)).fill(shadowFill)
     visionOverlay
-      .rect(Math.min(width, right), Math.max(0, top), Math.max(0, width - right), Math.max(0, bottom - top))
+      .rect(0, Math.min(height, bottom), width, Math.max(0, height - bottom))
+      .fill(shadowFill)
+    visionOverlay
+      .rect(0, Math.max(0, top), Math.max(0, left), Math.max(0, bottom - top))
+      .fill(shadowFill)
+    visionOverlay
+      .rect(
+        Math.min(width, right),
+        Math.max(0, top),
+        Math.max(0, width - right),
+        Math.max(0, bottom - top)
+      )
       .fill(shadowFill)
     visionOverlay
       .poly([left, top, centerX - chamfer, top, left, centerY - chamfer])
