@@ -77,10 +77,11 @@
     "battleShadow": "战斗阴影",
     "fastMove": "快速移动",
     "fly": "飞行",
+    "grid": "网格",
     "teleport": "传送",
     "equip": "装备",
     "unequip": "卸下",
-    "note": "取消勾选战斗阴影会揭开全部迷雾。Shift 点击可传送，按 F 可切换快速移动，按 G 切换飞行。",
+    "note": "取消勾选战斗阴影会揭开全部迷雾。网格仅用于开发调试。Shift 点击可传送，按 F 可切换快速移动，按 G 切换飞行。",
     "teleportBlocked": "无法传送到 ({x}, {y})；该地形不可通行。",
     "teleported": "已传送到 ({x}, {y})。",
     "equipmentSet": "{slotName} 已设置为 {itemName}。"

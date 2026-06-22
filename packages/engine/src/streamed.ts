@@ -78,11 +78,24 @@ export async function createGame(
   const devLayer = new Graphics()
   const characterLayer = new Graphics()
   const overlay = new Container()
-  const visionOverlay = new Graphics()
   const minimapLayer = new Graphics()
   viewport.addChild(chunkLayer, devLayer, characterLayer)
   app.stage.addChild(viewport, overlay)
-  overlay.addChild(visionOverlay, minimapLayer)
+  overlay.addChild(minimapLayer)
+  if (getComputedStyle(options.container).position === 'static') {
+    options.container.style.position = 'relative'
+  }
+  const visionFogElement = document.createElement('div')
+  visionFogElement.dataset.alohayoWorldVisionFog = 'true'
+  Object.assign(visionFogElement.style, {
+    position: 'absolute',
+    inset: '0',
+    zIndex: '6',
+    pointerEvents: 'none',
+    opacity: '0',
+    transition: 'opacity 140ms ease, background 80ms linear',
+  } satisfies Partial<CSSStyleDeclaration>)
+  options.container.appendChild(visionFogElement)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const roadProfiles = profileById(content.world)
@@ -134,6 +147,7 @@ export async function createGame(
   let devFastMove = false
   let devFly = false
   let devBattleShadow = true
+  let devShowGrid = window.localStorage.getItem('alohayo-world:dev-grid') !== 'false'
   let devPanelCollapsed = window.localStorage.getItem('alohayo-world:dev-panel-collapsed') === '1'
   let minimapCollapsed = window.localStorage.getItem('alohayo-world:minimap-collapsed') === 'true'
   let minimapMode: 'fit' | 'manual' = 'fit'
@@ -214,6 +228,13 @@ export async function createGame(
     applyThemeToMinimapControls(controls, palette(), devMode, minimapMode)
   }
 
+  const refreshGridVisibility = () => {
+    for (const view of chunkViews.values()) {
+      view.grid.visible = devMode && devShowGrid
+    }
+    app.canvas.dataset.devGrid = devMode && devShowGrid ? 'true' : 'false'
+  }
+
   const updateDetailLevel = () => {
     for (const view of chunkViews.values()) {
       view.regionalDetails.visible = devMode ? scale >= 1.15 : scale >= 2.05
@@ -240,6 +261,12 @@ export async function createGame(
           setBattleShadow: (enabled) => {
             devBattleShadow = enabled
             refreshFogVisibility()
+          },
+          getGrid: () => devShowGrid,
+          setGrid: (enabled) => {
+            devShowGrid = enabled
+            window.localStorage.setItem('alohayo-world:dev-grid', enabled ? 'true' : 'false')
+            refreshGridVisibility()
           },
           getFastMove: () => devFastMove,
           setFastMove: (enabled) => {
@@ -442,81 +469,70 @@ export async function createGame(
   }
 
   const refreshFogVisibility = () => {
-    const fogVisible = !devMode
+    const fogVisible = false
     for (const view of chunkViews.values()) {
       view.fog.visible = fogVisible
     }
-    visionOverlay.visible = devMode && devBattleShadow
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
   }
 
   const drawBattleShadow = () => {
-    visionOverlay.clear()
-    if (!devMode || !devBattleShadow || !explorerMotion) return
+    const showVisionFog = !devMode || devBattleShadow
+    if (!showVisionFog || !explorerMotion) {
+      visionFogElement.style.opacity = '0'
+      visionFogElement.style.background = 'transparent'
+      return
+    }
 
     const centerX = viewport.x + explorerMotion.x * cellSize * scale
     const centerY = viewport.y + explorerMotion.y * cellSize * scale
-    const revealRadius = Math.max(cellSize * scale * 3.1, 92)
-    const chamfer = revealRadius * 0.38
-    const left = centerX - revealRadius
-    const right = centerX + revealRadius
-    const top = centerY - revealRadius
-    const bottom = centerY + revealRadius
-    const width = app.screen.width
-    const height = app.screen.height
-    const shadowFill = { color: 0x02060b, alpha: 0.72 }
+    const innerRadius = Math.max(cellSize * scale * (devMode ? 2.85 : 3.1), devMode ? 76 : 88)
+    const ringRadius = innerRadius + Math.max(8, innerRadius * 0.06)
+    const fadeRadius = innerRadius + Math.max(34, innerRadius * 0.24)
+    const deepFogRadius = fadeRadius + Math.max(54, innerRadius * 0.4)
+    const maxRadius = deepFogRadius + Math.max(46, innerRadius * 0.3)
+    const center = `${centerX.toFixed(2)}px ${centerY.toFixed(2)}px`
+    const ringColor = devMode ? 'rgba(255, 118, 146, 0.58)' : 'rgba(180, 207, 224, 0.22)'
+    const mistColor = devMode ? 'rgba(120, 176, 206, 0.16)' : 'rgba(138, 166, 180, 0.22)'
+    const grayFog = devMode ? 'rgba(25, 43, 57, 0.38)' : 'rgba(56, 71, 84, 0.46)'
+    const deepFog = devMode ? 'rgba(7, 14, 24, 0.66)' : 'rgba(9, 17, 26, 0.64)'
+    const outerFog = devMode ? 'rgba(3, 8, 14, 0.82)' : 'rgba(5, 11, 18, 0.8)'
+    visionFogElement.style.opacity = '1'
+    visionFogElement.style.background = `radial-gradient(circle at ${center},
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) ${innerRadius.toFixed(2)}px,
+      ${ringColor} ${ringRadius.toFixed(2)}px,
+      ${mistColor} ${(innerRadius + fadeRadius) / 2}px,
+      ${grayFog} ${fadeRadius.toFixed(2)}px,
+      ${deepFog} ${deepFogRadius.toFixed(2)}px,
+      ${outerFog} ${maxRadius.toFixed(2)}px,
+      rgba(2, 6, 11, ${devMode ? '0.9' : '0.86'}) 100%)`
+  }
 
-    visionOverlay.rect(0, 0, width, Math.max(0, top)).fill(shadowFill)
-    visionOverlay
-      .rect(0, Math.min(height, bottom), width, Math.max(0, height - bottom))
-      .fill(shadowFill)
-    visionOverlay
-      .rect(0, Math.max(0, top), Math.max(0, left), Math.max(0, bottom - top))
-      .fill(shadowFill)
-    visionOverlay
-      .rect(
-        Math.min(width, right),
-        Math.max(0, top),
-        Math.max(0, width - right),
-        Math.max(0, bottom - top)
-      )
-      .fill(shadowFill)
-    visionOverlay
-      .poly([left, top, centerX - chamfer, top, left, centerY - chamfer])
-      .fill(shadowFill)
-    visionOverlay
-      .poly([right, top, centerX + chamfer, top, right, centerY - chamfer])
-      .fill(shadowFill)
-    visionOverlay
-      .poly([left, bottom, centerX - chamfer, bottom, left, centerY + chamfer])
-      .fill(shadowFill)
-    visionOverlay
-      .poly([right, bottom, centerX + chamfer, bottom, right, centerY + chamfer])
-      .fill(shadowFill)
-    visionOverlay
-      .poly([
-        centerX,
-        top + 4,
-        right - chamfer,
-        centerY,
-        centerX,
-        bottom - 4,
-        left + chamfer,
-        centerY,
-      ])
-      .stroke({ color: 0xff6a86, width: Math.max(1.5, cellSize * scale * 0.12), alpha: 0.9 })
-    visionOverlay
-      .poly([
-        centerX,
-        top + 14,
-        right - chamfer * 0.75,
-        centerY,
-        centerX,
-        bottom - 14,
-        left + chamfer * 0.75,
-        centerY,
-      ])
-      .fill({ color: 0x6f1020, alpha: 0.12 })
+  const redrawChunkGrid = (chunk: GeneratedChunk) => {
+    const key = chunkKey(chunk.chunkX, chunk.chunkY)
+    const view = chunkViews.get(key)
+    if (!view) return
+    view.grid.clear()
+    const majorStep = 8
+    for (let localX = 0; localX <= chunk.chunkSize; localX += 1) {
+      const x = localX * cellSize
+      view.grid.moveTo(x, 0).lineTo(x, chunk.chunkSize * cellSize)
+    }
+    for (let localY = 0; localY <= chunk.chunkSize; localY += 1) {
+      const y = localY * cellSize
+      view.grid.moveTo(0, y).lineTo(chunk.chunkSize * cellSize, y)
+    }
+    view.grid.stroke({ color: 0x0b1823, width: 0.28, alpha: 0.18 })
+    for (let localX = 0; localX <= chunk.chunkSize; localX += majorStep) {
+      const x = localX * cellSize
+      view.grid.moveTo(x, 0).lineTo(x, chunk.chunkSize * cellSize)
+    }
+    for (let localY = 0; localY <= chunk.chunkSize; localY += majorStep) {
+      const y = localY * cellSize
+      view.grid.moveTo(0, y).lineTo(chunk.chunkSize * cellSize, y)
+    }
+    view.grid.stroke({ color: 0x102537, width: 0.42, alpha: 0.24 })
   }
 
   const activeWeather = (nowMs = performance.now()): ActiveWeatherState => {
@@ -793,6 +809,7 @@ export async function createGame(
       const transitions = new Graphics()
       const regionalDetails = new Graphics()
       const closeDetails = new Graphics()
+      const grid = new Graphics()
       const surfaces = new Graphics()
       const rivers = new Graphics()
       const roads = new Graphics()
@@ -808,6 +825,7 @@ export async function createGame(
         transitions,
         regionalDetails,
         closeDetails,
+        grid,
         surfaces,
         rivers,
         roads,
@@ -822,6 +840,7 @@ export async function createGame(
         transitions,
         regionalDetails,
         closeDetails,
+        grid,
         surfaces,
         rivers,
         roads,
@@ -839,12 +858,13 @@ export async function createGame(
     view.transitions.clear()
     view.regionalDetails.clear()
     view.closeDetails.clear()
+    view.grid.clear()
     view.surfaces.clear()
     view.rivers.clear()
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
-    view.fog.visible = !(devMode && devBattleShadow)
+    view.fog.visible = false
     view.fogFill.clear()
     view.fogCutout.clear()
     rebuildRoadMask(chunk)
@@ -1014,6 +1034,7 @@ export async function createGame(
 
     view.regionalDetails.visible = devMode ? scale >= 1.15 : scale >= 2.05
     view.closeDetails.visible = devMode ? scale >= 2.15 : scale >= 3.35
+    view.grid.visible = devMode && devShowGrid
     view.surfaces.visible = scale >= 1
     view.rivers.visible = scale >= 0.95
     view.roads.visible = scale >= 1.05
@@ -1021,6 +1042,7 @@ export async function createGame(
     view.landmarks.visible = scale >= 1.15
     redrawChunkSurfaces(chunk, activeWeather())
     redrawChunkFog(key)
+    redrawChunkGrid(chunk)
   }
 
   const ensureChunk = (chunkX: number, chunkY: number) => {
@@ -1436,6 +1458,7 @@ export async function createGame(
   revealAroundExplorer()
   drawExplorer()
   refreshFogVisibility()
+  refreshGridVisibility()
   drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
@@ -1766,12 +1789,20 @@ export async function createGame(
       }
       renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
       refreshFog()
+      refreshFogVisibility()
+      refreshGridVisibility()
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
       drawBattleShadow()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
+      if (devPanel) {
+        devPanel.fastMoveToggle.checked = devFastMove
+        devPanel.flyToggle.checked = devFly
+        devPanel.battleShadowToggle.checked = devBattleShadow
+        devPanel.gridToggle.checked = devShowGrid
+      }
     },
     setTheme(nextTheme) {
       theme = normalizeTheme(nextTheme)

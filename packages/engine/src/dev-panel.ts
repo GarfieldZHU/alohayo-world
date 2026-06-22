@@ -11,6 +11,8 @@ interface CreateDevPanelArgs {
   getAvailableItems: () => Array<{ id: string; name: string; allowedSlots: string[] }>
   getBattleShadow: () => boolean
   setBattleShadow: (enabled: boolean) => void
+  getGrid: () => boolean
+  setGrid: (enabled: boolean) => void
   getFastMove: () => boolean
   setFastMove: (enabled: boolean) => void
   getFly: () => boolean
@@ -140,6 +142,14 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   flyLabel.style.flex = '1'
   flyRow.append(flyToggle, flyLabel)
 
+  const gridToggle = document.createElement('input')
+  gridToggle.type = 'checkbox'
+  gridToggle.checked = args.getGrid()
+  const gridLabel = document.createElement('label')
+  gridLabel.textContent = args.getText('grid')
+  gridLabel.style.flex = '1'
+  flyRow.append(gridToggle, gridLabel)
+
   const teleportRow = makeRow()
   const teleportX = makeInput('0')
   teleportX.inputMode = 'numeric'
@@ -201,6 +211,12 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     args.onRefreshVisuals()
   })
 
+  gridToggle.addEventListener('change', () => {
+    args.setGrid(gridToggle.checked)
+    args.onStatusChange()
+    args.onRefreshVisuals()
+  })
+
   fastMoveToggle.addEventListener('change', () => {
     args.setFastMove(fastMoveToggle.checked)
     args.onStatusChange()
@@ -248,6 +264,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     battleShadowLabel,
     fastMoveLabel,
     flyLabel,
+    gridLabel,
     teleportX,
     teleportY,
     teleportButton,
@@ -255,8 +272,10 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     itemSelect,
     applyGearButton,
     note,
+    battleShadowToggle,
     fastMoveToggle,
     flyToggle,
+    gridToggle,
     fillEquipmentOptions,
     fillItemOptions,
     setCollapsed(collapsed) {
@@ -287,6 +306,7 @@ export function renderDevPanelLocale(
   panel.battleShadowLabel.textContent = getText('battleShadow')
   panel.fastMoveLabel.textContent = getText('fastMove')
   panel.flyLabel.textContent = getText('fly')
+  panel.gridLabel.textContent = getText('grid')
   panel.teleportButton.textContent = getText('teleport')
   panel.applyGearButton.textContent = getText('equip')
   panel.note.textContent = getText('note')

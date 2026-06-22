@@ -21,6 +21,7 @@ export interface ChunkView {
   transitions: Graphics
   regionalDetails: Graphics
   closeDetails: Graphics
+  grid: Graphics
   surfaces: Graphics
   rivers: Graphics
   roads: Graphics
@@ -52,6 +53,7 @@ export interface DevPanelControls {
   battleShadowLabel: HTMLLabelElement
   fastMoveLabel: HTMLLabelElement
   flyLabel: HTMLLabelElement
+  gridLabel: HTMLLabelElement
   teleportX: HTMLInputElement
   teleportY: HTMLInputElement
   teleportButton: HTMLButtonElement
@@ -59,8 +61,10 @@ export interface DevPanelControls {
   itemSelect: HTMLSelectElement
   applyGearButton: HTMLButtonElement
   note: HTMLParagraphElement
+  battleShadowToggle: HTMLInputElement
   fastMoveToggle: HTMLInputElement
   flyToggle: HTMLInputElement
+  gridToggle: HTMLInputElement
   fillEquipmentOptions: () => void
   fillItemOptions: () => void
   setCollapsed: (collapsed: boolean) => void
