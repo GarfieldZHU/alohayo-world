@@ -469,7 +469,7 @@ export async function createGame(
   }
 
   const refreshFogVisibility = () => {
-    const fogVisible = false
+    const fogVisible = !devMode
     for (const view of chunkViews.values()) {
       view.fog.visible = fogVisible
     }
@@ -486,27 +486,25 @@ export async function createGame(
 
     const centerX = viewport.x + explorerMotion.x * cellSize * scale
     const centerY = viewport.y + explorerMotion.y * cellSize * scale
-    const innerRadius = Math.max(cellSize * scale * (devMode ? 2.85 : 3.1), devMode ? 76 : 88)
-    const ringRadius = innerRadius + Math.max(8, innerRadius * 0.06)
-    const fadeRadius = innerRadius + Math.max(34, innerRadius * 0.24)
-    const deepFogRadius = fadeRadius + Math.max(54, innerRadius * 0.4)
-    const maxRadius = deepFogRadius + Math.max(46, innerRadius * 0.3)
+    const innerRadius = Math.max(cellSize * scale * (devMode ? 2.8 : 3.05), devMode ? 76 : 88)
+    const edgeStartRadius = innerRadius + Math.max(5, innerRadius * 0.04)
+    const exploredRadius = innerRadius + Math.max(28, innerRadius * 0.18)
+    const deepFogRadius = exploredRadius + Math.max(48, innerRadius * 0.34)
+    const maxRadius = deepFogRadius + Math.max(58, innerRadius * 0.38)
     const center = `${centerX.toFixed(2)}px ${centerY.toFixed(2)}px`
-    const ringColor = devMode ? 'rgba(255, 118, 146, 0.58)' : 'rgba(180, 207, 224, 0.22)'
-    const mistColor = devMode ? 'rgba(120, 176, 206, 0.16)' : 'rgba(138, 166, 180, 0.22)'
-    const grayFog = devMode ? 'rgba(25, 43, 57, 0.38)' : 'rgba(56, 71, 84, 0.46)'
-    const deepFog = devMode ? 'rgba(7, 14, 24, 0.66)' : 'rgba(9, 17, 26, 0.64)'
-    const outerFog = devMode ? 'rgba(3, 8, 14, 0.82)' : 'rgba(5, 11, 18, 0.8)'
+    const edgeTint = devMode ? 'rgba(86, 108, 122, 0.08)' : 'rgba(70, 87, 100, 0.08)'
+    const exploredFog = devMode ? 'rgba(34, 49, 60, 0.28)' : 'rgba(42, 56, 67, 0.3)'
+    const deepFog = devMode ? 'rgba(12, 21, 30, 0.54)' : 'rgba(14, 23, 31, 0.56)'
+    const outerFog = devMode ? 'rgba(4, 9, 15, 0.72)' : 'rgba(5, 11, 18, 0.74)'
     visionFogElement.style.opacity = '1'
     visionFogElement.style.background = `radial-gradient(circle at ${center},
       rgba(0, 0, 0, 0) 0px,
       rgba(0, 0, 0, 0) ${innerRadius.toFixed(2)}px,
-      ${ringColor} ${ringRadius.toFixed(2)}px,
-      ${mistColor} ${(innerRadius + fadeRadius) / 2}px,
-      ${grayFog} ${fadeRadius.toFixed(2)}px,
+      ${edgeTint} ${edgeStartRadius.toFixed(2)}px,
+      ${exploredFog} ${exploredRadius.toFixed(2)}px,
       ${deepFog} ${deepFogRadius.toFixed(2)}px,
       ${outerFog} ${maxRadius.toFixed(2)}px,
-      rgba(2, 6, 11, ${devMode ? '0.9' : '0.86'}) 100%)`
+      rgba(2, 6, 11, ${devMode ? '0.86' : '0.8'}) 100%)`
   }
 
   const redrawChunkGrid = (chunk: GeneratedChunk) => {
@@ -864,7 +862,7 @@ export async function createGame(
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
-    view.fog.visible = false
+    view.fog.visible = !devMode
     view.fogFill.clear()
     view.fogCutout.clear()
     rebuildRoadMask(chunk)
