@@ -492,10 +492,10 @@ export async function createGame(
     const exploredRadius = edgeRadius + Math.max(38, innerRadius * 0.24)
     const memoryRadius = exploredRadius + Math.max(64, innerRadius * 0.38)
     const center = `${centerX.toFixed(2)}px ${centerY.toFixed(2)}px`
-    const edgeTint = devMode ? 'rgba(16, 24, 32, 0.08)' : 'rgba(16, 24, 32, 0.06)'
-    const exploredFog = devMode ? 'rgba(20, 31, 42, 0.18)' : 'rgba(22, 34, 44, 0.16)'
-    const memoryFog = devMode ? 'rgba(26, 39, 52, 0.24)' : 'rgba(28, 42, 54, 0.22)'
-    const outerFog = devMode ? 'rgba(29, 44, 58, 0.28)' : 'rgba(31, 47, 61, 0.26)'
+    const edgeTint = devMode ? 'rgba(16, 24, 32, 0.04)' : 'rgba(16, 24, 32, 0.03)'
+    const exploredFog = devMode ? 'rgba(20, 31, 42, 0.1)' : 'rgba(22, 34, 44, 0.08)'
+    const memoryFog = devMode ? 'rgba(26, 39, 52, 0.14)' : 'rgba(28, 42, 54, 0.11)'
+    const outerFog = devMode ? 'rgba(29, 44, 58, 0.18)' : 'rgba(31, 47, 61, 0.14)'
     visionFogElement.style.opacity = '1'
     visionFogElement.style.background = `radial-gradient(circle at ${center},
       rgba(0, 0, 0, 0) 0px,
@@ -879,7 +879,7 @@ export async function createGame(
         const originX = localX * cellSize
         const originY = localY * cellSize
         view.terrain
-          .rect(originX - 0.12, originY - 0.12, cellSize + 0.24, cellSize + 0.24)
+          .rect(originX - 0.4, originY - 0.4, cellSize + 0.8, cellSize + 0.8)
           .fill(biome.color)
 
         const rightBiome =
