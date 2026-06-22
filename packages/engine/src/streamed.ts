@@ -486,25 +486,24 @@ export async function createGame(
 
     const centerX = viewport.x + explorerMotion.x * cellSize * scale
     const centerY = viewport.y + explorerMotion.y * cellSize * scale
-    const innerRadius = Math.max(cellSize * scale * (devMode ? 2.8 : 3.05), devMode ? 76 : 88)
-    const edgeStartRadius = innerRadius + Math.max(5, innerRadius * 0.04)
-    const exploredRadius = innerRadius + Math.max(28, innerRadius * 0.18)
-    const deepFogRadius = exploredRadius + Math.max(48, innerRadius * 0.34)
-    const maxRadius = deepFogRadius + Math.max(58, innerRadius * 0.38)
+    const innerRadius = Math.max(cellSize * scale * (devMode ? 2.7 : 2.95), devMode ? 74 : 86)
+    const fadeStartRadius = innerRadius * 0.72
+    const edgeRadius = innerRadius + Math.max(18, innerRadius * 0.12)
+    const exploredRadius = edgeRadius + Math.max(38, innerRadius * 0.24)
+    const memoryRadius = exploredRadius + Math.max(64, innerRadius * 0.38)
     const center = `${centerX.toFixed(2)}px ${centerY.toFixed(2)}px`
-    const edgeTint = devMode ? 'rgba(86, 108, 122, 0.08)' : 'rgba(70, 87, 100, 0.08)'
-    const exploredFog = devMode ? 'rgba(34, 49, 60, 0.28)' : 'rgba(42, 56, 67, 0.3)'
-    const deepFog = devMode ? 'rgba(12, 21, 30, 0.54)' : 'rgba(14, 23, 31, 0.56)'
-    const outerFog = devMode ? 'rgba(4, 9, 15, 0.72)' : 'rgba(5, 11, 18, 0.74)'
+    const edgeTint = devMode ? 'rgba(16, 24, 32, 0.08)' : 'rgba(16, 24, 32, 0.06)'
+    const exploredFog = devMode ? 'rgba(20, 31, 42, 0.18)' : 'rgba(22, 34, 44, 0.16)'
+    const memoryFog = devMode ? 'rgba(26, 39, 52, 0.24)' : 'rgba(28, 42, 54, 0.22)'
+    const outerFog = devMode ? 'rgba(29, 44, 58, 0.28)' : 'rgba(31, 47, 61, 0.26)'
     visionFogElement.style.opacity = '1'
     visionFogElement.style.background = `radial-gradient(circle at ${center},
       rgba(0, 0, 0, 0) 0px,
-      rgba(0, 0, 0, 0) ${innerRadius.toFixed(2)}px,
-      ${edgeTint} ${edgeStartRadius.toFixed(2)}px,
+      rgba(0, 0, 0, 0) ${fadeStartRadius.toFixed(2)}px,
+      ${edgeTint} ${innerRadius.toFixed(2)}px,
       ${exploredFog} ${exploredRadius.toFixed(2)}px,
-      ${deepFog} ${deepFogRadius.toFixed(2)}px,
-      ${outerFog} ${maxRadius.toFixed(2)}px,
-      rgba(2, 6, 11, ${devMode ? '0.86' : '0.8'}) 100%)`
+      ${memoryFog} ${memoryRadius.toFixed(2)}px,
+      ${outerFog} 100%)`
   }
 
   const redrawChunkGrid = (chunk: GeneratedChunk) => {
@@ -879,7 +878,9 @@ export async function createGame(
         )
         const originX = localX * cellSize
         const originY = localY * cellSize
-        view.terrain.rect(originX, originY, cellSize, cellSize).fill(biome.color)
+        view.terrain
+          .rect(originX - 0.12, originY - 0.12, cellSize + 0.24, cellSize + 0.24)
+          .fill(biome.color)
 
         const rightBiome =
           localX + 1 < chunk.chunkSize
