@@ -20,7 +20,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   panel.dataset.alohayoWorldMinimap = 'true'
   Object.assign(panel.style, {
     position: 'absolute',
-    inset: '16px 16px auto auto',
+    top: 'calc(var(--alohayo-minimap-toolbar-top, 44px) + var(--alohayo-top-right-clearance, 0px))',
+    right: '16px',
     zIndex: '18',
     width: '154px',
     borderRadius: '16px',
@@ -28,6 +29,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     display: 'grid',
     gap: '6px',
+    transition: 'top 220ms ease, opacity 180ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
 
   const header = document.createElement('div')

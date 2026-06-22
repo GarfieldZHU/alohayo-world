@@ -228,6 +228,13 @@ export async function createGame(
     applyThemeToMinimapControls(controls, palette(), devMode, minimapMode)
   }
 
+  const topRightClearancePx = () => {
+    const value = Number.parseFloat(
+      getComputedStyle(options.container).getPropertyValue('--alohayo-top-right-clearance')
+    )
+    return Number.isFinite(value) ? value : 0
+  }
+
   const refreshGridVisibility = () => {
     for (const view of chunkViews.values()) {
       view.grid.visible = devMode && devShowGrid
@@ -1200,7 +1207,7 @@ export async function createGame(
     const minimapSize = 154
     const tile = Math.max(3, Math.floor(minimapSize / (activeRadius * 2 + 1)))
     const frameX = app.screen.width - minimapSize - 18
-    const frameY = minimapCollapsed ? 58 : 96
+    const frameY = (minimapCollapsed ? 58 : 96) + topRightClearancePx()
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
       .fill({ color: palette().minimapFill, alpha: 0.86 })
