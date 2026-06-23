@@ -30,6 +30,7 @@ scripts.
 | Map         | streamed geography, drainage, overlays | config, worker  |
 | Roads       | tiered travel corridors and conditions | map, weather    |
 | Characters  | configurable generated explorer marker | map, config     |
+| DayNight    | wrapped solar band and local clock     | map, clock      |
 | Weather     | deterministic local weather fronts     | map, clock      |
 | Settlements | place and grow one settlement          | map, characters |
 | Economy     | resources, inventories, local exchange | settlements     |

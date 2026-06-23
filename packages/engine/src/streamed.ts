@@ -33,6 +33,7 @@ import {
 } from './minimap-controls'
 import { themePalette } from './theme'
 import type {
+  ActiveDayNightState,
   ActiveWeatherState,
   ChunkView,
   DevPanelControls,
@@ -96,6 +97,18 @@ export async function createGame(
     transition: 'opacity 140ms ease, background 80ms linear',
   } satisfies Partial<CSSStyleDeclaration>)
   options.container.appendChild(visionFogElement)
+  const dayNightOverlayElement = document.createElement('div')
+  dayNightOverlayElement.dataset.alohayoWorldDayNight = 'true'
+  Object.assign(dayNightOverlayElement.style, {
+    position: 'absolute',
+    inset: '0',
+    zIndex: '5',
+    pointerEvents: 'none',
+    opacity: '0',
+    transition: 'opacity 180ms ease, background 140ms linear',
+    mixBlendMode: 'multiply',
+  } satisfies Partial<CSSStyleDeclaration>)
+  options.container.appendChild(dayNightOverlayElement)
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const roadProfiles = profileById(content.world)
@@ -140,6 +153,7 @@ export async function createGame(
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
   let weatherTick = -1
+  let devDayNight = window.localStorage.getItem('alohayo-world:dev-day-night') !== 'false'
   let devMode = Boolean(options.devMode)
   let locale: LocaleCode = normalizeLocale(
     options.locale ?? window.localStorage.getItem('alohayo-world:locale')
@@ -188,6 +202,7 @@ export async function createGame(
   window.localStorage.setItem('alohayo-world:last-seed', worldSeed)
   window.localStorage.setItem('alohayo-world:locale', locale)
   const devPanelStateStorageKey = 'alohayo-world:dev-panel-collapsed'
+  let minimapControls: ReturnType<typeof createMinimapControls> | null = null
 
   const catalog = () => getI18nCatalog(locale)
   const uiText = (key: string) => catalog().ui[key] ?? key
@@ -233,6 +248,121 @@ export async function createGame(
       getComputedStyle(options.container).getPropertyValue('--alohayo-top-right-clearance')
     )
     return Number.isFinite(value) ? value : 0
+  }
+
+  const parseHexRgb = (hex: string) => {
+    const normalized = hex.replace('#', '').trim()
+    const expanded =
+      normalized.length === 3
+        ? normalized
+            .split('')
+            .map((part) => `${part}${part}`)
+            .join('')
+        : normalized
+    const numeric = Number.parseInt(expanded, 16)
+    if (!Number.isFinite(numeric)) return { r: 255, g: 255, b: 255 }
+    return {
+      r: (numeric >> 16) & 0xff,
+      g: (numeric >> 8) & 0xff,
+      b: numeric & 0xff,
+    }
+  }
+
+  const lerp = (start: number, end: number, t: number) => start + (end - start) * t
+
+  const phaseSample = (hour: number) => {
+    const config = content.world.dayNight
+    if (!config?.phases.length) {
+      return { darkness: 0.08, tint: { r: 215, g: 236, b: 255 }, phaseId: 'morning' }
+    }
+    const phases = [...config.phases].sort((left, right) => left.hour - right.hour)
+    const normalizedHour = ((hour % 24) + 24) % 24
+    for (let index = 0; index < phases.length; index += 1) {
+      const current = phases[index]!
+      const next = phases[(index + 1) % phases.length]!
+      const start = current.hour
+      const end = index === phases.length - 1 ? next.hour + 24 : next.hour
+      const sampleHour =
+        index === phases.length - 1 && normalizedHour < current.hour
+          ? normalizedHour + 24
+          : normalizedHour
+      if (sampleHour < start || sampleHour > end) continue
+      const span = Math.max(0.001, end - start)
+      const ratio = clamp((sampleHour - start) / span, 0, 1)
+      const currentTint = parseHexRgb(current.tint)
+      const nextTint = parseHexRgb(next.tint)
+      return {
+        darkness: lerp(current.darkness, next.darkness, ratio),
+        tint: {
+          r: Math.round(lerp(currentTint.r, nextTint.r, ratio)),
+          g: Math.round(lerp(currentTint.g, nextTint.g, ratio)),
+          b: Math.round(lerp(currentTint.b, nextTint.b, ratio)),
+        },
+        phaseId: current.id,
+      }
+    }
+    const fallback = phases[0]!
+    return { darkness: fallback.darkness, tint: parseHexRgb(fallback.tint), phaseId: fallback.id }
+  }
+
+  const formatWorldClock = (hour: number) => {
+    if (locale === 'en') {
+      const normalized = ((hour % 24) + 24) % 24
+      const wholeMinutes = Math.round(normalized * 60) % (24 * 60)
+      const displayHour24 = Math.floor(wholeMinutes / 60)
+      const minutes = wholeMinutes % 60
+      const period = displayHour24 >= 12 ? 'PM' : 'AM'
+      const displayHour12 = displayHour24 % 12 || 12
+      return `${displayHour12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`
+    }
+    const normalized = ((hour % 24) + 24) % 24
+    const wholeMinutes = Math.round(normalized * 60) % (24 * 60)
+    const displayHour24 = Math.floor(wholeMinutes / 60)
+    const minutes = wholeMinutes % 60
+    return `${displayHour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  const activeDayNight = (nowMs = performance.now()): ActiveDayNightState => {
+    const config = content.world.dayNight
+    if (!config || !config.enabled || !config.phases.length) {
+      return {
+        enabled: false,
+        dynamic: false,
+        hour: 8.5,
+        label: formatWorldClock(8.5),
+        phaseId: 'morning',
+        gradient: 'transparent',
+      }
+    }
+    const dynamic = !devMode || devDayNight
+    const cycleFraction = dynamic
+      ? (nowMs / 1000 / Math.max(1, config.dayLengthMinutes * 60)) % 1
+      : clamp(config.fixedHour / 24, 0, 0.9999)
+    const utcHour = cycleFraction * 24
+    const sampleCount = Math.max(5, config.sampleCount)
+    const gradientStops: string[] = []
+    for (let index = 0; index < sampleCount; index += 1) {
+      const progress = sampleCount === 1 ? 0 : index / (sampleCount - 1)
+      const screenX = app.screen.width * progress
+      const worldX = (screenX - viewport.x) / Math.max(0.0001, cellSize * scale)
+      const wrappedX = ((worldX % surveyWidth) + surveyWidth) % surveyWidth
+      const localHour = (utcHour + (wrappedX / Math.max(1, surveyWidth)) * 24) % 24
+      const sample = phaseSample(localHour)
+      const alpha = clamp(sample.darkness, 0, 0.88)
+      gradientStops.push(
+        `rgba(${sample.tint.r}, ${sample.tint.g}, ${sample.tint.b}, ${alpha.toFixed(3)}) ${(progress * 100).toFixed(2)}%`
+      )
+    }
+    const centerHour = (utcHour + 12) % 24
+    const centerPhase = phaseSample(centerHour)
+    return {
+      enabled: true,
+      dynamic,
+      hour: dynamic ? utcHour : config.fixedHour,
+      label: formatWorldClock(dynamic ? utcHour : config.fixedHour),
+      phaseId: centerPhase.phaseId,
+      gradient: `linear-gradient(90deg, ${gradientStops.join(', ')})`,
+    }
   }
 
   const refreshGridVisibility = () => {
@@ -283,6 +413,11 @@ export async function createGame(
           setFly: (enabled) => {
             devFly = enabled
           },
+          getDayNight: () => devDayNight,
+          setDayNight: (enabled) => {
+            devDayNight = enabled
+            window.localStorage.setItem('alohayo-world:dev-day-night', enabled ? 'true' : 'false')
+          },
           teleport: (x, y) => {
             void teleportExplorer(x, y)
           },
@@ -304,6 +439,7 @@ export async function createGame(
           onRefreshVisuals: () => {
             refreshFog()
             drawExplorer(performance.now() / 1000)
+            drawDayNightOverlay()
           },
           onStatusChange: updateStatus,
           getCollapsed: () => devPanelCollapsed,
@@ -511,6 +647,22 @@ export async function createGame(
       ${exploredFog} ${exploredRadius.toFixed(2)}px,
       ${memoryFog} ${memoryRadius.toFixed(2)}px,
       ${outerFog} 100%)`
+  }
+
+  const drawDayNightOverlay = (nowMs = performance.now()) => {
+    const state = activeDayNight(nowMs)
+    if (!state.enabled) {
+      dayNightOverlayElement.style.opacity = '0'
+      dayNightOverlayElement.style.background = 'transparent'
+      if (minimapControls) minimapControls.clock.textContent = ''
+      return
+    }
+    dayNightOverlayElement.style.opacity = '1'
+    dayNightOverlayElement.style.background = state.gradient
+    app.canvas.dataset.dayNightDynamic = state.dynamic ? 'true' : 'false'
+    app.canvas.dataset.dayPhase = state.phaseId
+    app.canvas.dataset.worldTime = state.label
+    if (minimapControls) minimapControls.clock.textContent = state.label
   }
 
   const redrawChunkGrid = (chunk: GeneratedChunk) => {
@@ -1423,7 +1575,7 @@ export async function createGame(
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
   let devPanel = buildDevPanel()
-  const minimapControls = createMinimapControls({
+  minimapControls = createMinimapControls({
     minimapChunkRadius,
     clamp,
     getText: minimapText,
@@ -1465,6 +1617,7 @@ export async function createGame(
   drawExplorer()
   refreshFogVisibility()
   refreshGridVisibility()
+  drawDayNightOverlay()
   drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
@@ -1486,6 +1639,7 @@ export async function createGame(
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
     devPanel.fastMoveToggle.checked = devFastMove
     devPanel.flyToggle.checked = devFly
+    devPanel.dayNightToggle.checked = devDayNight
   }
   status.text = uiText('surveying')
   updateStatus()
@@ -1665,6 +1819,7 @@ export async function createGame(
     syncGameCameraScale()
     updateCamera(true)
     drawMinimap()
+    drawDayNightOverlay()
     drawBattleShadow()
     updateStatus()
   }
@@ -1737,6 +1892,7 @@ export async function createGame(
     if (!devMode) updateCamera()
     refreshWeatherLayers(simulationNow)
     drawExplorer(simulationNow / 1000)
+    drawDayNightOverlay(simulationNow)
     drawBattleShadow()
     frameCount += 1
     const now = performance.now()
@@ -1768,6 +1924,7 @@ export async function createGame(
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      drawDayNightOverlay()
       drawBattleShadow()
       applyCurrentMinimapTheme(minimapControls)
     },
@@ -1800,6 +1957,7 @@ export async function createGame(
       drawMinimap()
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      drawDayNightOverlay()
       drawBattleShadow()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
@@ -1808,6 +1966,7 @@ export async function createGame(
         devPanel.flyToggle.checked = devFly
         devPanel.battleShadowToggle.checked = devBattleShadow
         devPanel.gridToggle.checked = devShowGrid
+        devPanel.dayNightToggle.checked = devDayNight
       }
     },
     setTheme(nextTheme) {
@@ -1815,6 +1974,7 @@ export async function createGame(
       status.style.fill = palette().statusFill
       applyThemeToContainer()
       drawMinimap()
+      drawDayNightOverlay()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
     },
@@ -1825,7 +1985,7 @@ export async function createGame(
       worker.terminate()
       resizeObserver.disconnect()
       devPanel?.panel.remove()
-      minimapControls.panel.remove()
+      minimapControls?.panel.remove()
       app.canvas.removeEventListener('pointerdown', onPointerDown)
       app.canvas.removeEventListener('pointermove', onPointerMove)
       app.canvas.removeEventListener('pointerup', onPointerUp)

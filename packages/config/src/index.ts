@@ -27,6 +27,7 @@ export interface WorldDefinition {
   roads: WorldRoadSystemDefinition
   rivers?: WorldRiverSystemDefinition
   weather?: WorldWeatherDefinition
+  dayNight?: WorldDayNightDefinition
   sizePresets?: WorldSizePreset[]
 }
 
@@ -116,6 +117,21 @@ export interface WorldWeatherDefinition {
   snowTemperatureMax: number
   surfaceDecay: number
   states: WorldWeatherStateDefinition[]
+}
+
+export interface WorldDayPhaseDefinition {
+  id: string
+  hour: number
+  darkness: number
+  tint: string
+}
+
+export interface WorldDayNightDefinition {
+  enabled: boolean
+  dayLengthMinutes: number
+  fixedHour: number
+  sampleCount: number
+  phases: WorldDayPhaseDefinition[]
 }
 
 export interface BiomeDefinition {

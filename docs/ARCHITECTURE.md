@@ -9,11 +9,14 @@ worker, event listener, animation callback, texture, and DOM node and releases t
 
 Simulation uses a fixed 60 Hz clock. Rendering reads snapshots and may interpolate
 without mutating authoritative state. PixiJS is an adapter, never the world model.
+The day/night module derives a wrapped east-west lighting field from the simulation
+clock plus the visible world X range; it is a render overlay, not a mutation of terrain
+state.
 
 ## Data flow
 
 `WorldDefinition -> validator -> generator worker -> typed terrain layers -> biome
-classifier -> render chunks -> inspector/diagnostics`.
+classifier -> day/night/weather overlays -> render chunks -> inspector/diagnostics`.
 
 Authored map-area JSON is discovered at build time, transferred with the generation
 request, applied in the worker after procedural classification, and followed by

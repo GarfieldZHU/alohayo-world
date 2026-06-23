@@ -45,6 +45,15 @@ export interface ActiveWeatherState {
   fade: number
 }
 
+export interface ActiveDayNightState {
+  enabled: boolean
+  dynamic: boolean
+  hour: number
+  label: string
+  phaseId: string
+  gradient: string
+}
+
 export interface DevPanelControls {
   panel: HTMLDivElement
   body: HTMLDivElement
@@ -54,6 +63,7 @@ export interface DevPanelControls {
   fastMoveLabel: HTMLLabelElement
   flyLabel: HTMLLabelElement
   gridLabel: HTMLLabelElement
+  dayNightLabel: HTMLLabelElement
   teleportX: HTMLInputElement
   teleportY: HTMLInputElement
   teleportButton: HTMLButtonElement
@@ -65,6 +75,7 @@ export interface DevPanelControls {
   fastMoveToggle: HTMLInputElement
   flyToggle: HTMLInputElement
   gridToggle: HTMLInputElement
+  dayNightToggle: HTMLInputElement
   fillEquipmentOptions: () => void
   fillItemOptions: () => void
   setCollapsed: (collapsed: boolean) => void
@@ -74,6 +85,7 @@ export interface DevPanelControls {
 export interface MinimapControls {
   panel: HTMLDivElement
   title: HTMLDivElement
+  clock: HTMLSpanElement
   compass: HTMLSpanElement
   collapseButton: HTMLButtonElement
   zoomOutButton: HTMLButtonElement

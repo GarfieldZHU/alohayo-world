@@ -51,6 +51,22 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(title)
 
+  const clock = document.createElement('span')
+  Object.assign(clock.style, {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '56px',
+    height: '28px',
+    fontSize: '11px',
+    fontWeight: '700',
+    padding: '0 8px',
+    borderRadius: '999px',
+    transition:
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+  } satisfies Partial<CSSStyleDeclaration>)
+  header.appendChild(clock)
+
   const compass = document.createElement('span')
   Object.assign(compass.style, {
     display: 'inline-flex',
@@ -124,6 +140,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   const controls: MinimapControls = {
     panel,
     title,
+    clock,
     compass,
     collapseButton,
     zoomOutButton,
@@ -192,6 +209,8 @@ export function renderMinimapLocale(
 ) {
   if (!controls) return
   controls.title.textContent = getText('minimapTitle')
+  controls.clock.title = getText('timeTitle')
+  controls.clock.setAttribute('aria-label', getText('timeTitle'))
   controls.compass.textContent = `▲ ${getText('minimapCompass')}`
   controls.zoomOutButton.textContent = '−'
   controls.zoomInButton.textContent = '+'
@@ -218,6 +237,11 @@ export function applyThemeToMinimapControls(
     display: devMode ? 'none' : 'grid',
     border: '0',
     background: 'transparent',
+    color: palette.minimapPanelText,
+  } satisfies Partial<CSSStyleDeclaration>)
+  Object.assign(controls.clock.style, {
+    display: devMode ? 'none' : 'inline-flex',
+    background: palette.minimapPanelButtonBackground,
     color: palette.minimapPanelText,
   } satisfies Partial<CSSStyleDeclaration>)
   Object.assign(controls.compass.style, {

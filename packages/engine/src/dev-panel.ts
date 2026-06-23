@@ -17,6 +17,8 @@ interface CreateDevPanelArgs {
   setFastMove: (enabled: boolean) => void
   getFly: () => boolean
   setFly: (enabled: boolean) => void
+  getDayNight: () => boolean
+  setDayNight: (enabled: boolean) => void
   teleport: (x: number, y: number) => void
   applyEquipment: (slotId: string, itemId: string | null, itemName: string) => void
   onRefreshVisuals: () => void
@@ -150,6 +152,15 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   gridLabel.style.flex = '1'
   flyRow.append(gridToggle, gridLabel)
 
+  const dayNightRow = makeRow()
+  const dayNightToggle = document.createElement('input')
+  dayNightToggle.type = 'checkbox'
+  dayNightToggle.checked = args.getDayNight()
+  const dayNightLabel = document.createElement('label')
+  dayNightLabel.textContent = args.getText('dayNight')
+  dayNightLabel.style.flex = '1'
+  dayNightRow.append(dayNightToggle, dayNightLabel)
+
   const teleportRow = makeRow()
   const teleportX = makeInput('0')
   teleportX.inputMode = 'numeric'
@@ -228,6 +239,12 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     args.onRefreshVisuals()
   })
 
+  dayNightToggle.addEventListener('change', () => {
+    args.setDayNight(dayNightToggle.checked)
+    args.onStatusChange()
+    args.onRefreshVisuals()
+  })
+
   teleportButton.addEventListener('click', () => {
     const nextX = Number.parseInt(teleportX.value, 10)
     const nextY = Number.parseInt(teleportY.value, 10)
@@ -265,6 +282,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     fastMoveLabel,
     flyLabel,
     gridLabel,
+    dayNightLabel,
     teleportX,
     teleportY,
     teleportButton,
@@ -276,6 +294,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     fastMoveToggle,
     flyToggle,
     gridToggle,
+    dayNightToggle,
     fillEquipmentOptions,
     fillItemOptions,
     setCollapsed(collapsed) {
@@ -307,6 +326,7 @@ export function renderDevPanelLocale(
   panel.fastMoveLabel.textContent = getText('fastMove')
   panel.flyLabel.textContent = getText('fly')
   panel.gridLabel.textContent = getText('grid')
+  panel.dayNightLabel.textContent = getText('dayNight')
   panel.teleportButton.textContent = getText('teleport')
   panel.applyGearButton.textContent = getText('equip')
   panel.note.textContent = getText('note')

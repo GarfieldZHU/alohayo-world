@@ -9,3 +9,5 @@ This package owns public contracts. Changes have the widest compatibility cost.
 - Update `docs/CONTENT_GUIDE.md`, examples, and contract tests with every schema change.
 - Locale IDs, supported-language registries, and translation helper signatures belong
   here when they affect public runtime integration.
+- World clock, day/night phase, and future calendar contracts belong here before engine
+  code consumes them.

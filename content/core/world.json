@@ -103,6 +103,24 @@
       { "id": "thaw", "duration": 0.18, "wetness": 0.46, "snowCover": 0.18, "mud": 0.72 }
     ]
   },
+  "dayNight": {
+    "enabled": true,
+    "dayLengthMinutes": 24,
+    "fixedHour": 8.5,
+    "sampleCount": 11,
+    "phases": [
+      { "id": "midnight", "hour": 0, "darkness": 0.78, "tint": "#030810" },
+      { "id": "predawn", "hour": 4, "darkness": 0.68, "tint": "#08111d" },
+      { "id": "dawn", "hour": 5.5, "darkness": 0.44, "tint": "#273a59" },
+      { "id": "morning", "hour": 7.5, "darkness": 0.18, "tint": "#7fa8cf" },
+      { "id": "late-morning", "hour": 10, "darkness": 0.08, "tint": "#d7ecff" },
+      { "id": "noon", "hour": 12, "darkness": 0.03, "tint": "#ffffff" },
+      { "id": "afternoon", "hour": 15, "darkness": 0.1, "tint": "#f5e9d0" },
+      { "id": "dusk", "hour": 18.2, "darkness": 0.3, "tint": "#8f6d84" },
+      { "id": "evening", "hour": 20, "darkness": 0.48, "tint": "#2e3554" },
+      { "id": "night", "hour": 22, "darkness": 0.64, "tint": "#0d1525" }
+    ]
+  },
   "sizePresets": [
     {
       "id": "frontier",

@@ -60,6 +60,17 @@ Basic weather tuning also lives in `world.json`:
 - `weather` values should add visual surface behavior first and only later expand into
   full simulation effects on movement, roads, and cities.
 
+Day/night tuning also lives in `world.json`:
+
+- `dayNight.dayLengthMinutes`: real-time minutes per full in-game day;
+- `dayNight.fixedHour`: the morning hour used when dev mode disables the live cycle;
+- `dayNight.phases`: ordered hour keyframes with darkness and tint values;
+- `dayNight.sampleCount`: horizontal gradient samples used to shade the wrapped world.
+
+Treat day/night as a wrapped east-west lighting band over the world circumference, not a
+camera-local flashlight effect. Future seasons may alter phase timing, but the clock
+still remains deterministic from `(seed, runtime time, world width)`.
+
 Custom authored areas live under `content/maps/**/areas/` and are discovered
 automatically at build time. See `config/MAPS.md`.
 

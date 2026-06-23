@@ -147,6 +147,16 @@ renderer.
    the browser contract.
 5. Update unit tests for chunk determinism and E2E coverage for loaded/discovered state.
 
+### Change clock, day/night, or global lighting
+
+1. Read `docs/modules/DAY_NIGHT.md` and `docs/ARCHITECTURE.md`.
+2. Keep time-of-day as deterministic clock plus wrapped world-space lighting, not a
+   player-centered light source.
+3. Game mode defaults to live cycling; dev mode may pin lighting to a documented test
+   hour.
+4. Put any new clock label or toggle text in `i18n/` before touching UI code.
+5. Re-check minimap, fog readability, and theme contrast after lighting changes.
+
 ### Add developer demo tooling
 
 1. Keep it debug-only and explicit; production players should not see hidden test powers by accident.
