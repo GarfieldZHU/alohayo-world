@@ -31,6 +31,8 @@ interface CreateDevPanelArgs {
 }
 
 export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
+  const panelId = `alohayo-world-dev-${Math.random().toString(36).slice(2)}`
+  const controlId = (name: string) => `${panelId}-${name}`
   const panel = document.createElement('div')
   panel.dataset.alohayoWorldDevPanel = 'true'
   Object.assign(panel.style, {
@@ -123,16 +125,20 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const checkboxRow = makeRow()
   const battleShadowToggle = document.createElement('input')
   battleShadowToggle.type = 'checkbox'
+  battleShadowToggle.id = controlId('battle-shadow')
   battleShadowToggle.checked = args.getBattleShadow()
   const battleShadowLabel = document.createElement('label')
+  battleShadowLabel.htmlFor = battleShadowToggle.id
   battleShadowLabel.textContent = args.getText('battleShadow')
   battleShadowLabel.style.flex = '1'
   checkboxRow.append(battleShadowToggle, battleShadowLabel)
 
   const fastMoveToggle = document.createElement('input')
   fastMoveToggle.type = 'checkbox'
+  fastMoveToggle.id = controlId('fast-move')
   fastMoveToggle.checked = args.getFastMove()
   const fastMoveLabel = document.createElement('label')
+  fastMoveLabel.htmlFor = fastMoveToggle.id
   fastMoveLabel.textContent = args.getText('fastMove')
   fastMoveLabel.style.flex = '1'
   checkboxRow.append(fastMoveToggle, fastMoveLabel)
@@ -140,16 +146,20 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const flyRow = makeRow()
   const flyToggle = document.createElement('input')
   flyToggle.type = 'checkbox'
+  flyToggle.id = controlId('fly')
   flyToggle.checked = args.getFly()
   const flyLabel = document.createElement('label')
+  flyLabel.htmlFor = flyToggle.id
   flyLabel.textContent = args.getText('fly')
   flyLabel.style.flex = '1'
   flyRow.append(flyToggle, flyLabel)
 
   const gridToggle = document.createElement('input')
   gridToggle.type = 'checkbox'
+  gridToggle.id = controlId('grid')
   gridToggle.checked = args.getGrid()
   const gridLabel = document.createElement('label')
+  gridLabel.htmlFor = gridToggle.id
   gridLabel.textContent = args.getText('grid')
   gridLabel.style.flex = '1'
   flyRow.append(gridToggle, gridLabel)
@@ -157,18 +167,22 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const dayNightRow = makeRow()
   const dayNightToggle = document.createElement('input')
   dayNightToggle.type = 'checkbox'
+  dayNightToggle.id = controlId('day-night')
   dayNightToggle.checked = args.getDayNight()
   const dayNightLabel = document.createElement('label')
+  dayNightLabel.htmlFor = dayNightToggle.id
   dayNightLabel.textContent = args.getText('dayNight')
   dayNightLabel.style.flex = '1'
   dayNightRow.append(dayNightToggle, dayNightLabel)
 
   const lightLevelRow = makeRow()
   const lightLevelLabel = document.createElement('label')
+  lightLevelLabel.htmlFor = controlId('light-level')
   lightLevelLabel.textContent = args.getText('lightLevel')
   lightLevelLabel.style.minWidth = '50px'
   const lightLevelSlider = document.createElement('input')
   lightLevelSlider.type = 'range'
+  lightLevelSlider.id = lightLevelLabel.htmlFor
   lightLevelSlider.min = '0'
   lightLevelSlider.max = '100'
   lightLevelSlider.step = '1'
