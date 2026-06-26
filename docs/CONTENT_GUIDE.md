@@ -63,8 +63,10 @@ Basic weather tuning also lives in `world.json`:
 Day/night tuning also lives in `world.json`:
 
 - `dayNight.dayLengthMinutes`: real-time minutes per full in-game day;
-- `dayNight.fixedHour`: the morning hour used when dev mode disables the live cycle;
+- `dayNight.fixedHour`: default manual inspection hour, mapped onto the dev-mode light slider;
 - `dayNight.phases`: ordered hour keyframes with darkness and tint values;
+- `dayNight.moonlight`: optional night readability modifier with `tint`, `strength`, and
+  `midnightLift`;
 - `dayNight.sampleCount`: horizontal gradient samples used to shade the wrapped world.
 
 Treat day/night as a wrapped east-west lighting band over the world circumference, not a

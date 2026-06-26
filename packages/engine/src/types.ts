@@ -51,6 +51,8 @@ export interface ActiveDayNightState {
   hour: number
   label: string
   phaseId: string
+  lightLevel: number
+  moonlight: number
   gradient: string
 }
 
@@ -64,6 +66,9 @@ export interface DevPanelControls {
   flyLabel: HTMLLabelElement
   gridLabel: HTMLLabelElement
   dayNightLabel: HTMLLabelElement
+  lightLevelLabel: HTMLLabelElement
+  lightLevelValue: HTMLSpanElement
+  lightLevelSlider: HTMLInputElement
   teleportX: HTMLInputElement
   teleportY: HTMLInputElement
   teleportButton: HTMLButtonElement

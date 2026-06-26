@@ -19,6 +19,8 @@ interface CreateDevPanelArgs {
   setFly: (enabled: boolean) => void
   getDayNight: () => boolean
   setDayNight: (enabled: boolean) => void
+  getLightLevel: () => number
+  setLightLevel: (level: number) => void
   teleport: (x: number, y: number) => void
   applyEquipment: (slotId: string, itemId: string | null, itemName: string) => void
   onRefreshVisuals: () => void
@@ -161,6 +163,47 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   dayNightLabel.style.flex = '1'
   dayNightRow.append(dayNightToggle, dayNightLabel)
 
+  const lightLevelRow = makeRow()
+  const lightLevelLabel = document.createElement('label')
+  lightLevelLabel.textContent = args.getText('lightLevel')
+  lightLevelLabel.style.minWidth = '50px'
+  const lightLevelSlider = document.createElement('input')
+  lightLevelSlider.type = 'range'
+  lightLevelSlider.min = '0'
+  lightLevelSlider.max = '100'
+  lightLevelSlider.step = '1'
+  lightLevelSlider.value = Math.round(args.getLightLevel() * 100).toString()
+  lightLevelSlider.setAttribute('aria-label', args.getText('lightLevel'))
+  Object.assign(lightLevelSlider.style, {
+    flex: '1',
+    minWidth: '0',
+    accentColor: '#9fd2ff',
+  } satisfies Partial<CSSStyleDeclaration>)
+  const lightLevelValue = document.createElement('span')
+  Object.assign(lightLevelValue.style, {
+    minWidth: '48px',
+    textAlign: 'right',
+    fontSize: '11px',
+    fontVariantNumeric: 'tabular-nums',
+  } satisfies Partial<CSSStyleDeclaration>)
+  const updateLightLevelValue = () => {
+    const percent = Number.parseInt(lightLevelSlider.value, 10)
+    lightLevelValue.textContent =
+      percent <= 8
+        ? args.getText('lightMidnight')
+        : percent >= 92
+          ? args.getText('lightNoon')
+          : `${percent}%`
+  }
+  const updateLightLevelMode = () => {
+    const manual = !dayNightToggle.checked
+    lightLevelSlider.disabled = !manual
+    lightLevelRow.style.opacity = manual ? '1' : '0.54'
+  }
+  updateLightLevelValue()
+  updateLightLevelMode()
+  lightLevelRow.append(lightLevelLabel, lightLevelSlider, lightLevelValue)
+
   const teleportRow = makeRow()
   const teleportX = makeInput('0')
   teleportX.inputMode = 'numeric'
@@ -241,6 +284,15 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
 
   dayNightToggle.addEventListener('change', () => {
     args.setDayNight(dayNightToggle.checked)
+    updateLightLevelMode()
+    args.onStatusChange()
+    args.onRefreshVisuals()
+  })
+
+  lightLevelSlider.addEventListener('input', () => {
+    const level = clampNumber(Number.parseInt(lightLevelSlider.value, 10) / 100, 0, 1)
+    args.setLightLevel(level)
+    updateLightLevelValue()
     args.onStatusChange()
     args.onRefreshVisuals()
   })
@@ -283,6 +335,9 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     flyLabel,
     gridLabel,
     dayNightLabel,
+    lightLevelLabel,
+    lightLevelValue,
+    lightLevelSlider,
     teleportX,
     teleportY,
     teleportButton,
@@ -327,6 +382,11 @@ export function renderDevPanelLocale(
   panel.flyLabel.textContent = getText('fly')
   panel.gridLabel.textContent = getText('grid')
   panel.dayNightLabel.textContent = getText('dayNight')
+  panel.lightLevelLabel.textContent = getText('lightLevel')
+  const percent = Number.parseInt(panel.lightLevelSlider.value, 10)
+  panel.lightLevelValue.textContent =
+    percent <= 8 ? getText('lightMidnight') : percent >= 92 ? getText('lightNoon') : `${percent}%`
+  panel.lightLevelSlider.setAttribute('aria-label', getText('lightLevel'))
   panel.teleportButton.textContent = getText('teleport')
   panel.applyGearButton.textContent = getText('equip')
   panel.note.textContent = getText('note')
@@ -358,6 +418,7 @@ export function applyThemeToDevPanel(
       border: `1px solid ${palette.devInputBorder}`,
     } satisfies Partial<CSSStyleDeclaration>)
   }
+  panel.lightLevelSlider.style.accentColor = palette.devAccent
 
   for (const button of [panel.teleportButton, panel.applyGearButton]) {
     Object.assign(button.style, {
@@ -366,4 +427,9 @@ export function applyThemeToDevPanel(
       border: `1px solid ${palette.devInputBorder}`,
     } satisfies Partial<CSSStyleDeclaration>)
   }
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min
+  return Math.min(max, Math.max(min, value))
 }

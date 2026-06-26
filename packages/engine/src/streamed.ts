@@ -154,6 +154,12 @@ export async function createGame(
   let scale = 1
   let weatherTick = -1
   let devDayNight = window.localStorage.getItem('alohayo-world:dev-day-night') !== 'false'
+  const storedDevLightLevel = Number.parseFloat(
+    window.localStorage.getItem('alohayo-world:dev-light-level') ?? ''
+  )
+  let devLightLevel = Number.isFinite(storedDevLightLevel)
+    ? clamp(storedDevLightLevel, 0, 1)
+    : clamp((content.world.dayNight?.fixedHour ?? 8.5) / 12, 0, 1)
   let devMode = Boolean(options.devMode)
   let locale: LocaleCode = normalizeLocale(
     options.locale ?? window.localStorage.getItem('alohayo-world:locale')
@@ -270,6 +276,18 @@ export async function createGame(
 
   const lerp = (start: number, end: number, t: number) => start + (end - start) * t
 
+  const blendRgb = (
+    base: { r: number; g: number; b: number },
+    target: { r: number; g: number; b: number },
+    amount: number
+  ) => ({
+    r: Math.round(lerp(base.r, target.r, amount)),
+    g: Math.round(lerp(base.g, target.g, amount)),
+    b: Math.round(lerp(base.b, target.b, amount)),
+  })
+
+  const manualLightHour = () => lerp(0, 12, devLightLevel)
+
   const phaseSample = (hour: number) => {
     const config = content.world.dayNight
     if (!config?.phases.length) {
@@ -331,15 +349,38 @@ export async function createGame(
         hour: 8.5,
         label: formatWorldClock(8.5),
         phaseId: 'morning',
+        lightLevel: 0.68,
+        moonlight: 0,
         gradient: 'transparent',
       }
     }
     const dynamic = !devMode || devDayNight
     const cycleFraction = dynamic
       ? (nowMs / 1000 / Math.max(1, config.dayLengthMinutes * 60)) % 1
-      : clamp(config.fixedHour / 24, 0, 0.9999)
+      : clamp(manualLightHour() / 24, 0, 0.9999)
     const utcHour = cycleFraction * 24
     const sampleCount = Math.max(5, config.sampleCount)
+    const moonlightConfig = config.moonlight
+    const moonTint = parseHexRgb(moonlightConfig?.tint ?? '#9fc8ff')
+    const applyMoonlight = (sample: ReturnType<typeof phaseSample>) => {
+      if (!moonlightConfig?.enabled) {
+        return { ...sample, lightLevel: clamp(1 - sample.darkness, 0, 1), moonlight: 0 }
+      }
+      const nightRatio = clamp((sample.darkness - 0.34) / 0.46, 0, 1)
+      const moonlight = nightRatio * clamp(moonlightConfig.strength, 0, 1)
+      const liftedDarkness = clamp(
+        sample.darkness - moonlight * clamp(moonlightConfig.midnightLift, 0, 0.5),
+        0,
+        0.88
+      )
+      return {
+        darkness: liftedDarkness,
+        tint: blendRgb(sample.tint, moonTint, moonlight * 0.68),
+        phaseId: sample.phaseId,
+        lightLevel: clamp(1 - liftedDarkness, 0, 1),
+        moonlight,
+      }
+    }
     const gradientStops: string[] = []
     for (let index = 0; index < sampleCount; index += 1) {
       const progress = sampleCount === 1 ? 0 : index / (sampleCount - 1)
@@ -347,20 +388,22 @@ export async function createGame(
       const worldX = (screenX - viewport.x) / Math.max(0.0001, cellSize * scale)
       const wrappedX = ((worldX % surveyWidth) + surveyWidth) % surveyWidth
       const localHour = (utcHour + (wrappedX / Math.max(1, surveyWidth)) * 24) % 24
-      const sample = phaseSample(localHour)
+      const sample = applyMoonlight(phaseSample(localHour))
       const alpha = clamp(sample.darkness, 0, 0.88)
       gradientStops.push(
         `rgba(${sample.tint.r}, ${sample.tint.g}, ${sample.tint.b}, ${alpha.toFixed(3)}) ${(progress * 100).toFixed(2)}%`
       )
     }
-    const centerHour = (utcHour + 12) % 24
-    const centerPhase = phaseSample(centerHour)
+    const centerHour = dynamic ? (utcHour + 12) % 24 : utcHour
+    const centerPhase = applyMoonlight(phaseSample(centerHour))
     return {
       enabled: true,
       dynamic,
-      hour: dynamic ? utcHour : config.fixedHour,
-      label: formatWorldClock(dynamic ? utcHour : config.fixedHour),
+      hour: utcHour,
+      label: formatWorldClock(utcHour),
       phaseId: centerPhase.phaseId,
+      lightLevel: centerPhase.lightLevel,
+      moonlight: centerPhase.moonlight,
       gradient: `linear-gradient(90deg, ${gradientStops.join(', ')})`,
     }
   }
@@ -417,6 +460,11 @@ export async function createGame(
           setDayNight: (enabled) => {
             devDayNight = enabled
             window.localStorage.setItem('alohayo-world:dev-day-night', enabled ? 'true' : 'false')
+          },
+          getLightLevel: () => devLightLevel,
+          setLightLevel: (level) => {
+            devLightLevel = clamp(level, 0, 1)
+            window.localStorage.setItem('alohayo-world:dev-light-level', devLightLevel.toFixed(2))
           },
           teleport: (x, y) => {
             void teleportExplorer(x, y)
@@ -662,6 +710,8 @@ export async function createGame(
     app.canvas.dataset.dayNightDynamic = state.dynamic ? 'true' : 'false'
     app.canvas.dataset.dayPhase = state.phaseId
     app.canvas.dataset.worldTime = state.label
+    app.canvas.dataset.lightLevel = state.lightLevel.toFixed(2)
+    app.canvas.dataset.moonlight = state.moonlight.toFixed(2)
     if (minimapControls) minimapControls.clock.textContent = state.label
   }
 
@@ -1651,6 +1701,7 @@ export async function createGame(
     devPanel.fastMoveToggle.checked = devFastMove
     devPanel.flyToggle.checked = devFly
     devPanel.dayNightToggle.checked = devDayNight
+    devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
   }
   status.text = uiText('surveying')
   updateStatus()
@@ -1978,6 +2029,7 @@ export async function createGame(
         devPanel.battleShadowToggle.checked = devBattleShadow
         devPanel.gridToggle.checked = devShowGrid
         devPanel.dayNightToggle.checked = devDayNight
+        devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
       }
     },
     setTheme(nextTheme) {

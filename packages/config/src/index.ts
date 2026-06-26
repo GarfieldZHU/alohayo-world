@@ -126,11 +126,19 @@ export interface WorldDayPhaseDefinition {
   tint: string
 }
 
+export interface WorldMoonlightDefinition {
+  enabled: boolean
+  tint: string
+  strength: number
+  midnightLift: number
+}
+
 export interface WorldDayNightDefinition {
   enabled: boolean
   dayLengthMinutes: number
   fixedHour: number
   sampleCount: number
+  moonlight?: WorldMoonlightDefinition
   phases: WorldDayPhaseDefinition[]
 }
 
