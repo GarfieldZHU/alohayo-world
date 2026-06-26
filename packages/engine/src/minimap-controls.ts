@@ -34,9 +34,11 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
 
   const header = document.createElement('div')
   Object.assign(header.style, {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto 26px',
     alignItems: 'center',
-    gap: '6px',
+    gap: '4px',
+    minHeight: '28px',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(header)
 
@@ -48,6 +50,9 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     textTransform: 'uppercase',
     fontWeight: '700',
     paddingLeft: '2px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(title)
 
@@ -56,12 +61,15 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '56px',
-    height: '28px',
-    fontSize: '11px',
+    minWidth: '66px',
+    height: '24px',
+    fontSize: '10px',
     fontWeight: '700',
-    padding: '0 8px',
+    lineHeight: '1',
+    padding: '0 6px',
     borderRadius: '999px',
+    fontVariantNumeric: 'tabular-nums',
+    whiteSpace: 'nowrap',
     transition:
       'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
@@ -69,14 +77,14 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
 
   const compass = document.createElement('span')
   Object.assign(compass.style, {
-    display: 'inline-flex',
+    display: 'none',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '34px',
-    height: '28px',
+    minWidth: '0',
+    height: '0',
     fontSize: '11px',
     fontWeight: '700',
-    padding: '0 8px',
+    padding: '0',
     borderRadius: '999px',
     transition:
       'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
@@ -90,13 +98,13 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
-    width: '28px',
-    height: '28px',
+    width: '26px',
+    height: '24px',
     padding: '0',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '700',
     transition:
       'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
@@ -150,7 +158,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     setCollapsed(collapsed) {
       args.setCollapsedState(collapsed)
       body.style.display = collapsed ? 'none' : 'grid'
-      collapseButton.textContent = collapsed ? '▸' : '▾'
+      collapseButton.textContent = collapsed ? '⌄' : '⌃'
       collapseButton.title = collapsed
         ? args.getText('minimapExpand')
         : args.getText('minimapCollapse')
@@ -211,7 +219,7 @@ export function renderMinimapLocale(
   controls.title.textContent = getText('minimapTitle')
   controls.clock.title = getText('timeTitle')
   controls.clock.setAttribute('aria-label', getText('timeTitle'))
-  controls.compass.textContent = `▲ ${getText('minimapCompass')}`
+  controls.compass.textContent = getText('minimapCompass')
   controls.zoomOutButton.textContent = '−'
   controls.zoomInButton.textContent = '+'
   controls.fitButton.textContent = '◎'
@@ -245,11 +253,10 @@ export function applyThemeToMinimapControls(
     color: palette.minimapPanelText,
   } satisfies Partial<CSSStyleDeclaration>)
   Object.assign(controls.compass.style, {
-    background: palette.minimapPanelButtonBackground,
+    display: 'none',
+    background: 'transparent',
     color: palette.minimapPanelMuted,
-    boxShadow: controls.compass.matches(':hover')
-      ? `0 0 0 1px ${palette.minimapPanelBorder}`
-      : 'none',
+    boxShadow: 'none',
   } satisfies Partial<CSSStyleDeclaration>)
   for (const button of [
     controls.collapseButton,

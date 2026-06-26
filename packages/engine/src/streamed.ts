@@ -1364,6 +1364,17 @@ export async function createGame(
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
       .fill({ color: palette().minimapFill, alpha: 0.86 })
       .stroke({ color: palette().minimapStroke, alpha: 0.8, width: 1.2 })
+    const compassX = frameX + minimapSize - 17
+    const compassY = frameY + 17
+    minimapLayer
+      .circle(compassX, compassY, 10)
+      .fill({ color: palette().minimapStroke, alpha: 0.16 })
+      .moveTo(compassX, compassY - 7)
+      .lineTo(compassX + 4.5, compassY + 4)
+      .lineTo(compassX, compassY + 1.5)
+      .lineTo(compassX - 4.5, compassY + 4)
+      .closePath()
+      .fill({ color: palette().minimapStroke, alpha: 0.88 })
 
     const centerChunkX =
       minimapMode === 'fit' && Number.isFinite(minChunkX)
