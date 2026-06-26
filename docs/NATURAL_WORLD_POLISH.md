@@ -16,8 +16,8 @@ continuous geography first and a cell simulation second.
 
 ## Current Baseline
 
-- Fog now uses a fill-plus-cutout model, which is materially better than painting dark
-  hidden cells directly.
+- Fog now uses a fill-plus-cutout model backed by a continuous visibility field, which
+  is materially better than painting dark hidden cells directly.
 - Coastline blending now crosses loaded chunk borders.
 - Rivers now support a shaped path before rendering, and water rendering logic has been
   extracted into `packages/engine/src/water-render.ts`.
@@ -28,7 +28,9 @@ This is good prototype quality, but it is still fundamentally cell-derived.
 
 ### 1. Fog contour generation
 
-Replace per-cell rounded cutouts with contour extraction from discovered/hidden masks.
+Continue replacing per-cell cutouts with contour extraction from discovered/hidden masks.
+The current first slice already renders a connected, feathered visibility field and uses
+the same continuous sample for discovery reveal.
 
 - Input: chunk-local discovery mask with one-cell neighbor lookups.
 - Method: marching squares or dual contour extraction over the discovered frontier.

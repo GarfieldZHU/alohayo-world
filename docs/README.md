@@ -31,6 +31,7 @@ Each file in `modules/` is independently implementable and records purpose, cont
 dependencies, first vertical slice, tests, and deferred work.
 
 - `modules/MAP.md`
+- `modules/VISIBILITY.md`
 - `modules/WATER.md`
 - `modules/ROADS.md`
 - `modules/CHARACTERS.md`

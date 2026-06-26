@@ -53,6 +53,7 @@ import {
   profileById,
   toChunkCoord,
 } from './utils'
+import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
 import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
 
 export async function createGame(
@@ -628,35 +629,15 @@ export async function createGame(
     view.fogFill.clear()
     view.fogCutout.clear()
     if (devMode && !devBattleShadow) return
-    const fogColor = 0x05101a
-    const edgeFeather = cellSize * 0.28
-    for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
-      for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
-        const index = localY * chunk.chunkSize + localX
-        if (discovered[index]) continue
-        const north = localY > 0 && !discovered[index - chunk.chunkSize]
-        const south = localY < chunk.chunkSize - 1 && !discovered[index + chunk.chunkSize]
-        const west = localX > 0 && !discovered[index - 1]
-        const east = localX < chunk.chunkSize - 1 && !discovered[index + 1]
-        const originX = localX * cellSize
-        const originY = localY * cellSize
-        if (north && south && west && east) {
-          view.fogFill
-            .rect(originX, originY, cellSize + 0.2, cellSize + 0.2)
-            .fill({ color: fogColor, alpha: 0.84 })
-          continue
-        }
-        view.fogFill
-          .roundRect(
-            originX - (west ? edgeFeather : 0),
-            originY - (north ? edgeFeather : 0),
-            cellSize + (west ? edgeFeather : 0) + (east ? edgeFeather : 0) + 0.2,
-            cellSize + (north ? edgeFeather : 0) + (south ? edgeFeather : 0) + 0.2,
-            cellSize * 0.34
-          )
-          .fill({ color: fogColor, alpha: 0.84 })
-      }
-    }
+    redrawSmoothDiscoveryFog({
+      fill: view.fogFill,
+      cutout: view.fogCutout,
+      discovered,
+      chunkSize: chunk.chunkSize,
+      cellSize,
+      fogColor: 0x05101a,
+      hiddenAlpha: 0.84,
+    })
   }
 
   const refreshFogVisibility = () => {
@@ -665,6 +646,7 @@ export async function createGame(
       view.fog.visible = fogVisible
     }
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
+    app.canvas.dataset.visionBoundary = 'continuous'
   }
 
   const drawBattleShadow = () => {
@@ -1508,6 +1490,17 @@ export async function createGame(
     for (const key of chunkViews.keys()) redrawChunkFog(key)
   }
 
+  const sampleBattleVisibility = (cellX: number, cellY: number) => {
+    if (!explorerMotion) return 0
+    return sampleVisionAtPoint({
+      pointX: cellX,
+      pointY: cellY,
+      sourceX: explorerMotion.x,
+      sourceY: explorerMotion.y,
+      radius: content.world.stream.discoveryRadius,
+    })
+  }
+
   const biomeAtCell = (cellX: number, cellY: number) => {
     const targetChunkX = Math.floor(cellX / chunkSize)
     const targetChunkY = Math.floor(cellY / chunkSize)
@@ -1536,7 +1529,7 @@ export async function createGame(
       for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
         const cellX = Math.floor(explorerMotion.x + offsetX)
         const cellY = Math.floor(explorerMotion.y + offsetY)
-        if (Math.hypot(offsetX, offsetY) > radius + 0.25) continue
+        if (sampleBattleVisibility(cellX + 0.5, cellY + 0.5) < 0.42) continue
         const location = getChunkForCell(cellX, cellY)
         const chunk = chunks.get(location.key)
         if (!chunk) continue
