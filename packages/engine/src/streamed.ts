@@ -648,13 +648,21 @@ export async function createGame(
       discovered,
       chunkSize: chunk.chunkSize,
       cellSize,
-      fogColor: 0x05101a,
-      hiddenAlpha: 0.84,
+      fogColor: 0x182434,
+      hiddenAlpha: 0.68,
+      activeVision:
+        explorerMotion && (!devMode || devBattleShadow)
+          ? {
+              sourceX: explorerMotion.x - chunk.originX,
+              sourceY: explorerMotion.y - chunk.originY,
+              radius: content.world.stream.discoveryRadius,
+            }
+          : undefined,
     })
   }
 
   const refreshFogVisibility = () => {
-    const fogVisible = !devMode
+    const fogVisible = !devMode || devBattleShadow
     for (const view of chunkViews.values()) {
       view.fog.visible = fogVisible
     }
@@ -678,10 +686,10 @@ export async function createGame(
     const exploredRadius = edgeRadius + Math.max(38, innerRadius * 0.24)
     const memoryRadius = exploredRadius + Math.max(64, innerRadius * 0.38)
     const center = `${centerX.toFixed(2)}px ${centerY.toFixed(2)}px`
-    const edgeTint = devMode ? 'rgba(16, 24, 32, 0.04)' : 'rgba(16, 24, 32, 0.03)'
-    const exploredFog = devMode ? 'rgba(20, 31, 42, 0.1)' : 'rgba(22, 34, 44, 0.08)'
-    const memoryFog = devMode ? 'rgba(26, 39, 52, 0.14)' : 'rgba(28, 42, 54, 0.11)'
-    const outerFog = devMode ? 'rgba(29, 44, 58, 0.18)' : 'rgba(31, 47, 61, 0.14)'
+    const edgeTint = devMode ? 'rgba(18, 28, 38, 0.035)' : 'rgba(18, 28, 38, 0.025)'
+    const exploredFog = devMode ? 'rgba(28, 40, 52, 0.075)' : 'rgba(30, 42, 54, 0.06)'
+    const memoryFog = devMode ? 'rgba(34, 48, 62, 0.12)' : 'rgba(36, 50, 64, 0.095)'
+    const outerFog = devMode ? 'rgba(40, 55, 70, 0.18)' : 'rgba(42, 56, 72, 0.14)'
     visionFogElement.style.opacity = '1'
     visionFogElement.style.background = `radial-gradient(circle at ${center},
       rgba(0, 0, 0, 0) 0px,
@@ -1610,6 +1618,7 @@ export async function createGame(
     explorerMotion.y = targetY
     explorerMotion.state = 'idle'
     revealAroundExplorer()
+    refreshFog()
     recenterOnExplorer()
     actionMessage = formatI18n(devText('teleported'), { x: cellX, y: cellY })
     actionMessageUntil = performance.now() + 1800
@@ -1939,6 +1948,7 @@ export async function createGame(
     evictFarChunks(centerChunkX, centerChunkY)
     revealAroundExplorer()
     if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
+      refreshFog()
       if (devMode) {
         viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
         viewport.y -= (explorerMotion.y - previousY) * cellSize * scale

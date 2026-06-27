@@ -20,6 +20,11 @@ interface SmoothDiscoveryFogOptions {
   cellSize: number
   fogColor: number
   hiddenAlpha: number
+  activeVision?: {
+    sourceX: number
+    sourceY: number
+    radius: number
+  }
 }
 
 const smoothstep = (edge0: number, edge1: number, value: number) => {
@@ -60,6 +65,7 @@ export function redrawSmoothDiscoveryFog({
   cellSize,
   fogColor,
   hiddenAlpha,
+  activeVision,
 }: SmoothDiscoveryFogOptions) {
   fill.clear()
   cutout.clear()
@@ -104,4 +110,13 @@ export function redrawSmoothDiscoveryFog({
   drawCellField(cellSize * 1.18, 0.34)
   drawCellField(cellSize * 0.88, 0.58)
   drawCellField(cellSize * 0.62, 1)
+
+  if (activeVision) {
+    const centerX = activeVision.sourceX * cellSize
+    const centerY = activeVision.sourceY * cellSize
+    const radius = activeVision.radius * cellSize
+    cutout.circle(centerX, centerY, radius * 1.42).fill({ color: 0xffffff, alpha: 0.24 })
+    cutout.circle(centerX, centerY, radius * 1.16).fill({ color: 0xffffff, alpha: 0.54 })
+    cutout.circle(centerX, centerY, radius * 0.92).fill({ color: 0xffffff, alpha: 1 })
+  }
 }
