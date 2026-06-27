@@ -70,53 +70,33 @@ export function redrawSmoothDiscoveryFog({
   fill.clear()
   cutout.clear()
 
-  fill.rect(0, 0, chunkSize * cellSize + 0.2, chunkSize * cellSize + 0.2).fill({
-    color: fogColor,
-    alpha: hiddenAlpha,
-  })
-
   const discoveredAt = (localX: number, localY: number) => {
     if (localX < 0 || localY < 0 || localX >= chunkSize || localY >= chunkSize) return false
     return discovered[localY * chunkSize + localX] === 1
   }
 
-  const drawConnection = (localX: number, localY: number, radius: number, alpha: number) => {
-    const centerX = (localX + 0.5) * cellSize
-    const centerY = (localY + 0.5) * cellSize
-    if (discoveredAt(localX + 1, localY)) {
-      cutout
-        .roundRect(centerX, centerY - radius, cellSize, radius * 2, radius)
-        .fill({ color: 0xffffff, alpha })
-    }
-    if (discoveredAt(localX, localY + 1)) {
-      cutout
-        .roundRect(centerX - radius, centerY, radius * 2, cellSize, radius)
-        .fill({ color: 0xffffff, alpha })
-    }
+  const activeVisibilityAt = (localX: number, localY: number) => {
+    if (!activeVision) return 0
+    return sampleVisionAtPoint({
+      pointX: localX + 0.5,
+      pointY: localY + 0.5,
+      sourceX: activeVision.sourceX,
+      sourceY: activeVision.sourceY,
+      radius: activeVision.radius,
+      softness: 1.35,
+      noiseStrength: 0.34,
+    })
   }
 
-  const drawCellField = (radius: number, alpha: number) => {
-    for (let localY = 0; localY < chunkSize; localY += 1) {
-      for (let localX = 0; localX < chunkSize; localX += 1) {
-        if (!discoveredAt(localX, localY)) continue
-        const centerX = (localX + 0.5) * cellSize
-        const centerY = (localY + 0.5) * cellSize
-        cutout.circle(centerX, centerY, radius).fill({ color: 0xffffff, alpha })
-        drawConnection(localX, localY, radius, alpha)
-      }
+  for (let localY = 0; localY < chunkSize; localY += 1) {
+    for (let localX = 0; localX < chunkSize; localX += 1) {
+      const activeVisibility = activeVisibilityAt(localX, localY)
+      const memoryAlpha = discoveredAt(localX, localY) ? 0.045 : hiddenAlpha
+      const alpha = memoryAlpha * (1 - activeVisibility)
+      if (alpha < 0.012) continue
+      fill
+        .rect(localX * cellSize - 0.15, localY * cellSize - 0.15, cellSize + 0.3, cellSize + 0.3)
+        .fill({ color: fogColor, alpha })
     }
-  }
-
-  drawCellField(cellSize * 1.18, 0.34)
-  drawCellField(cellSize * 0.88, 0.58)
-  drawCellField(cellSize * 0.62, 1)
-
-  if (activeVision) {
-    const centerX = activeVision.sourceX * cellSize
-    const centerY = activeVision.sourceY * cellSize
-    const radius = activeVision.radius * cellSize
-    cutout.circle(centerX, centerY, radius * 1.42).fill({ color: 0xffffff, alpha: 0.24 })
-    cutout.circle(centerX, centerY, radius * 1.16).fill({ color: 0xffffff, alpha: 0.54 })
-    cutout.circle(centerX, centerY, radius * 0.92).fill({ color: 0xffffff, alpha: 1 })
   }
 }
