@@ -24,6 +24,12 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - HUD, tooltip, and dev-panel strings must resolve through the shared locale helpers.
 - When adding a new visible label, put it in `i18n/` first and then thread the message
   key or translated content ID through the engine.
+- Keep HUD controls embedded in their own surface when possible. Minimap zoom/collapse
+  controls belong inside the minimap frame, should be partially transparent at rest, and
+  should become solid on hover/focus.
+- Dev tools are tabbed by function. Add movement/debug toggles under Move, world/HUD/time
+  controls under World, and equipment/content overrides under Gear before considering a
+  new top-level panel.
 - Dev locomotion overrides such as flight must stay clearly debug-scoped until the
   corresponding content-driven movement capability exists in character/equipment data.
 

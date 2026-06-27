@@ -169,6 +169,7 @@ export async function createGame(
   let devFly = false
   let devBattleShadow = true
   let devShowGrid = window.localStorage.getItem('alohayo-world:dev-grid') !== 'false'
+  let devShowMinimap = window.localStorage.getItem('alohayo-world:dev-minimap') === 'true'
   let devPanelCollapsed = window.localStorage.getItem('alohayo-world:dev-panel-collapsed') === '1'
   let minimapCollapsed = window.localStorage.getItem('alohayo-world:minimap-collapsed') === 'true'
   let minimapMode: 'fit' | 'manual' = 'fit'
@@ -247,8 +248,10 @@ export async function createGame(
   }
 
   const applyCurrentMinimapTheme = (controls: ReturnType<typeof createMinimapControls> | null) => {
-    applyThemeToMinimapControls(controls, palette(), devMode, minimapMode)
+    applyThemeToMinimapControls(controls, palette(), minimapVisible(), minimapMode)
   }
+
+  const minimapVisible = () => (!devMode || devShowMinimap) && !minimapCollapsed
 
   const topRightClearancePx = () => {
     const value = Number.parseFloat(
@@ -448,6 +451,16 @@ export async function createGame(
             devShowGrid = enabled
             window.localStorage.setItem('alohayo-world:dev-grid', enabled ? 'true' : 'false')
             refreshGridVisibility()
+          },
+          getMinimap: () => devShowMinimap,
+          setMinimap: (enabled) => {
+            devShowMinimap = enabled
+            window.localStorage.setItem('alohayo-world:dev-minimap', enabled ? 'true' : 'false')
+            if (enabled && minimapCollapsed && minimapControls) {
+              minimapControls.setCollapsed(false)
+            }
+            drawMinimap()
+            applyCurrentMinimapTheme(minimapControls)
           },
           getFastMove: () => devFastMove,
           setFastMove: (enabled) => {
@@ -1362,7 +1375,7 @@ export async function createGame(
 
   const drawMinimap = () => {
     minimapLayer.clear()
-    if (!explorerMotion || devMode || minimapCollapsed) return
+    if (!explorerMotion || !minimapVisible()) return
     let minChunkX = Number.POSITIVE_INFINITY
     let maxChunkX = Number.NEGATIVE_INFINITY
     let minChunkY = Number.POSITIVE_INFINITY
@@ -1391,7 +1404,7 @@ export async function createGame(
     const minimapSize = 154
     const tile = Math.max(3, Math.floor(minimapSize / (activeRadius * 2 + 1)))
     const frameX = app.screen.width - minimapSize - 18
-    const frameY = (minimapCollapsed ? 58 : 96) + topRightClearancePx()
+    const frameY = 96 + topRightClearancePx()
     minimapLayer
       .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
       .fill({ color: palette().minimapFill, alpha: 0.86 })
@@ -1693,6 +1706,7 @@ export async function createGame(
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
     devPanel.fastMoveToggle.checked = devFastMove
     devPanel.flyToggle.checked = devFly
+    devPanel.minimapToggle.checked = devShowMinimap
     devPanel.dayNightToggle.checked = devDayNight
     devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
   }
@@ -1850,9 +1864,17 @@ export async function createGame(
       updateStatus()
       drawExplorer(performance.now() / 1000)
     }
-    if (key === 'm' && !event.repeat && !devMode) {
+    if (key === 'm' && !event.repeat) {
       event.preventDefault()
-      minimapControls.setCollapsed(!minimapCollapsed)
+      if (devMode && !devShowMinimap) {
+        devShowMinimap = true
+        window.localStorage.setItem('alohayo-world:dev-minimap', 'true')
+        if (minimapCollapsed) minimapControls.setCollapsed(false)
+        if (devPanel) devPanel.minimapToggle.checked = true
+        drawMinimap()
+      } else {
+        minimapControls.setCollapsed(!minimapCollapsed)
+      }
       applyCurrentMinimapTheme(minimapControls)
     }
     if ((key === 'e' || key === ' ') && !event.repeat) {
@@ -2021,6 +2043,7 @@ export async function createGame(
         devPanel.flyToggle.checked = devFly
         devPanel.battleShadowToggle.checked = devBattleShadow
         devPanel.gridToggle.checked = devShowGrid
+        devPanel.minimapToggle.checked = devShowMinimap
         devPanel.dayNightToggle.checked = devDayNight
         devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
       }

@@ -13,6 +13,8 @@ interface CreateDevPanelArgs {
   setBattleShadow: (enabled: boolean) => void
   getGrid: () => boolean
   setGrid: (enabled: boolean) => void
+  getMinimap: () => boolean
+  setMinimap: (enabled: boolean) => void
   getFastMove: () => boolean
   setFastMove: (enabled: boolean) => void
   getFly: () => boolean
@@ -85,6 +87,49 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const body = document.createElement('div')
   panel.appendChild(body)
 
+  const tabList = document.createElement('div')
+  Object.assign(tabList.style, {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '4px',
+    marginBottom: '8px',
+  } satisfies Partial<CSSStyleDeclaration>)
+  body.appendChild(tabList)
+
+  const makeTab = (name: string) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = args.getText(name)
+    Object.assign(button.style, {
+      borderRadius: '999px',
+      border: '0',
+      cursor: 'pointer',
+      padding: '6px 8px',
+      fontSize: '10px',
+      fontWeight: '800',
+      letterSpacing: '0.04em',
+      textTransform: 'uppercase',
+    } satisfies Partial<CSSStyleDeclaration>)
+    tabList.appendChild(button)
+    return button
+  }
+
+  const movementTab = makeTab('tabMovement')
+  const worldTab = makeTab('tabWorld')
+  const gearTab = makeTab('tabGear')
+
+  const movementSection = document.createElement('div')
+  const worldSection = document.createElement('div')
+  const gearSection = document.createElement('div')
+  body.append(movementSection, worldSection, gearSection)
+  let activeTab: 'movement' | 'world' | 'gear' = 'movement'
+
+  const activeSection = () => {
+    if (activeTab === 'world') return worldSection
+    if (activeTab === 'gear') return gearSection
+    return movementSection
+  }
+
   const makeRow = () => {
     const row = document.createElement('div')
     Object.assign(row.style, {
@@ -93,7 +138,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
       marginBottom: '8px',
       alignItems: 'center',
     } satisfies Partial<CSSStyleDeclaration>)
-    body.appendChild(row)
+    activeSection().appendChild(row)
     return row
   }
 
@@ -164,6 +209,28 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   gridLabel.style.flex = '1'
   flyRow.append(gridToggle, gridLabel)
 
+  const teleportRow = makeRow()
+  const teleportX = makeInput('0')
+  teleportX.inputMode = 'numeric'
+  teleportX.placeholder = 'x'
+  const teleportY = makeInput('0')
+  teleportY.inputMode = 'numeric'
+  teleportY.placeholder = 'y'
+  const teleportButton = makeButton(args.getText('teleport'))
+  teleportRow.append(teleportX, teleportY, teleportButton)
+
+  activeTab = 'world'
+  const minimapRow = makeRow()
+  const minimapToggle = document.createElement('input')
+  minimapToggle.type = 'checkbox'
+  minimapToggle.id = controlId('minimap')
+  minimapToggle.checked = args.getMinimap()
+  const minimapLabel = document.createElement('label')
+  minimapLabel.htmlFor = minimapToggle.id
+  minimapLabel.textContent = args.getText('minimap')
+  minimapLabel.style.flex = '1'
+  minimapRow.append(minimapToggle, minimapLabel)
+
   const dayNightRow = makeRow()
   const dayNightToggle = document.createElement('input')
   dayNightToggle.type = 'checkbox'
@@ -218,16 +285,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   updateLightLevelMode()
   lightLevelRow.append(lightLevelLabel, lightLevelSlider, lightLevelValue)
 
-  const teleportRow = makeRow()
-  const teleportX = makeInput('0')
-  teleportX.inputMode = 'numeric'
-  teleportX.placeholder = 'x'
-  const teleportY = makeInput('0')
-  teleportY.inputMode = 'numeric'
-  teleportY.placeholder = 'y'
-  const teleportButton = makeButton(args.getText('teleport'))
-  teleportRow.append(teleportX, teleportY, teleportButton)
-
+  activeTab = 'gear'
   const gearRow = makeRow()
   const slotSelect = document.createElement('select')
   const itemSelect = document.createElement('select')
@@ -285,6 +343,12 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     args.onRefreshVisuals()
   })
 
+  minimapToggle.addEventListener('change', () => {
+    args.setMinimap(minimapToggle.checked)
+    args.onStatusChange()
+    args.onRefreshVisuals()
+  })
+
   fastMoveToggle.addEventListener('change', () => {
     args.setFastMove(fastMoveToggle.checked)
     args.onStatusChange()
@@ -337,17 +401,24 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     margin: '2px 0 0',
     fontSize: '11px',
   } satisfies Partial<CSSStyleDeclaration>)
-  body.appendChild(note)
+  movementSection.appendChild(note)
 
   const controls: DevPanelControls = {
     panel,
     body,
     heading,
     collapseButton,
+    movementTab,
+    worldTab,
+    gearTab,
+    movementSection,
+    worldSection,
+    gearSection,
     battleShadowLabel,
     fastMoveLabel,
     flyLabel,
     gridLabel,
+    minimapLabel,
     dayNightLabel,
     lightLevelLabel,
     lightLevelValue,
@@ -363,6 +434,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     fastMoveToggle,
     flyToggle,
     gridToggle,
+    minimapToggle,
     dayNightToggle,
     fillEquipmentOptions,
     fillItemOptions,
@@ -375,11 +447,31 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
       window.localStorage.setItem(args.storageKey, collapsed ? 'true' : 'false')
     },
     isCollapsed: args.getCollapsed,
+    setActiveTab(tab) {
+      activeTab = tab
+      movementSection.style.display = tab === 'movement' ? 'block' : 'none'
+      worldSection.style.display = tab === 'world' ? 'block' : 'none'
+      gearSection.style.display = tab === 'gear' ? 'block' : 'none'
+      for (const [button, name] of [
+        [movementTab, 'movement'],
+        [worldTab, 'world'],
+        [gearTab, 'gear'],
+      ] as const) {
+        const selected = tab === name
+        button.setAttribute('aria-selected', selected ? 'true' : 'false')
+        button.style.opacity = selected ? '1' : '0.62'
+        button.style.transform = selected ? 'translateY(-1px)' : 'translateY(0)'
+      }
+    },
   }
 
   collapseButton.addEventListener('click', () => {
     controls.setCollapsed(!args.getCollapsed())
   })
+  movementTab.addEventListener('click', () => controls.setActiveTab('movement'))
+  worldTab.addEventListener('click', () => controls.setActiveTab('world'))
+  gearTab.addEventListener('click', () => controls.setActiveTab('gear'))
+  controls.setActiveTab('movement')
 
   return controls
 }
@@ -391,10 +483,14 @@ export function renderDevPanelLocale(
   if (!panel) return
   panel.heading.textContent = getText('heading')
   panel.setCollapsed(panel.isCollapsed())
+  panel.movementTab.textContent = getText('tabMovement')
+  panel.worldTab.textContent = getText('tabWorld')
+  panel.gearTab.textContent = getText('tabGear')
   panel.battleShadowLabel.textContent = getText('battleShadow')
   panel.fastMoveLabel.textContent = getText('fastMove')
   panel.flyLabel.textContent = getText('fly')
   panel.gridLabel.textContent = getText('grid')
+  panel.minimapLabel.textContent = getText('minimap')
   panel.dayNightLabel.textContent = getText('dayNight')
   panel.lightLevelLabel.textContent = getText('lightLevel')
   const percent = Number.parseInt(panel.lightLevelSlider.value, 10)
@@ -424,6 +520,14 @@ export function applyThemeToDevPanel(
   panel.heading.style.color = palette.devAccent
   panel.note.style.color = palette.devMuted
   panel.collapseButton.style.color = palette.devText
+  for (const button of [panel.movementTab, panel.worldTab, panel.gearTab]) {
+    const selected = button.getAttribute('aria-selected') === 'true'
+    Object.assign(button.style, {
+      color: selected ? palette.devAccent : palette.devText,
+      background: selected ? palette.devButtonBackground : 'transparent',
+      border: `1px solid ${selected ? palette.devInputBorder : 'transparent'}`,
+    } satisfies Partial<CSSStyleDeclaration>)
+  }
 
   for (const element of [panel.teleportX, panel.teleportY, panel.slotSelect, panel.itemSelect]) {
     Object.assign(element.style, {

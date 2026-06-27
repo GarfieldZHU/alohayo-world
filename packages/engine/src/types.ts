@@ -61,10 +61,17 @@ export interface DevPanelControls {
   body: HTMLDivElement
   heading: HTMLDivElement
   collapseButton: HTMLButtonElement
+  movementTab: HTMLButtonElement
+  worldTab: HTMLButtonElement
+  gearTab: HTMLButtonElement
+  movementSection: HTMLDivElement
+  worldSection: HTMLDivElement
+  gearSection: HTMLDivElement
   battleShadowLabel: HTMLLabelElement
   fastMoveLabel: HTMLLabelElement
   flyLabel: HTMLLabelElement
   gridLabel: HTMLLabelElement
+  minimapLabel: HTMLLabelElement
   dayNightLabel: HTMLLabelElement
   lightLevelLabel: HTMLLabelElement
   lightLevelValue: HTMLSpanElement
@@ -80,11 +87,13 @@ export interface DevPanelControls {
   fastMoveToggle: HTMLInputElement
   flyToggle: HTMLInputElement
   gridToggle: HTMLInputElement
+  minimapToggle: HTMLInputElement
   dayNightToggle: HTMLInputElement
   fillEquipmentOptions: () => void
   fillItemOptions: () => void
   setCollapsed: (collapsed: boolean) => void
   isCollapsed: () => boolean
+  setActiveTab: (tab: 'movement' | 'world' | 'gear') => void
 }
 
 export interface MinimapControls {
