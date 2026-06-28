@@ -27,6 +27,11 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Keep HUD controls embedded in their own surface when possible. Minimap zoom/collapse
   controls belong inside the minimap frame, should be partially transparent at rest, and
   should become solid on hover/focus.
+- Minimap collapse should reduce the HUD without removing the pointer-visible expand
+  affordance. A collapsed map must still be recoverable without relying on keyboard-only
+  shortcuts.
+- The minimap should communicate local discovered terrain, not only chunk ownership.
+  When the explorer moves, the minimap picture should visibly update with them.
 - Dev tools are tabbed by function. Add movement/debug toggles under Move, world/HUD/time
   controls under World, and equipment/content overrides under Gear before considering a
   new top-level panel.

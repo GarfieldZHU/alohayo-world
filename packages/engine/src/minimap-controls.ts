@@ -15,48 +15,52 @@ interface CreateMinimapControlsArgs {
   applyTheme: (controls: MinimapControls | null) => void
 }
 
+export const MINIMAP_FRAME_SIZE = 154
+export const MINIMAP_PANEL_TOP = 46
+export const MINIMAP_FRAME_OFFSET_TOP = 20
+export const MINIMAP_FRAME_INSET = 10
+export const MINIMAP_CONTENT_SIZE = MINIMAP_FRAME_SIZE - MINIMAP_FRAME_INSET * 2
+
+const META_ROW_HEIGHT = 26
+const COLLAPSED_PANEL_HEIGHT = 30
+const EXPANDED_PANEL_HEIGHT = MINIMAP_FRAME_OFFSET_TOP + MINIMAP_FRAME_SIZE
+
 export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapControls {
   const panel = document.createElement('div')
   panel.dataset.alohayoWorldMinimap = 'true'
   Object.assign(panel.style, {
     position: 'absolute',
-    top: 'calc(96px + var(--alohayo-top-right-clearance, 0px))',
+    top: `calc(${MINIMAP_PANEL_TOP}px + var(--alohayo-top-right-clearance, 0px))`,
     right: '18px',
     zIndex: '18',
-    width: '154px',
-    height: '154px',
+    width: `${MINIMAP_FRAME_SIZE}px`,
+    height: `${EXPANDED_PANEL_HEIGHT}px`,
     borderRadius: '16px',
     padding: '0',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     display: 'block',
     pointerEvents: 'none',
-    transition: 'top 220ms ease, opacity 180ms ease',
+    transition: 'top 220ms ease, opacity 180ms ease, height 180ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
 
   const header = document.createElement('div')
   Object.assign(header.style, {
     position: 'absolute',
-    inset: '7px 7px auto 7px',
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) auto 24px',
+    inset: '0 0 auto 0',
+    display: 'flex',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: '4px',
-    minHeight: '28px',
+    gap: '6px',
+    height: `${META_ROW_HEIGHT}px`,
     pointerEvents: 'auto',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(header)
 
   const title = document.createElement('div')
+  title.textContent = ''
+  title.setAttribute('aria-hidden', 'true')
   Object.assign(title.style, {
-    flex: '1',
-    fontSize: '9px',
-    letterSpacing: '0.14em',
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    paddingLeft: '2px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    display: 'none',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(title)
 
@@ -65,36 +69,19 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '66px',
+    minWidth: '74px',
     height: '22px',
     fontSize: '10px',
     fontWeight: '700',
     lineHeight: '1',
-    padding: '0 6px',
+    padding: '0 8px',
     borderRadius: '999px',
     fontVariantNumeric: 'tabular-nums',
     whiteSpace: 'nowrap',
     transition:
-      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(clock)
-
-  const compass = document.createElement('span')
-  Object.assign(compass.style, {
-    display: 'none',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '0',
-    height: '0',
-    fontSize: '11px',
-    fontWeight: '700',
-    padding: '0',
-    borderRadius: '999px',
-    transition:
-      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
-  } satisfies Partial<CSSStyleDeclaration>)
-  compass.setAttribute('role', 'img')
-  header.appendChild(compass)
 
   const collapseButton = document.createElement('button')
   collapseButton.type = 'button'
@@ -102,31 +89,60 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
-    width: '26px',
+    width: '24px',
     height: '24px',
     padding: '0',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '12px',
+    fontSize: '13px',
     fontWeight: '700',
     transition:
-      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease',
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   header.appendChild(collapseButton)
+
+  const frame = document.createElement('div')
+  Object.assign(frame.style, {
+    position: 'absolute',
+    inset: `${MINIMAP_FRAME_OFFSET_TOP}px 0 0 0`,
+    pointerEvents: 'none',
+    transition: 'opacity 180ms ease, transform 180ms ease',
+  } satisfies Partial<CSSStyleDeclaration>)
+  panel.appendChild(frame)
+
+  const compass = document.createElement('span')
+  Object.assign(compass.style, {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '22px',
+    height: '22px',
+    fontSize: '11px',
+    fontWeight: '700',
+    borderRadius: '999px',
+    pointerEvents: 'none',
+    transition:
+      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
+  } satisfies Partial<CSSStyleDeclaration>)
+  compass.setAttribute('role', 'img')
+  frame.appendChild(compass)
 
   const body = document.createElement('div')
   body.id = 'alohayo-world-minimap-toolbar'
   Object.assign(body.style, {
     position: 'absolute',
-    right: '8px',
-    bottom: '8px',
+    right: '10px',
+    bottom: '10px',
     display: 'flex',
     alignItems: 'center',
-    gap: '5px',
+    gap: '4px',
     pointerEvents: 'auto',
   } satisfies Partial<CSSStyleDeclaration>)
-  panel.appendChild(body)
+  frame.appendChild(body)
 
   const makeButton = () => {
     const button = document.createElement('button')
@@ -135,10 +151,10 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       border: '0',
       cursor: 'pointer',
       borderRadius: '999px',
-      width: '28px',
-      height: '28px',
+      width: '24px',
+      height: '24px',
       padding: '0',
-      fontSize: '13px',
+      fontSize: '12px',
       fontWeight: '700',
       display: 'inline-flex',
       alignItems: 'center',
@@ -156,6 +172,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
 
   const controls: MinimapControls = {
     panel,
+    frame,
     title,
     clock,
     compass,
@@ -167,7 +184,12 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     setCollapsed(collapsed) {
       args.setCollapsedState(collapsed)
       body.style.display = collapsed ? 'none' : 'flex'
-      collapseButton.textContent = collapsed ? '⌄' : '⌃'
+      frame.style.opacity = collapsed ? '0' : '1'
+      frame.style.transform = collapsed ? 'translateY(-6px)' : 'translateY(0)'
+      frame.style.visibility = collapsed ? 'hidden' : 'visible'
+      frame.style.pointerEvents = collapsed ? 'none' : 'auto'
+      panel.style.height = collapsed ? `${COLLAPSED_PANEL_HEIGHT}px` : `${EXPANDED_PANEL_HEIGHT}px`
+      collapseButton.textContent = collapsed ? '+' : '−'
       collapseButton.title = collapsed
         ? args.getText('minimapExpand')
         : args.getText('minimapCollapse')
@@ -179,7 +201,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     },
   }
 
-  const interactiveControls = [collapseButton, zoomOutButton, zoomInButton, fitButton]
+  const interactiveControls = [clock, collapseButton, zoomOutButton, zoomInButton, fitButton]
   for (const button of interactiveControls) {
     button.addEventListener('mouseenter', () => args.applyTheme(controls))
     button.addEventListener('mouseleave', () => args.applyTheme(controls))
@@ -190,7 +212,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   zoomOutButton.addEventListener('click', () => {
     args.setMode('manual')
     args.setManualRadius(
-      args.clamp(args.getManualRadius() + 1, 2, Math.max(args.minimapChunkRadius * 3, 18))
+      args.clamp(args.getManualRadius() + 4, 12, Math.max(args.minimapChunkRadius * 18, 96))
     )
     args.redraw()
     args.applyTheme(controls)
@@ -199,7 +221,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   zoomInButton.addEventListener('click', () => {
     args.setMode('manual')
     args.setManualRadius(
-      args.clamp(args.getManualRadius() - 1, 2, Math.max(args.minimapChunkRadius * 3, 18))
+      args.clamp(args.getManualRadius() - 4, 12, Math.max(args.minimapChunkRadius * 18, 96))
     )
     args.redraw()
     args.applyTheme(controls)
@@ -257,15 +279,16 @@ export function applyThemeToMinimapControls(
     color: palette.minimapPanelText,
   } satisfies Partial<CSSStyleDeclaration>)
   Object.assign(controls.clock.style, {
-    display: 'inline-flex',
     background: palette.minimapPanelBackground,
     color: palette.minimapPanelText,
-    opacity: controls.clock.matches(':hover') ? '1' : '0.72',
+    opacity: controls.clock.matches(':hover') ? '1' : '0.78',
+    boxShadow: 'none',
+    transform: controls.clock.matches(':hover') ? 'translateY(-1px)' : 'translateY(0)',
   } satisfies Partial<CSSStyleDeclaration>)
   Object.assign(controls.compass.style, {
-    display: 'none',
-    background: 'transparent',
-    color: palette.minimapPanelMuted,
+    background: palette.minimapPanelBackground,
+    color: palette.minimapPanelText,
+    opacity: '0.86',
     boxShadow: 'none',
   } satisfies Partial<CSSStyleDeclaration>)
   for (const button of [
@@ -277,7 +300,7 @@ export function applyThemeToMinimapControls(
     Object.assign(button.style, {
       background: palette.minimapPanelButtonBackground,
       color: palette.minimapPanelText,
-      opacity: button.matches(':focus-visible') || button.matches(':hover') ? '1' : '0.58',
+      opacity: button.matches(':focus-visible') || button.matches(':hover') ? '0.92' : '0.46',
       transform: button.matches(':hover') ? 'translateY(-1px)' : 'translateY(0)',
       boxShadow:
         button.matches(':focus-visible') || button.matches(':hover')
@@ -286,7 +309,7 @@ export function applyThemeToMinimapControls(
     } satisfies Partial<CSSStyleDeclaration>)
   }
   Object.assign(controls.fitButton.style, {
-    fontSize: '13px',
+    fontSize: '12px',
   } satisfies Partial<CSSStyleDeclaration>)
   controls.fitButton.style.outline =
     mode === 'fit' ? `1px solid ${palette.minimapPanelButtonActive}` : '0'

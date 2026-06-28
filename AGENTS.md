@@ -33,6 +33,19 @@ For any multi-step feature or fix set, follow this workflow in order:
 
 This pattern is mandatory unless a task explicitly asks for planning-only work.
 
+## Issue-Fix Workflow
+
+When work is driven by a GitHub issue or a live regression report, use this sequence:
+
+1. Read the current issue state before editing code.
+2. If the work needs its own track, create or update the issue first with the problem and
+   the fix plan before implementation.
+3. Implement the fixes one item at a time and verify each item before moving on.
+4. Update the issue with the latest result, including screenshot evidence for published UI
+   work when practical.
+5. Close the issue only after local checks, live verification, and issue notes all agree
+   that the user-visible behavior is fixed.
+
 ## Mission
 
 Build a fast, extensible, map-first single-player web game. The world is local-only,

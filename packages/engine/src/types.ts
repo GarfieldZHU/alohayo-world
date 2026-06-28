@@ -98,6 +98,7 @@ export interface DevPanelControls {
 
 export interface MinimapControls {
   panel: HTMLDivElement
+  frame: HTMLDivElement
   title: HTMLDivElement
   clock: HTMLSpanElement
   compass: HTMLSpanElement

@@ -36,6 +36,9 @@
   contour-based next step for coasts, lakes, rivers, and fog.
 - Documented the safe Wasm refactor target for streamed chunk terrain generation and the
   current Rust tooling/build-order blockers.
+- Reworked the minimap into a lighter local-map HUD with a persistent collapsed affordance,
+  improved expanded-shell recovery, and issue-first verification workflow notes for
+  future regressions.
 
 ## 0.1.0-demo
 

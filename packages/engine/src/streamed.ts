@@ -29,6 +29,11 @@ import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './de
 import {
   applyThemeToMinimapControls,
   createMinimapControls,
+  MINIMAP_CONTENT_SIZE,
+  MINIMAP_FRAME_INSET,
+  MINIMAP_FRAME_OFFSET_TOP,
+  MINIMAP_FRAME_SIZE,
+  MINIMAP_PANEL_TOP,
   renderMinimapLocale,
 } from './minimap-controls'
 import { themePalette } from './theme'
@@ -248,10 +253,10 @@ export async function createGame(
   }
 
   const applyCurrentMinimapTheme = (controls: ReturnType<typeof createMinimapControls> | null) => {
-    applyThemeToMinimapControls(controls, palette(), minimapVisible(), minimapMode)
+    applyThemeToMinimapControls(controls, palette(), minimapEnabled(), minimapMode)
   }
 
-  const minimapVisible = () => (!devMode || devShowMinimap) && !minimapCollapsed
+  const minimapEnabled = () => !devMode || devShowMinimap
 
   const topRightClearancePx = () => {
     const value = Number.parseFloat(
@@ -1381,101 +1386,103 @@ export async function createGame(
     return Math.max(0.38, data.biome.movementCost * roadMultiplier)
   }
 
-  const drawMinimap = () => {
-    minimapLayer.clear()
-    if (!explorerMotion || !minimapVisible()) return
-    let minChunkX = Number.POSITIVE_INFINITY
-    let maxChunkX = Number.NEGATIVE_INFINITY
-    let minChunkY = Number.POSITIVE_INFINITY
-    let maxChunkY = Number.NEGATIVE_INFINITY
-    for (const key of discoveredChunks) {
-      const [chunkXText, chunkYText] = key.split(',')
-      const chunkX = Number.parseInt(chunkXText ?? '', 10)
-      const chunkY = Number.parseInt(chunkYText ?? '', 10)
-      if (Number.isNaN(chunkX) || Number.isNaN(chunkY)) continue
-      minChunkX = Math.min(minChunkX, chunkX)
-      maxChunkX = Math.max(maxChunkX, chunkX)
-      minChunkY = Math.min(minChunkY, chunkY)
-      maxChunkY = Math.max(maxChunkY, chunkY)
-    }
-    const activeRadius =
-      minimapMode === 'fit' && Number.isFinite(minChunkX)
-        ? clamp(
-            Math.max(
-              Math.ceil((maxChunkX - minChunkX + 1) / 2),
-              Math.ceil((maxChunkY - minChunkY + 1) / 2)
-            ) + 1,
-            2,
-            Math.max(minimapChunkRadius * 3, 18)
-          )
-        : minimapManualRadius
-    const minimapSize = 154
-    const tile = Math.max(3, Math.floor(minimapSize / (activeRadius * 2 + 1)))
-    const frameX = app.screen.width - minimapSize - 18
-    const frameY = 96 + topRightClearancePx()
-    minimapLayer
-      .roundRect(frameX, frameY, minimapSize, minimapSize, 10)
-      .fill({ color: palette().minimapFill, alpha: 0.86 })
-      .stroke({ color: palette().minimapStroke, alpha: 0.8, width: 1.2 })
-    const compassX = frameX + minimapSize - 17
-    const compassY = frameY + 17
-    minimapLayer
-      .circle(compassX, compassY, 10)
-      .fill({ color: palette().minimapStroke, alpha: 0.16 })
-      .moveTo(compassX, compassY - 7)
-      .lineTo(compassX + 4.5, compassY + 4)
-      .lineTo(compassX, compassY + 1.5)
-      .lineTo(compassX - 4.5, compassY + 4)
-      .closePath()
-      .fill({ color: palette().minimapStroke, alpha: 0.88 })
+  const isDiscoveredCell = (cellX: number, cellY: number) => {
+    const location = getChunkForCell(cellX, cellY)
+    const chunk = chunks.get(location.key)
+    const found = discovery.get(location.key)
+    if (!chunk || !found) return false
+    const index = location.localY * chunk.chunkSize + location.localX
+    return found[index] === 1
+  }
 
-    const centerChunkX =
-      minimapMode === 'fit' && Number.isFinite(minChunkX)
-        ? Math.floor((minChunkX + maxChunkX) / 2)
-        : Math.floor(explorerMotion.x / chunkSize)
-    const centerChunkY =
-      minimapMode === 'fit' && Number.isFinite(minChunkY)
-        ? Math.floor((minChunkY + maxChunkY) / 2)
-        : Math.floor(explorerMotion.y / chunkSize)
-    const centerOffset = activeRadius * tile + Math.floor(tile / 2)
+  const discoveredCellBounds = () => {
+    let minCellX = Number.POSITIVE_INFINITY
+    let maxCellX = Number.NEGATIVE_INFINITY
+    let minCellY = Number.POSITIVE_INFINITY
+    let maxCellY = Number.NEGATIVE_INFINITY
 
     for (const chunk of chunks.values()) {
-      const dx = chunk.chunkX - centerChunkX
-      const dy = chunk.chunkY - centerChunkY
-      if (Math.abs(dx) > activeRadius || Math.abs(dy) > activeRadius) continue
-      const key = chunkKey(chunk.chunkX, chunk.chunkY)
-      const discovered = discovery.get(key)
-      const discoveredCount = discovered?.reduce((total, value) => total + value, 0) ?? 0
-      if (!discoveredCount) continue
-      let dominantBiome = chunk.biomes[0]!
-      const counts = new Map<number, number>()
-      for (let index = 0; index < chunk.biomes.length; index += 1) {
-        if (!discovered?.[index]) continue
-        const biome = chunk.biomes[index]!
-        counts.set(biome, (counts.get(biome) ?? 0) + 1)
-        if ((counts.get(biome) ?? 0) > (counts.get(dominantBiome) ?? 0)) dominantBiome = biome
+      const found = discovery.get(chunkKey(chunk.chunkX, chunk.chunkY))
+      if (!found) continue
+      for (let index = 0; index < found.length; index += 1) {
+        if (!found[index]) continue
+        const localX = index % chunk.chunkSize
+        const localY = Math.floor(index / chunk.chunkSize)
+        const worldX = chunk.originX + localX
+        const worldY = chunk.originY + localY
+        minCellX = Math.min(minCellX, worldX)
+        maxCellX = Math.max(maxCellX, worldX)
+        minCellY = Math.min(minCellY, worldY)
+        maxCellY = Math.max(maxCellY, worldY)
       }
-      const biome = biomeByCode.get(dominantBiome) ?? content.biomes[0]!
-      const x = frameX + 10 + centerOffset + dx * tile - Math.floor(tile / 2)
-      const y = frameY + 10 + centerOffset + dy * tile - Math.floor(tile / 2)
-      minimapLayer.rect(x, y, tile - 1, tile - 1).fill({
-        color: biome.color,
-        alpha: clamp(discoveredCount / chunk.biomes.length, 0.25, 1),
-      })
     }
 
-    const explorerChunkX = Math.floor(explorerMotion.x / chunkSize)
-    const explorerChunkY = Math.floor(explorerMotion.y / chunkSize)
-    const explorerX =
-      frameX + 10 + centerOffset + (explorerChunkX - centerChunkX) * tile - Math.floor(tile / 4)
-    const explorerY =
-      frameY + 10 + centerOffset + (explorerChunkY - centerChunkY) * tile - Math.floor(tile / 4)
+    if (!Number.isFinite(minCellX)) return null
+    return { minCellX, maxCellX, minCellY, maxCellY }
+  }
+
+  const drawMinimap = () => {
+    minimapLayer.clear()
+    if (!explorerMotion || !minimapEnabled() || minimapCollapsed) return
+    const bounds = discoveredCellBounds()
+    const frameX = app.screen.width - MINIMAP_FRAME_SIZE - 18
+    const frameY = MINIMAP_PANEL_TOP + MINIMAP_FRAME_OFFSET_TOP + topRightClearancePx()
     minimapLayer
-      .circle(
-        explorerX + Math.floor(tile / 4),
-        explorerY + Math.floor(tile / 4),
-        Math.max(2, tile * 0.22)
-      )
+      .roundRect(frameX, frameY, MINIMAP_FRAME_SIZE, MINIMAP_FRAME_SIZE, 10)
+      .fill({ color: palette().minimapFill, alpha: 0.86 })
+      .stroke({ color: palette().minimapStroke, alpha: 0.8, width: 1.2 })
+
+    const contentX = frameX + MINIMAP_FRAME_INSET
+    const contentY = frameY + MINIMAP_FRAME_INSET
+    const sampleCount = 26
+    const tile = MINIMAP_CONTENT_SIZE / sampleCount
+    const centerCellX =
+      minimapMode === 'fit' && bounds
+        ? Math.floor((bounds.minCellX + bounds.maxCellX) / 2)
+        : Math.floor(explorerMotion.x)
+    const centerCellY =
+      minimapMode === 'fit' && bounds
+        ? Math.floor((bounds.minCellY + bounds.maxCellY) / 2)
+        : Math.floor(explorerMotion.y)
+    const activeRadius =
+      minimapMode === 'fit' && bounds
+        ? clamp(
+            Math.max(
+              Math.ceil((bounds.maxCellX - bounds.minCellX + 1) / 2),
+              Math.ceil((bounds.maxCellY - bounds.minCellY + 1) / 2)
+            ) + 3,
+            12,
+            Math.max(minimapChunkRadius * chunkSize, 96)
+          )
+        : minimapManualRadius
+    const span = activeRadius * 2 + 1
+
+    for (let sampleY = 0; sampleY < sampleCount; sampleY += 1) {
+      for (let sampleX = 0; sampleX < sampleCount; sampleX += 1) {
+        const worldX = Math.floor(
+          centerCellX - activeRadius + ((sampleX + 0.5) / sampleCount) * span
+        )
+        const worldY = Math.floor(
+          centerCellY - activeRadius + ((sampleY + 0.5) / sampleCount) * span
+        )
+        if (!isDiscoveredCell(worldX, worldY)) continue
+        const data = getCellData(worldX, worldY)
+        if (!data) continue
+        minimapLayer
+          .rect(contentX + sampleX * tile, contentY + sampleY * tile, tile + 0.15, tile + 0.15)
+          .fill({
+            color: data.biome.color,
+            alpha: 0.96,
+          })
+      }
+    }
+
+    const explorerOffsetX = ((explorerMotion.x - centerCellX) / span) * MINIMAP_CONTENT_SIZE
+    const explorerOffsetY = ((explorerMotion.y - centerCellY) / span) * MINIMAP_CONTENT_SIZE
+    const explorerX = contentX + MINIMAP_CONTENT_SIZE / 2 + explorerOffsetX
+    const explorerY = contentY + MINIMAP_CONTENT_SIZE / 2 + explorerOffsetY
+    minimapLayer
+      .circle(explorerX, explorerY, Math.max(2.2, tile * 0.6))
       .fill({ color: 0xf6f2d6 })
       .stroke({ color: palette().minimapExplorerStroke, width: 1 })
   }
