@@ -24,7 +24,6 @@ export const MINIMAP_CONTENT_SIZE = MINIMAP_FRAME_SIZE - MINIMAP_FRAME_INSET * 2
 const META_ROW_HEIGHT = 26
 const COLLAPSED_PANEL_HEIGHT = 30
 const EXPANDED_PANEL_HEIGHT = MINIMAP_FRAME_OFFSET_TOP + MINIMAP_FRAME_SIZE
-const CORNER_BUTTON_OFFSET = 6
 
 export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapControls {
   const panel = document.createElement('div')
