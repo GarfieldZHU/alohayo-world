@@ -29,6 +29,8 @@ interface CreateDevPanelArgs {
   onStatusChange: () => void
   getCollapsed: () => boolean
   setCollapsedState: (collapsed: boolean) => void
+  getActiveTab: () => 'movement' | 'world' | 'gear'
+  setActiveTabState: (tab: 'movement' | 'world' | 'gear') => void
   storageKey: string
 }
 
@@ -85,16 +87,46 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   header.appendChild(collapseButton)
 
   const body = document.createElement('div')
+  Object.assign(body.style, {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(body)
+
+  const sectionsHost = document.createElement('div')
+  Object.assign(sectionsHost.style, {
+    minHeight: '188px',
+  } satisfies Partial<CSSStyleDeclaration>)
+  body.appendChild(sectionsHost)
+
+  const tabFooter = document.createElement('div')
+  Object.assign(tabFooter.style, {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    paddingTop: '8px',
+    borderTop: '1px solid transparent',
+  } satisfies Partial<CSSStyleDeclaration>)
+  body.appendChild(tabFooter)
 
   const tabList = document.createElement('div')
   Object.assign(tabList.style, {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: '4px',
-    marginBottom: '8px',
+    alignItems: 'stretch',
   } satisfies Partial<CSSStyleDeclaration>)
-  body.appendChild(tabList)
+  tabFooter.appendChild(tabList)
+
+  const tabHint = document.createElement('p')
+  Object.assign(tabHint.style, {
+    margin: '0',
+    minHeight: '28px',
+    fontSize: '10px',
+    lineHeight: '1.4',
+  } satisfies Partial<CSSStyleDeclaration>)
+  tabFooter.appendChild(tabHint)
 
   const makeTab = (name: string) => {
     const button = document.createElement('button')
@@ -104,11 +136,15 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
       borderRadius: '999px',
       border: '0',
       cursor: 'pointer',
+      minHeight: '32px',
       padding: '6px 8px',
       fontSize: '10px',
       fontWeight: '800',
       letterSpacing: '0.04em',
       textTransform: 'uppercase',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     } satisfies Partial<CSSStyleDeclaration>)
     tabList.appendChild(button)
     return button
@@ -121,7 +157,8 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const movementSection = document.createElement('div')
   const worldSection = document.createElement('div')
   const gearSection = document.createElement('div')
-  body.append(movementSection, worldSection, gearSection)
+  sectionsHost.append(movementSection, worldSection, gearSection)
+  const initialActiveTab = args.getActiveTab()
   let activeTab: 'movement' | 'world' | 'gear' = 'movement'
 
   const activeSection = () => {
@@ -406,6 +443,9 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   const controls: DevPanelControls = {
     panel,
     body,
+    sectionsHost,
+    tabFooter,
+    tabHint,
     heading,
     collapseButton,
     movementTab,
@@ -440,18 +480,23 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     fillItemOptions,
     setCollapsed(collapsed) {
       args.setCollapsedState(collapsed)
-      body.style.display = collapsed ? 'none' : 'block'
+      body.style.display = collapsed ? 'none' : 'flex'
       collapseButton.textContent = collapsed ? args.getText('expand') : args.getText('collapse')
       collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
       panel.style.transform = collapsed ? 'translateY(2px)' : 'translateY(0)'
       window.localStorage.setItem(args.storageKey, collapsed ? 'true' : 'false')
     },
     isCollapsed: args.getCollapsed,
+    getActiveTab: () => activeTab,
     setActiveTab(tab) {
       activeTab = tab
+      args.setActiveTabState(tab)
       movementSection.style.display = tab === 'movement' ? 'block' : 'none'
       worldSection.style.display = tab === 'world' ? 'block' : 'none'
       gearSection.style.display = tab === 'gear' ? 'block' : 'none'
+      tabHint.textContent = args.getText(
+        tab === 'movement' ? 'tabMovementHint' : tab === 'world' ? 'tabWorldHint' : 'tabGearHint'
+      )
       for (const [button, name] of [
         [movementTab, 'movement'],
         [worldTab, 'world'],
@@ -459,6 +504,25 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
       ] as const) {
         const selected = tab === name
         button.setAttribute('aria-selected', selected ? 'true' : 'false')
+        button.setAttribute(
+          'aria-label',
+          `${args.getText(
+            name === 'movement' ? 'tabMovement' : name === 'world' ? 'tabWorld' : 'tabGear'
+          )}: ${args.getText(
+            name === 'movement'
+              ? 'tabMovementHint'
+              : name === 'world'
+                ? 'tabWorldHint'
+                : 'tabGearHint'
+          )}`
+        )
+        button.title = args.getText(
+          name === 'movement'
+            ? 'tabMovementHint'
+            : name === 'world'
+              ? 'tabWorldHint'
+              : 'tabGearHint'
+        )
         button.style.opacity = selected ? '1' : '0.62'
         button.style.transform = selected ? 'translateY(-1px)' : 'translateY(0)'
       }
@@ -471,7 +535,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   movementTab.addEventListener('click', () => controls.setActiveTab('movement'))
   worldTab.addEventListener('click', () => controls.setActiveTab('world'))
   gearTab.addEventListener('click', () => controls.setActiveTab('gear'))
-  controls.setActiveTab('movement')
+  controls.setActiveTab(initialActiveTab)
 
   return controls
 }
@@ -500,6 +564,7 @@ export function renderDevPanelLocale(
   panel.teleportButton.textContent = getText('teleport')
   panel.applyGearButton.textContent = getText('equip')
   panel.note.textContent = getText('note')
+  panel.setActiveTab(panel.getActiveTab())
   panel.fillEquipmentOptions()
   panel.fillItemOptions()
 }
@@ -519,7 +584,9 @@ export function applyThemeToDevPanel(
   } satisfies Partial<CSSStyleDeclaration>)
   panel.heading.style.color = palette.devAccent
   panel.note.style.color = palette.devMuted
+  panel.tabHint.style.color = palette.devMuted
   panel.collapseButton.style.color = palette.devText
+  panel.tabFooter.style.borderTopColor = palette.devBorder
   for (const button of [panel.movementTab, panel.worldTab, panel.gearTab]) {
     const selected = button.getAttribute('aria-selected') === 'true'
     Object.assign(button.style, {

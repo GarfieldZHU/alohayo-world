@@ -41,6 +41,9 @@
   future regressions.
 - Tuned the minimap header polish again so the collapse control lives on the map corner
   with arrow icons and the clock aligns cleanly to the minimap edge.
+- Fixed the minimap collapse affordance click target, moved it outside the map frame,
+  and stabilized dev tool tabs with persistent selection, fixed footer chrome, and
+  localized tab hints.
 
 ## 0.1.0-demo
 

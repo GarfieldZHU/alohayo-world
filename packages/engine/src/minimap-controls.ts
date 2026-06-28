@@ -24,7 +24,7 @@ export const MINIMAP_CONTENT_SIZE = MINIMAP_FRAME_SIZE - MINIMAP_FRAME_INSET * 2
 const META_ROW_HEIGHT = 26
 const COLLAPSED_PANEL_HEIGHT = 30
 const EXPANDED_PANEL_HEIGHT = MINIMAP_FRAME_OFFSET_TOP + MINIMAP_FRAME_SIZE
-const CORNER_BUTTON_OFFSET = 8
+const CORNER_BUTTON_OFFSET = 6
 
 export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapControls {
   const panel = document.createElement('div')
@@ -38,6 +38,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     height: `${EXPANDED_PANEL_HEIGHT}px`,
     borderRadius: '16px',
     padding: '0',
+    overflow: 'visible',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     display: 'block',
     pointerEvents: 'none',
@@ -91,8 +92,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   collapseButton.type = 'button'
   Object.assign(collapseButton.style, {
     position: 'absolute',
-    top: `${MINIMAP_FRAME_OFFSET_TOP + CORNER_BUTTON_OFFSET}px`,
-    right: `${CORNER_BUTTON_OFFSET}px`,
+    top: `${MINIMAP_FRAME_OFFSET_TOP - 10}px`,
+    right: '-10px',
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
@@ -104,8 +105,9 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     justifyContent: 'center',
     fontSize: '13px',
     fontWeight: '700',
+    pointerEvents: 'auto',
     transition:
-      'top 180ms ease, transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
+      'top 180ms ease, right 180ms ease, transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(collapseButton)
 
@@ -196,9 +198,8 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       frame.style.visibility = collapsed ? 'hidden' : 'visible'
       frame.style.pointerEvents = collapsed ? 'none' : 'auto'
       panel.style.height = collapsed ? `${COLLAPSED_PANEL_HEIGHT}px` : `${EXPANDED_PANEL_HEIGHT}px`
-      collapseButton.style.top = collapsed
-        ? '3px'
-        : `${MINIMAP_FRAME_OFFSET_TOP + CORNER_BUTTON_OFFSET}px`
+      collapseButton.style.top = collapsed ? '2px' : `${MINIMAP_FRAME_OFFSET_TOP - 10}px`
+      collapseButton.style.right = collapsed ? '-6px' : '-10px'
       collapseButton.textContent = collapsed ? '▾' : '▴'
       collapseButton.title = collapsed
         ? args.getText('minimapExpand')

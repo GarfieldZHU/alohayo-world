@@ -176,6 +176,9 @@ export async function createGame(
   let devShowGrid = window.localStorage.getItem('alohayo-world:dev-grid') !== 'false'
   let devShowMinimap = window.localStorage.getItem('alohayo-world:dev-minimap') === 'true'
   let devPanelCollapsed = window.localStorage.getItem('alohayo-world:dev-panel-collapsed') === '1'
+  const storedDevPanelTab = window.localStorage.getItem('alohayo-world:dev-panel-tab')
+  let devPanelActiveTab: 'movement' | 'world' | 'gear' =
+    storedDevPanelTab === 'world' || storedDevPanelTab === 'gear' ? storedDevPanelTab : 'movement'
   let minimapCollapsed = window.localStorage.getItem('alohayo-world:minimap-collapsed') === 'true'
   let minimapMode: 'fit' | 'manual' = 'fit'
   const chunkSize = content.world.chunkSize
@@ -512,6 +515,11 @@ export async function createGame(
           getCollapsed: () => devPanelCollapsed,
           setCollapsedState: (collapsed) => {
             devPanelCollapsed = collapsed
+          },
+          getActiveTab: () => devPanelActiveTab,
+          setActiveTabState: (tab) => {
+            devPanelActiveTab = tab
+            window.localStorage.setItem('alohayo-world:dev-panel-tab', tab)
           },
           storageKey: devPanelStateStorageKey,
         })

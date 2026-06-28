@@ -59,6 +59,9 @@ export interface ActiveDayNightState {
 export interface DevPanelControls {
   panel: HTMLDivElement
   body: HTMLDivElement
+  sectionsHost: HTMLDivElement
+  tabFooter: HTMLDivElement
+  tabHint: HTMLParagraphElement
   heading: HTMLDivElement
   collapseButton: HTMLButtonElement
   movementTab: HTMLButtonElement
@@ -93,6 +96,7 @@ export interface DevPanelControls {
   fillItemOptions: () => void
   setCollapsed: (collapsed: boolean) => void
   isCollapsed: () => boolean
+  getActiveTab: () => 'movement' | 'world' | 'gear'
   setActiveTab: (tab: 'movement' | 'world' | 'gear') => void
 }
 
