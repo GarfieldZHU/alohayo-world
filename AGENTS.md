@@ -131,9 +131,22 @@ renderer.
 ### Add an authored map area
 
 1. Read `docs/config/MAPS.md`.
-2. Add JSON under `content/maps/<pack>/areas/`; build discovery is automatic.
-3. Validate terrain references and deterministic overlay output.
-4. Keep large areas patch-based instead of listing thousands of cells.
+2. Read `docs/CONTENT_PACKS.md` if the change affects pack boundaries, dependencies,
+   optional overlays, or merge order.
+3. Add JSON under `content/maps/<pack>/areas/`; build discovery is automatic.
+4. Validate terrain references and deterministic overlay output.
+5. Keep large areas patch-based instead of listing thousands of cells.
+
+### Add or change a content pack
+
+1. Read `docs/CONTENT_PACKS.md`, `docs/CONTENT_GUIDE.md`, and the nearest content
+   `AGENTS.md`.
+2. Keep pack dependencies explicit, acyclic, and deterministic.
+3. Prefer additive stable IDs; do not silently overwrite another pack's exported IDs.
+4. Add or update fixtures that prove pack order, conflict handling, and world-hash
+   stability.
+5. If the work introduces a new overlay family, document merge policy and provenance
+   before runtime code depends on it.
 
 ### Add a character or ability
 

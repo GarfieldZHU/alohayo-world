@@ -13,6 +13,10 @@ This package owns deterministic geography and worker-safe data.
 - Normalized authored areas use finite-atlas placement in `generateWorld` and
   origin-centered survey placement in streamed chunk generation; do not collapse those
   two contracts together.
+- Content-pack overlay resolution must stay deterministic and should arrive in map code
+  as an ordered, validated input, not as ad hoc directory iteration.
+- When new overlay families are added, document whether they are additive, overriding,
+  or conflict-failing before implementing merge code.
 - Chunk-local `region` labels are an exploration/runtime aid today, not a substitute for
   future cross-chunk global topology IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.

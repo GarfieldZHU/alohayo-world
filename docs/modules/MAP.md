@@ -24,8 +24,11 @@ labels, discovery-ready authored overlays, and worker-applied landmark configs.
 ## Next Slice
 
 Global topology continuity, real slope, drainage, rivers, watersheds, persisted
-discovery, minimap LOD, benchmark budgets, and shared shape hints consumed by the
-water module.
+discovery, minimap LOD, benchmark budgets, shared shape hints consumed by the water
+module, and a resolved content-pack overlay stream with dependency-safe provenance.
+
+Read `../CONTENT_PACKS.md` when the work touches authored overlays, pack discovery,
+optional map-area activation, or future overlay conflict tooling.
 
 ## Tests
 

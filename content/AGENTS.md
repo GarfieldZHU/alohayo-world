@@ -9,4 +9,6 @@ Content configures registered capabilities and contains no executable code.
 - Prefer adding definitions over branching engine code.
 - Include a minimal example for new schema features.
 - Record generator/schema version effects on determinism and saves.
+- Keep pack dependencies explicit and acyclic, and document new overlay families in
+  `docs/CONTENT_PACKS.md` and `docs/config/MAPS.md` as part of the same change.
 - Run `yarn validate:content`.

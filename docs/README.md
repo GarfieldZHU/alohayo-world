@@ -21,6 +21,8 @@ blindly.
 - `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
+- `CONTENT_PACKS.md`: dependency-safe pack loading, authored overlays, conflicts, and
+  migration planning.
 - `config/MAPS.md`: write and plug authored area files into the world.
 - `config/CHARACTERS.md`: abilities, appearance, equipment, weapons, and archetypes.
 - `MODULE_CATALOG.md`: dependency map and extension protocol.

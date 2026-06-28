@@ -1,5 +1,8 @@
 # Custom Map Area Configuration
 
+For pack dependency rules, merge order, provenance, and future overlay families, read
+`../CONTENT_PACKS.md` before changing this format.
+
 ## How Areas Plug Into the World
 
 The procedural generator creates elevation, climate, terrain, and topology first. It
@@ -117,3 +120,7 @@ benchmark area unless it is intended to appear in normal generated worlds.
 - Patches support rectangles, ellipses, and exact cells.
 - Files are bundled at build time, not downloaded dynamically.
 - Cross-pack dependency resolution and runtime content downloads remain `v0.2` work.
+
+The next authored-overlay slice should add explicit schemas for landmarks, authored
+entities, protected regions, and generator modifiers without breaking deterministic patch
+application.

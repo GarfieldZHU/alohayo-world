@@ -1,7 +1,8 @@
 # Content Guide
 
 Read the nearest `content/AGENTS.md` before editing definitions. Public TypeScript
-contracts live in `packages/config`; this guide explains author intent.
+contracts live in `packages/config`; this guide explains author intent. For pack loading,
+dependency rules, and authored overlay merge policy, also read `CONTENT_PACKS.md`.
 
 ## World sizes
 
@@ -41,6 +42,11 @@ Content lives under `content/<pack-id>` and begins with `manifest.json`.
 
 IDs are lowercase kebab-case and globally namespaced by pack. References must resolve
 inside declared dependencies. Run `yarn validate:content` after every change.
+
+Pack manifests and authored overlays are deterministic loader inputs, not loose metadata.
+If a pack introduces a new dependency, exported ID, or overlay family, document the
+change in `CONTENT_PACKS.md` and add or update fixtures proving the resolved pack order
+and merge behavior.
 
 To add a biome, append a definition with a unique numeric code, family, palette, climate
 ranges, movement cost, road cost, occurrence weight, creature habitat tags, and

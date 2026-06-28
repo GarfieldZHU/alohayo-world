@@ -11,3 +11,5 @@ This package owns public contracts. Changes have the widest compatibility cost.
   here when they affect public runtime integration.
 - World clock, day/night phase, and future calendar contracts belong here before engine
   code consumes them.
+- Content-pack manifests, dependency metadata, overlay provenance contracts, and future
+  migration registry shapes belong here before map or engine code consume them.

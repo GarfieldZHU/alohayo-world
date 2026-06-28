@@ -35,13 +35,14 @@
 - [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by
       Rust tooling in CI and TypeScript parity fixtures.
 - [ ] IndexedDB discovery/save snapshots and restoration.
+- [ ] Content-pack dependency loading, authored overlay provenance, and schema
+      migration planning. See `docs/CONTENT_PACKS.md` and issue `#7`.
 - [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test
       equipment/weapon overrides.
 - [ ] Convert debug flight into a real locomotion capability granted by gear, mounts,
       vehicles, or abilities instead of a dev-only bypass.
 - [ ] Expand weather into a full simulation system with movement, roads, settlements,
       creature, and city interactions plus fadeable surface history.
-- Content-pack dependency loading and schema migrations.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - Explicit desktop/mobile performance budgets and benchmark history.
 

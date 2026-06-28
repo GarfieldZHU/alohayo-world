@@ -138,7 +138,7 @@ The next renderer iteration replaces ad hoc per-chunk graphics with chunk meshes
 atlases, stronger camera culling, and zoom-level overlays. Low zoom emphasizes landmass
 and bathymetry; high zoom reveals ecological cover, roads, entities, and cell inspection.
 
-## Authored Maps
+## Authored Maps and Content Packs
 
 An authored map is a content-pack overlay: bounds, cell patches, entities, portals,
 landmarks, generator parameters, and protected regions. Procedural base passes run
@@ -146,6 +146,10 @@ first; authored overlays apply afterward. In the finite atlas, normalized placem
 relative to atlas dimensions. In the streamed world, normalized placement is anchored
 against the survey hint and centered around the origin so reusable authored areas remain
 reachable without inventing a finite world edge.
+
+`docs/CONTENT_PACKS.md` defines the next loader slice: dependency ordering, overlay
+provenance, conflict rules, and migration planning. The map system should consume a
+resolved overlay stream, not perform ad hoc filesystem ordering or silent ID overrides.
 
 ## Roads and Settlements
 
