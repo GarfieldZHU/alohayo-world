@@ -24,6 +24,7 @@ export const MINIMAP_CONTENT_SIZE = MINIMAP_FRAME_SIZE - MINIMAP_FRAME_INSET * 2
 const META_ROW_HEIGHT = 26
 const COLLAPSED_PANEL_HEIGHT = 30
 const EXPANDED_PANEL_HEIGHT = MINIMAP_FRAME_OFFSET_TOP + MINIMAP_FRAME_SIZE
+const CORNER_BUTTON_OFFSET = 8
 
 export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapControls {
   const panel = document.createElement('div')
@@ -46,13 +47,15 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   const header = document.createElement('div')
   Object.assign(header.style, {
     position: 'absolute',
-    inset: '0 0 auto 0',
+    top: '0',
+    right: '0',
+    width: `${MINIMAP_FRAME_SIZE}px`,
     display: 'flex',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: '6px',
+    gap: '0',
     height: `${META_ROW_HEIGHT}px`,
-    pointerEvents: 'auto',
+    pointerEvents: 'none',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(header)
 
@@ -81,11 +84,15 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     transition:
       'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
+  clock.style.pointerEvents = 'auto'
   header.appendChild(clock)
 
   const collapseButton = document.createElement('button')
   collapseButton.type = 'button'
   Object.assign(collapseButton.style, {
+    position: 'absolute',
+    top: `${MINIMAP_FRAME_OFFSET_TOP + CORNER_BUTTON_OFFSET}px`,
+    right: `${CORNER_BUTTON_OFFSET}px`,
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
@@ -98,9 +105,9 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     fontSize: '13px',
     fontWeight: '700',
     transition:
-      'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
+      'top 180ms ease, transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
-  header.appendChild(collapseButton)
+  panel.appendChild(collapseButton)
 
   const frame = document.createElement('div')
   Object.assign(frame.style, {
@@ -115,7 +122,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   Object.assign(compass.style, {
     position: 'absolute',
     top: '10px',
-    right: '10px',
+    right: '38px',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -189,7 +196,10 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       frame.style.visibility = collapsed ? 'hidden' : 'visible'
       frame.style.pointerEvents = collapsed ? 'none' : 'auto'
       panel.style.height = collapsed ? `${COLLAPSED_PANEL_HEIGHT}px` : `${EXPANDED_PANEL_HEIGHT}px`
-      collapseButton.textContent = collapsed ? '+' : '−'
+      collapseButton.style.top = collapsed
+        ? '3px'
+        : `${MINIMAP_FRAME_OFFSET_TOP + CORNER_BUTTON_OFFSET}px`
+      collapseButton.textContent = collapsed ? '▾' : '▴'
       collapseButton.title = collapsed
         ? args.getText('minimapExpand')
         : args.getText('minimapCollapse')

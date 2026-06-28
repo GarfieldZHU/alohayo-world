@@ -39,6 +39,8 @@
 - Reworked the minimap into a lighter local-map HUD with a persistent collapsed affordance,
   improved expanded-shell recovery, and issue-first verification workflow notes for
   future regressions.
+- Tuned the minimap header polish again so the collapse control lives on the map corner
+  with arrow icons and the clock aligns cleanly to the minimap edge.
 
 ## 0.1.0-demo
 
