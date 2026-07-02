@@ -436,6 +436,12 @@ export interface GameHandle {
 }
 
 export type { I18nCatalog, LanguageOption, LocaleCode } from './i18n'
+export type {
+  ContentPackResolutionInput,
+  ResolvedContentPack,
+  ResolvedContentPacks,
+} from './content-packs'
+export { resolveContentPacks } from './content-packs'
 export {
   formatI18n,
   getI18nCatalog,

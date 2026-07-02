@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '../packages/map/src'
-import type { MapAreaDefinition } from '../packages/config/src'
+import {
+  resolveContentPacks,
+  type ContentPackManifest,
+  type MapAreaDefinition,
+  type MapAreaPackDefinition,
+} from '../packages/config/src'
 import biomes from '../content/core/biomes.json'
+import coreManifest from '../content/core/manifest.json'
 import terrainRules from '../content/core/terrain-rules.json'
 import englishCatalog from '../i18n/en.json'
 import chineseCatalog from '../i18n/zh-CN.json'
+import archipelagoManifest from '../content/examples/archipelago/manifest.json'
+import archipelagoMapAreas from '../content/examples/archipelago/maps/index.json'
+import cloudbreakAtoll from '../content/examples/archipelago/maps/areas/cloudbreak-atoll.json'
+import coreMapAreas from '../content/maps/core/index.json'
 import terrainShowcase from '../content/maps/core/areas/terrain-showcase.json'
 import wayfinderIsle from '../content/maps/core/areas/wayfinder-isle.json'
 
@@ -16,6 +26,10 @@ const isWaterBiome = (biome: number) =>
   biome === BIOME.reef
 const englishBiomeNames = englishCatalog.content.biomes as Record<string, { name: string }>
 const chineseBiomeNames = chineseCatalog.content.biomes as Record<string, { name: string }>
+const corePackManifest = coreManifest as ContentPackManifest
+const archipelagoPackManifest = archipelagoManifest as ContentPackManifest
+const coreMapAreaPack = coreMapAreas as MapAreaPackDefinition
+const archipelagoMapAreaPack = archipelagoMapAreas as MapAreaPackDefinition
 
 describe('world generation', () => {
   it('documents every terrain with rules and localized names', () => {
@@ -151,5 +165,78 @@ describe('world generation', () => {
       expect(codes.has(biome.code), biome.id).toBe(true)
     }
     expect(world.areaIds).toContain('core:terrain-showcase')
+  })
+
+  it('resolves content packs in dependency order and merges authored areas deterministically', () => {
+    const resolution = resolveContentPacks({
+      manifests: {
+        '/content/examples/archipelago/manifest.json': archipelagoPackManifest,
+        '/content/core/manifest.json': corePackManifest,
+      },
+      mapAreaPacks: {
+        '/content/maps/core/index.json': coreMapAreaPack,
+        '/content/examples/archipelago/maps/index.json': archipelagoMapAreaPack,
+      },
+      mapAreas: {
+        '/content/maps/core/areas/terrain-showcase.json': terrainShowcase as MapAreaDefinition,
+        '/content/maps/core/areas/wayfinder-isle.json': wayfinderIsle as MapAreaDefinition,
+        '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json':
+          cloudbreakAtoll as MapAreaDefinition,
+      },
+    })
+
+    expect(resolution.orderedPackIds).toEqual(['core', 'archipelago'])
+    expect(
+      resolution.orderedPacks.map((pack) => ({
+        id: pack.pack.id,
+        depth: pack.dependencyDepth,
+        areaIds: pack.mapAreas.map((area) => area.id),
+      }))
+    ).toEqual([
+      {
+        id: 'core',
+        depth: 0,
+        areaIds: ['core:wayfinder-isle', 'core:terrain-showcase'],
+      },
+      {
+        id: 'archipelago',
+        depth: 1,
+        areaIds: ['archipelago:cloudbreak-atoll'],
+      },
+    ])
+    expect(resolution.mapAreas.map((area) => area.id)).toEqual([
+      'core:wayfinder-isle',
+      'core:terrain-showcase',
+      'archipelago:cloudbreak-atoll',
+    ])
+  })
+
+  it('fails on missing content-pack dependencies', () => {
+    expect(() =>
+      resolveContentPacks({
+        manifests: {
+          '/content/examples/archipelago/manifest.json': archipelagoPackManifest,
+        },
+      })
+    ).toThrow('depends on missing pack "core"')
+  })
+
+  it('fails on cyclic content-pack dependencies', () => {
+    expect(() =>
+      resolveContentPacks({
+        manifests: {
+          '/content/a/manifest.json': {
+            ...corePackManifest,
+            id: 'pack-a',
+            dependencies: ['pack-b'],
+          } satisfies ContentPackManifest,
+          '/content/b/manifest.json': {
+            ...archipelagoPackManifest,
+            id: 'pack-b',
+            dependencies: ['pack-a'],
+          } satisfies ContentPackManifest,
+        },
+      })
+    ).toThrow('content pack dependency cycle')
   })
 })

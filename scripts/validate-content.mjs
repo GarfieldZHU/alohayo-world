@@ -1,5 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, posix } from 'node:path'
 
+const contentRoot = new URL('../content/', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('../content/core/manifest.json', import.meta.url)))
 const world = JSON.parse(readFileSync(new URL('../content/core/world.json', import.meta.url)))
 const biomes = JSON.parse(readFileSync(new URL('../content/core/biomes.json', import.meta.url)))
@@ -12,6 +14,8 @@ const mapAreaRoot = new URL('../content/maps/core/areas/', import.meta.url)
 const mapAreas = readdirSync(mapAreaRoot)
   .filter((name) => name.endsWith('.json'))
   .map((name) => JSON.parse(readFileSync(new URL(name, mapAreaRoot))))
+const allManifestEntries = collectManifestEntries(contentRoot)
+const manifestById = new Map(allManifestEntries.map((entry) => [entry.manifest.id, entry]))
 const abilities = JSON.parse(
   readFileSync(new URL('../content/characters/core/abilities.json', import.meta.url))
 )
@@ -34,6 +38,24 @@ const archetypes = JSON.parse(
   readFileSync(new URL('../content/characters/core/archetypes.json', import.meta.url))
 )
 const errors = []
+
+const orderedPackIds = validateContentPackDependencies(allManifestEntries, errors)
+const resolvedPackAreas = orderedPackIds.flatMap((packId) => {
+  const entry = manifestById.get(packId)
+  if (!entry) {
+    return []
+  }
+  return resolvePackMapAreas(entry, errors)
+})
+
+const resolvedMapAreaIds = new Set()
+for (const area of resolvedPackAreas) {
+  if (resolvedMapAreaIds.has(area.id)) {
+    errors.push(`duplicate map area id ${area.id}`)
+    continue
+  }
+  resolvedMapAreaIds.add(area.id)
+}
 
 if (manifest.schemaVersion !== 1 || manifest.id !== 'core') errors.push('invalid core manifest')
 if (world.schemaVersion !== 1 || world.chunkSize <= 0 || world.width <= 0 || world.height <= 0) {
@@ -183,6 +205,11 @@ for (const area of mapAreas) {
       errors.push(`unknown terrain ${patch.terrainId} in ${area.id}`)
   }
 }
+for (const area of resolvedPackAreas) {
+  if (!area.terrainPatches?.length) {
+    errors.push(`resolved content pack area ${area.id || '<missing>'} has no terrain patches`)
+  }
+}
 
 if (!Array.isArray(abilities) || abilities.length < 8)
   errors.push('at least eight abilities are required')
@@ -290,5 +317,115 @@ if (errors.length) {
   process.exit(1)
 }
 console.log(
-  `validated ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${mapAreas.length} map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
+  `validated ${allManifestEntries.length} content packs, ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${resolvedPackAreas.length} resolved map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
 )
+
+function collectManifestEntries(rootUrl) {
+  return walkDirectory(rootUrl)
+    .filter((path) => path.endsWith('manifest.json'))
+    .sort()
+    .map((path) => ({
+      path,
+      manifest: readJsonFromContentPath(path),
+    }))
+}
+
+function walkDirectory(directoryUrl) {
+  const entries = readdirSync(directoryUrl, { withFileTypes: true })
+  const files = []
+  for (const entry of entries) {
+    const nextUrl = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directoryUrl)
+    if (entry.isDirectory()) {
+      files.push(...walkDirectory(nextUrl))
+    } else {
+      files.push(contentPathFromUrl(nextUrl))
+    }
+  }
+  return files
+}
+
+function validateContentPackDependencies(entries, errors) {
+  const packIds = new Set()
+  for (const entry of entries) {
+    if (!entry.manifest?.id) {
+      errors.push(`content pack at ${entry.path} is missing an id`)
+      continue
+    }
+    if (packIds.has(entry.manifest.id)) {
+      errors.push(`duplicate content pack id ${entry.manifest.id}`)
+      continue
+    }
+    packIds.add(entry.manifest.id)
+  }
+
+  const packById = new Map(entries.map((entry) => [entry.manifest.id, entry]))
+  const indegree = new Map()
+  const dependents = new Map()
+
+  for (const entry of entries) {
+    const dependencies = entry.manifest.dependencies ?? []
+    indegree.set(entry.manifest.id, dependencies.length)
+    for (const dependencyId of dependencies) {
+      if (!packById.has(dependencyId)) {
+        errors.push(`content pack ${entry.manifest.id} depends on missing pack ${dependencyId}`)
+        continue
+      }
+      const values = dependents.get(dependencyId) ?? []
+      values.push(entry.manifest.id)
+      dependents.set(dependencyId, values)
+    }
+  }
+
+  const ready = entries
+    .filter((entry) => (indegree.get(entry.manifest.id) ?? 0) === 0)
+    .map((entry) => entry.manifest.id)
+    .sort()
+  const ordered = []
+
+  while (ready.length > 0) {
+    const packId = ready.shift()
+    ordered.push(packId)
+    for (const dependentId of (dependents.get(packId) ?? []).sort()) {
+      const nextIndegree = (indegree.get(dependentId) ?? 0) - 1
+      indegree.set(dependentId, nextIndegree)
+      if (nextIndegree === 0 && !ready.includes(dependentId)) {
+        ready.push(dependentId)
+        ready.sort()
+      }
+    }
+  }
+
+  if (ordered.length !== entries.length) {
+    errors.push('content pack dependency cycle detected')
+  }
+
+  return ordered
+}
+
+function resolvePackMapAreas(entry, errors) {
+  if (!entry.manifest.mapAreas) {
+    return []
+  }
+  const packIndexPath = resolveRelativeContentPath(entry.path, entry.manifest.mapAreas)
+  const packIndex = readJsonFromContentPath(packIndexPath)
+  if (packIndex.schemaVersion !== 1 || !Array.isArray(packIndex.areas)) {
+    errors.push(`invalid map area pack ${packIndex.id || '<missing>'}`)
+    return []
+  }
+  return packIndex.areas.map((areaPath) => {
+    const resolvedAreaPath = resolveRelativeContentPath(packIndexPath, areaPath)
+    return readJsonFromContentPath(resolvedAreaPath)
+  })
+}
+
+function resolveRelativeContentPath(fromPath, relativePath) {
+  return posix.normalize(posix.join(dirname(fromPath), relativePath))
+}
+
+function readJsonFromContentPath(contentPath) {
+  return JSON.parse(readFileSync(new URL(contentPath, contentRoot)))
+}
+
+function contentPathFromUrl(fileUrl) {
+  return fileUrl.pathname.split('/content/')[1]
+}

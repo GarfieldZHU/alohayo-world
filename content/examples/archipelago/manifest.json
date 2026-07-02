@@ -6,5 +6,6 @@
   "description": "A future overlay pack demonstrating drop-in world extensions.",
   "dependencies": ["core"],
   "world": "world.json",
-  "biomes": "../../core/biomes.json"
+  "biomes": "../../core/biomes.json",
+  "mapAreas": "maps/index.json"
 }

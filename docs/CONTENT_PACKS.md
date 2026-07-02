@@ -208,12 +208,12 @@ Deliver:
 
 ## TODO Checklist
 
-- [ ] document and lock the deterministic dependency resolution rules in config tests
-- [ ] add pack-discovery and dependency-graph validation to the content pipeline
+- [x] document and lock the deterministic dependency resolution rules in config tests
+- [x] add pack-discovery and dependency-graph validation to the content pipeline
 - [ ] extend manifest/docs with the exact optional file ownership rules
 - [ ] define authored overlay provenance and conflict policy by data type
 - [ ] add schemas for authored entities, protected regions, and generator modifiers
-- [ ] add a dependent example pack that extends `core` without engine code changes
+- [x] add a dependent example pack that extends `core` without engine code changes
 - [ ] add deterministic tests for dependency order, conflicts, and world-hash stability
 - [ ] surface loader diagnostics for CI and dev tooling
 - [ ] define the migration registry shape for future schema versions

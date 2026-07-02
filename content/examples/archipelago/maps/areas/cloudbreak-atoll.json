@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "id": "archipelago:cloudbreak-atoll",
+  "name": "Cloudbreak Atoll",
+  "description": "A disabled-by-default authored atoll proving extension without engine changes.",
+  "enabled": false,
+  "placement": { "mode": "normalized", "x": 0.74, "y": 0.3 },
+  "width": 18,
+  "height": 14,
+  "terrainPatches": [
+    {
+      "shape": "ellipse",
+      "x": 0,
+      "y": 0,
+      "width": 18,
+      "height": 14,
+      "terrainId": "core:shallow-sea",
+      "elevation": 102,
+      "moisture": 172,
+      "temperature": 182
+    },
+    {
+      "shape": "ellipse",
+      "x": 3,
+      "y": 2,
+      "width": 12,
+      "height": 10,
+      "terrainId": "core:reef",
+      "elevation": 118,
+      "moisture": 188,
+      "temperature": 196
+    },
+    {
+      "shape": "ellipse",
+      "x": 5,
+      "y": 4,
+      "width": 8,
+      "height": 6,
+      "terrainId": "core:beach",
+      "elevation": 138,
+      "moisture": 124,
+      "temperature": 204
+    }
+  ],
+  "cells": [
+    {
+      "x": 9,
+      "y": 6,
+      "terrainId": "core:oasis",
+      "elevation": 146,
+      "moisture": 160,
+      "temperature": 198
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "archipelago:cloudbreak-lantern",
+      "name": "Cloudbreak Lantern",
+      "x": 9,
+      "y": 6,
+      "kind": "beacon",
+      "description": "A bright authored landmark used to prove dependent pack loading."
+    }
+  ]
+}

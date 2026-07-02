@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "archipelago:map-areas",
+  "name": "Archipelago Example Areas",
+  "description": "Optional authored overlay pack proving dependent pack loading.",
+  "areas": ["areas/cloudbreak-atoll.json"]
+}

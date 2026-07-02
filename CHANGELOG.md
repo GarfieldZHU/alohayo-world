@@ -44,6 +44,9 @@
 - Fixed the minimap collapse affordance click target, moved it outside the map frame,
   and stabilized dev tool tabs with persistent selection, fixed footer chrome, and
   localized tab hints.
+- Added the first real content-pack loader slice: manifest discovery, dependency DAG
+  validation, deterministic pack ordering, example dependent overlays, and CI content
+  validation for authored area packs.
 
 ## 0.1.0-demo
 

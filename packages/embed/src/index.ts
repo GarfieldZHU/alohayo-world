@@ -5,11 +5,13 @@ import type {
   CharacterActionDefinition,
   CharacterArchetypeDefinition,
   CharacterContentDefinition,
+  ContentPackManifest,
   EquipmentItemDefinition,
   EquipmentPoolDefinition,
   EquipmentSlotDefinition,
   GameHandle,
   MapAreaDefinition,
+  MapAreaPackDefinition,
   MountGameOptions,
   WorldDefinition,
 } from '@alohayo/config'
@@ -18,12 +20,21 @@ import {
   getI18nCatalog,
   LANGUAGE_OPTIONS,
   normalizeLocale,
+  resolveContentPacks,
   SUPPORTED_LOCALES,
   translateContentDescription,
   translateContentName,
 } from '@alohayo/config'
 
-const areaModules = import.meta.glob('../../../content/maps/**/areas/*.json', {
+const manifestModules = import.meta.glob('../../../content/**/manifest.json', {
+  eager: true,
+  import: 'default',
+}) as Record<string, ContentPackManifest>
+const mapAreaPackModules = import.meta.glob('../../../content/**/maps/**/index.json', {
+  eager: true,
+  import: 'default',
+}) as Record<string, MapAreaPackDefinition>
+const areaModules = import.meta.glob('../../../content/**/maps/**/areas/*.json', {
   eager: true,
   import: 'default',
 }) as Record<string, MapAreaDefinition>
@@ -32,6 +43,13 @@ export async function mountGame(options: MountGameOptions): Promise<GameHandle> 
   if (!(options.container instanceof HTMLElement)) {
     throw new TypeError('mountGame requires an HTMLElement container')
   }
+
+  const contentPacks = resolveContentPacks({
+    manifests: manifestModules,
+    mapAreaPacks: mapAreaPackModules,
+    mapAreas: areaModules,
+  })
+
   const [
     { createGame },
     world,
@@ -68,7 +86,7 @@ export async function mountGame(options: MountGameOptions): Promise<GameHandle> 
   return createGame(options, {
     world: world.default as WorldDefinition,
     biomes: biomes.default as BiomeDefinition[],
-    mapAreas: Object.values(areaModules),
+    mapAreas: contentPacks.mapAreas,
     characters,
   })
 }
