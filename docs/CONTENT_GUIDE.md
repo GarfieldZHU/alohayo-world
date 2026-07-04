@@ -48,6 +48,10 @@ If a pack introduces a new dependency, exported ID, or overlay family, document 
 change in `CONTENT_PACKS.md` and add or update fixtures proving the resolved pack order
 and merge behavior.
 
+If a pack declares `ownership`, it must match the fixed family policy documented in
+`CONTENT_PACKS.md`. In the current contract, `mapAreas` are additive overlays while
+`world`, `biomes`, and `characters` are authoritative family references.
+
 To add a biome, append a definition with a unique numeric code, family, palette, climate
 ranges, movement cost, road cost, occurrence weight, creature habitat tags, and
 settlement suitability. Those metadata drive transport and population generation, not

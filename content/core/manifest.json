@@ -8,5 +8,11 @@
   "world": "world.json",
   "biomes": "biomes.json",
   "mapAreas": "../maps/core/index.json",
-  "characters": "../characters/core/index.json"
+  "characters": "../characters/core/index.json",
+  "ownership": {
+    "world": "authoritative",
+    "biomes": "authoritative",
+    "mapAreas": "additive",
+    "characters": "authoritative"
+  }
 }

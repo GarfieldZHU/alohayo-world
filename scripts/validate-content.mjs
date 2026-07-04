@@ -1,6 +1,15 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, posix } from 'node:path'
 
+const contentPackOwnershipRules = {
+  world: 'authoritative',
+  biomes: 'authoritative',
+  terrainRules: 'authoritative',
+  mapAreas: 'additive',
+  characters: 'authoritative',
+  entities: 'additive',
+}
+
 const contentRoot = new URL('../content/', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('../content/core/manifest.json', import.meta.url)))
 const world = JSON.parse(readFileSync(new URL('../content/core/world.json', import.meta.url)))
@@ -356,6 +365,7 @@ function validateContentPackDependencies(entries, errors) {
       continue
     }
     packIds.add(entry.manifest.id)
+    validateManifestOwnership(entry, errors)
   }
 
   const packById = new Map(entries.map((entry) => [entry.manifest.id, entry]))
@@ -400,6 +410,45 @@ function validateContentPackDependencies(entries, errors) {
   }
 
   return ordered
+}
+
+function validateManifestOwnership(entry, errors) {
+  for (const [fileKind, ownership] of Object.entries(entry.manifest.ownership ?? {})) {
+    const expectedOwnership = contentPackOwnershipRules[fileKind]
+    if (!expectedOwnership) {
+      errors.push(`content pack ${entry.manifest.id} declares unknown ownership kind ${fileKind}`)
+      continue
+    }
+    if (ownership !== expectedOwnership) {
+      errors.push(
+        `content pack ${entry.manifest.id} must declare ownership ${expectedOwnership} for ${fileKind}`
+      )
+    }
+    if (!hasManifestFileReference(entry.manifest, fileKind)) {
+      errors.push(
+        `content pack ${entry.manifest.id} declares ownership for ${fileKind} but provides no file reference`
+      )
+    }
+  }
+}
+
+function hasManifestFileReference(manifest, fileKind) {
+  switch (fileKind) {
+    case 'world':
+      return Boolean(manifest.world)
+    case 'biomes':
+      return Boolean(manifest.biomes)
+    case 'terrainRules':
+      return false
+    case 'mapAreas':
+      return Boolean(manifest.mapAreas)
+    case 'characters':
+      return Boolean(manifest.characters)
+    case 'entities':
+      return false
+    default:
+      return false
+  }
 }
 
 function resolvePackMapAreas(entry, errors) {

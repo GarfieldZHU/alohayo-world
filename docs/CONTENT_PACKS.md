@@ -52,6 +52,34 @@ content/<pack-id>/
 Not every pack needs every file. A small overlay pack may only contribute authored
 areas and landmarks.
 
+## File Ownership Rules
+
+Pack manifests may reference several content families, but their semantic ownership must
+stay explicit:
+
+| File family    | Ownership mode  | Meaning                                                     |
+| -------------- | --------------- | ----------------------------------------------------------- |
+| `world`        | `authoritative` | defines the world-default contract for a pack               |
+| `biomes`       | `authoritative` | defines the biome catalog referenced by that pack           |
+| `terrainRules` | `authoritative` | will define the authoritative terrain-material rule catalog |
+| `mapAreas`     | `additive`      | contributes authored overlays that merge after generation   |
+| `characters`   | `authoritative` | defines a character catalog owned by that pack              |
+| `entities`     | `additive`      | will contribute authored entity overlays and fixtures       |
+
+Current contract notes:
+
+- manifests may declare `ownership` only for file families they intentionally export;
+- declared ownership must match the fixed rule for that family;
+- a pack must not declare ownership for a family unless it also provides the matching
+  file reference;
+- `mapAreas` are the first additive family in production today;
+- `terrainRules` and `entities` are reserved in the ownership contract before their
+  loaders are fully implemented.
+
+The goal here is to stop content packs from looking interchangeable when they are not.
+An overlay pack can still reference upstream data for compatibility, but that does not
+make it the semantic owner of those upstream catalogs.
+
 ## Loader Responsibilities
 
 The content-pack loader should own five responsibilities:
@@ -104,6 +132,25 @@ Merge policy by data kind:
 
 The important part is that override behavior is explicit and small. Silent replacement
 should be rare.
+
+## Overlay Provenance
+
+Resolved overlays must carry provenance, not only merged gameplay data.
+
+For authored map areas the resolver now records:
+
+- `sourcePackId`
+- `sourcePackVersion`
+- `sourceManifestPath`
+- `sourceMapAreaPackId`
+- `sourceMapAreaPackPath`
+- `sourceAreaPath`
+- `ownership`
+
+Future authored entities, protected regions, and generator modifiers should follow the
+same pattern. The engine may still consume plain `MapAreaDefinition[]` for compatibility,
+but the resolved pack layer must keep the richer metadata available for validation,
+inspection, and future save compatibility.
 
 ## Authored Overlay Types
 
@@ -210,8 +257,8 @@ Deliver:
 
 - [x] document and lock the deterministic dependency resolution rules in config tests
 - [x] add pack-discovery and dependency-graph validation to the content pipeline
-- [ ] extend manifest/docs with the exact optional file ownership rules
-- [ ] define authored overlay provenance and conflict policy by data type
+- [x] extend manifest/docs with the exact optional file ownership rules
+- [x] define authored overlay provenance and conflict policy by data type
 - [ ] add schemas for authored entities, protected regions, and generator modifiers
 - [x] add a dependent example pack that extends `core` without engine code changes
 - [ ] add deterministic tests for dependency order, conflicts, and world-hash stability

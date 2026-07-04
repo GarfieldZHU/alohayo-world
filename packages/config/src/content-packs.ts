@@ -1,4 +1,11 @@
-import type { ContentPackManifest, MapAreaDefinition, MapAreaPackDefinition } from './index'
+import type {
+  ContentPackFileKind,
+  ContentPackManifest,
+  ContentPackOwnershipMode,
+  MapAreaDefinition,
+  MapAreaPackDefinition,
+  ResolvedMapAreaDefinition,
+} from './index'
 
 export interface ContentPackResolutionInput {
   manifests: Record<string, ContentPackManifest>
@@ -12,7 +19,7 @@ export interface ResolvedContentPack {
   dependencyDepth: number
   mapAreaPack?: MapAreaPackDefinition
   mapAreaPackPath?: string
-  mapAreas: MapAreaDefinition[]
+  mapAreas: ResolvedMapAreaDefinition[]
   mapAreaPaths: string[]
 }
 
@@ -20,11 +27,21 @@ export interface ResolvedContentPacks {
   orderedPacks: ResolvedContentPack[]
   orderedPackIds: string[]
   mapAreas: MapAreaDefinition[]
+  resolvedMapAreas: ResolvedMapAreaDefinition[]
 }
 
 interface ManifestEntry {
   pack: ContentPackManifest
   manifestPath: string
+}
+
+const CONTENT_PACK_OWNERSHIP_RULES: Record<ContentPackFileKind, ContentPackOwnershipMode> = {
+  world: 'authoritative',
+  biomes: 'authoritative',
+  terrainRules: 'authoritative',
+  mapAreas: 'additive',
+  characters: 'authoritative',
+  entities: 'additive',
 }
 
 export function resolveContentPacks({
@@ -59,7 +76,8 @@ export function resolveContentPacks({
   return {
     orderedPacks,
     orderedPackIds,
-    mapAreas: orderedPacks.flatMap((pack) => pack.mapAreas),
+    mapAreas: orderedPacks.flatMap((pack) => pack.mapAreas.map((entry) => entry.area)),
+    resolvedMapAreas: orderedPacks.flatMap((pack) => pack.mapAreas),
   }
 }
 
@@ -77,6 +95,7 @@ function buildManifestEntries(manifests: Record<string, ContentPackManifest>): M
       throw new Error(`duplicate content pack id "${entry.pack.id}"`)
     }
     seenPackIds.add(entry.pack.id)
+    validateOwnership(entry)
   }
   return entries
 }
@@ -235,8 +254,68 @@ function resolveMapAreasForPack(
   return {
     mapAreaPack,
     mapAreaPackPath,
-    mapAreas: areaDefinitions.map(({ area }) => area),
+    mapAreas: areaDefinitions.map(
+      ({ area, resolvedPath }) =>
+        ({
+          area,
+          sourcePackId: entry.pack.id,
+          sourcePackVersion: entry.pack.version,
+          sourceManifestPath: entry.manifestPath,
+          sourceMapAreaPackId: mapAreaPack.id,
+          sourceMapAreaPackPath: mapAreaPackPath,
+          sourceAreaPath: resolvedPath,
+          ownership: resolveOwnership(entry.pack, 'mapAreas'),
+        }) satisfies ResolvedMapAreaDefinition
+    ),
     mapAreaPaths: areaDefinitions.map(({ resolvedPath }) => resolvedPath),
+  }
+}
+
+function validateOwnership(entry: ManifestEntry) {
+  const declaredOwnership = entry.pack.ownership ?? {}
+  for (const [fileKind, ownership] of Object.entries(declaredOwnership) as Array<
+    [ContentPackFileKind, ContentPackOwnershipMode]
+  >) {
+    const expectedOwnership = CONTENT_PACK_OWNERSHIP_RULES[fileKind]
+    if (!expectedOwnership) {
+      throw new Error(
+        `content pack "${entry.pack.id}" declares unknown ownership kind "${fileKind}"`
+      )
+    }
+    if (ownership !== expectedOwnership) {
+      throw new Error(
+        `content pack "${entry.pack.id}" must declare ownership "${expectedOwnership}" for "${fileKind}"`
+      )
+    }
+    if (!hasFileReference(entry.pack, fileKind)) {
+      throw new Error(
+        `content pack "${entry.pack.id}" declares ownership for "${fileKind}" but provides no file reference`
+      )
+    }
+  }
+}
+
+function resolveOwnership(
+  pack: ContentPackManifest,
+  fileKind: ContentPackFileKind
+): ContentPackOwnershipMode {
+  return pack.ownership?.[fileKind] ?? CONTENT_PACK_OWNERSHIP_RULES[fileKind]
+}
+
+function hasFileReference(pack: ContentPackManifest, fileKind: ContentPackFileKind): boolean {
+  switch (fileKind) {
+    case 'world':
+      return Boolean(pack.world)
+    case 'biomes':
+      return Boolean(pack.biomes)
+    case 'terrainRules':
+      return false
+    case 'mapAreas':
+      return Boolean(pack.mapAreas)
+    case 'characters':
+      return Boolean(pack.characters)
+    case 'entities':
+      return false
   }
 }
 

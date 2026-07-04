@@ -47,6 +47,9 @@
 - Added the first real content-pack loader slice: manifest discovery, dependency DAG
   validation, deterministic pack ordering, example dependent overlays, and CI content
   validation for authored area packs.
+- Extended content-pack contracts with explicit file-ownership rules and authored
+  overlay provenance metadata so later overlay families can merge without losing source
+  identity.
 
 ## 0.1.0-demo
 

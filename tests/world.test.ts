@@ -190,7 +190,7 @@ describe('world generation', () => {
       resolution.orderedPacks.map((pack) => ({
         id: pack.pack.id,
         depth: pack.dependencyDepth,
-        areaIds: pack.mapAreas.map((area) => area.id),
+        areaIds: pack.mapAreas.map((entry) => entry.area.id),
       }))
     ).toEqual([
       {
@@ -209,6 +209,12 @@ describe('world generation', () => {
       'core:terrain-showcase',
       'archipelago:cloudbreak-atoll',
     ])
+    expect(resolution.resolvedMapAreas[2]).toMatchObject({
+      sourcePackId: 'archipelago',
+      sourceMapAreaPackId: 'archipelago:map-areas',
+      sourceAreaPath: '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json',
+      ownership: 'additive',
+    })
   })
 
   it('fails on missing content-pack dependencies', () => {
@@ -238,5 +244,21 @@ describe('world generation', () => {
         },
       })
     ).toThrow('content pack dependency cycle')
+  })
+
+  it('fails when declared ownership does not match the supported file policy', () => {
+    expect(() =>
+      resolveContentPacks({
+        manifests: {
+          '/content/examples/archipelago/manifest.json': {
+            ...archipelagoPackManifest,
+            ownership: {
+              mapAreas: 'authoritative',
+            },
+          } satisfies ContentPackManifest,
+          '/content/core/manifest.json': corePackManifest,
+        },
+      })
+    ).toThrow('must declare ownership "additive" for "mapAreas"')
   })
 })

@@ -11,7 +11,18 @@ export interface ContentPackManifest {
   biomes: string
   mapAreas?: string
   characters?: string
+  ownership?: Partial<Record<ContentPackFileKind, ContentPackOwnershipMode>>
 }
+
+export type ContentPackFileKind =
+  | 'world'
+  | 'biomes'
+  | 'terrainRules'
+  | 'mapAreas'
+  | 'characters'
+  | 'entities'
+
+export type ContentPackOwnershipMode = 'authoritative' | 'additive'
 
 export interface WorldDefinition {
   schemaVersion: 1
@@ -282,6 +293,17 @@ export interface MapAreaDefinition {
   landmarks?: MapLandmarkDefinition[]
 }
 
+export interface ResolvedMapAreaDefinition {
+  area: MapAreaDefinition
+  sourcePackId: string
+  sourcePackVersion: string
+  sourceManifestPath: string
+  sourceMapAreaPackId: string
+  sourceMapAreaPackPath: string
+  sourceAreaPath: string
+  ownership: ContentPackOwnershipMode
+}
+
 export interface AbilityDefinition {
   id: string
   name: string
@@ -406,6 +428,7 @@ export interface WorldManifest {
   biomes: BiomeDefinition[]
   terrainRules?: TerrainRulePackDefinition
   mapAreas?: MapAreaDefinition[]
+  resolvedMapAreas?: ResolvedMapAreaDefinition[]
   characters?: CharacterContentDefinition
 }
 
