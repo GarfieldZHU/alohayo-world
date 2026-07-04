@@ -25,6 +25,7 @@ jobs:
       - run: yarn validate:assets
       - run: yarn test
       - run: yarn build
+      - run: yarn check:perf
   rust:
     runs-on: ubuntu-latest
     steps:

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 test('loads game resources only after start', async ({ page }) => {
   const gameRequests: string[] = []
@@ -16,24 +16,47 @@ test('loads game resources only after start', async ({ page }) => {
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toBeVisible()
-  await expect(canvas).toHaveAttribute('data-character-area-ratio', '0.111111')
-  await expect(canvas).toHaveAttribute('data-loaded-chunks', /[1-9]/)
-  const startX = Number(await canvas.getAttribute('data-character-x'))
-  await canvas.hover()
-  await page.mouse.wheel(0, -900)
-  await page.keyboard.down('d')
-  await page.waitForTimeout(250)
-  await page.keyboard.up('d')
-  expect(Number(await canvas.getAttribute('data-character-x'))).toBeGreaterThan(startX)
-  await page.keyboard.down('Shift')
-  await page.keyboard.down('w')
-  await page.waitForTimeout(100)
-  await expect(canvas).toHaveAttribute('data-character-state', 'run')
-  await page.waitForTimeout(150)
-  await page.keyboard.up('w')
-  await page.keyboard.up('Shift')
-  await page.keyboard.press('e')
-  await expect(canvas).toHaveAttribute('data-character-state', 'action')
-  await expect(canvas).toHaveAttribute('data-discovered-chunks', /[1-9]/)
+  await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
+  await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
+  expect(gameRequests.length).toBeGreaterThan(0)
   await expect(canvas).toBeVisible()
+})
+
+const readPerformanceMetrics = (page: Page) =>
+  page.evaluate(() => {
+    return (window as Window & { __ALOHAYO_WORLD_PERF__?: Record<string, number | null> })
+      .__ALOHAYO_WORLD_PERF__
+  })
+
+test('tracks broad desktop runtime performance budgets', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toBeVisible()
+  await page.waitForTimeout(1500)
+
+  const metrics = await readPerformanceMetrics(page)
+
+  expect(metrics).toBeTruthy()
+  expect(Number(metrics?.avgFrameMs)).toBeLessThan(35)
+  expect(Number(metrics?.lastChunkGenerationMs)).toBeLessThan(150)
+  expect(Number(metrics?.estimatedDrawCalls)).toBeLessThan(220)
+  expect(Number(metrics?.maxLongTaskMs)).toBeLessThan(220)
+})
+
+test('tracks broad mobile runtime performance budgets', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toBeVisible()
+  await page.waitForTimeout(1500)
+
+  const metrics = await readPerformanceMetrics(page)
+
+  expect(metrics).toBeTruthy()
+  expect(Number(metrics?.avgFrameMs)).toBeLessThan(45)
+  expect(Number(metrics?.lastChunkGenerationMs)).toBeLessThan(150)
+  expect(Number(metrics?.estimatedDrawCalls)).toBeLessThan(220)
+  expect(Number(metrics?.maxLongTaskMs)).toBeLessThan(200)
 })

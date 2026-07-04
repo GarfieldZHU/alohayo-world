@@ -21,6 +21,7 @@
     "validate:content": "node scripts/validate-content.mjs",
     "validate:assets": "node scripts/validate-assets.mjs",
     "benchmark": "vitest run tests/benchmarks",
+    "check:perf": "node scripts/check-performance-budgets.mjs",
     "package": "node scripts/package-release.mjs"
   },
   "dependencies": {

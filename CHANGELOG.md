@@ -50,6 +50,9 @@
 - Extended content-pack contracts with explicit file-ownership rules and authored
   overlay provenance metadata so later overlay families can merge without losing source
   identity.
+- Added runtime performance telemetry, desktop/mobile benchmark gates, and build-size
+  budget enforcement for frame time, chunk latency, long tasks, memory sampling, and
+  bundle-size regressions.
 
 ## 0.1.0-demo
 

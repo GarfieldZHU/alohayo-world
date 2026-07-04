@@ -44,7 +44,9 @@
 - [ ] Expand weather into a full simulation system with movement, roads, settlements,
       creature, and city interactions plus fadeable surface history.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
-- Explicit desktop/mobile performance budgets and benchmark history.
+- [x] Explicit desktop/mobile performance budgets with runtime telemetry, benchmark
+      gates, and build-budget enforcement. See `docs/PERFORMANCE_BUDGETS.md` and issue
+      `#10`.
 
 ## Staged Modules
 

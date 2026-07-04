@@ -60,6 +60,7 @@ import {
 } from './utils'
 import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
 import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
+import { createRuntimePerformanceTracker } from './performance'
 
 export async function createGame(
   options: MountGameOptions,
@@ -183,6 +184,11 @@ export async function createGame(
   let minimapMode: 'fit' | 'manual' = 'fit'
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
+  const performanceTracker = createRuntimePerformanceTracker({
+    canvas: app.canvas,
+    sampleDrawCalls: () => estimateDrawCalls(chunkViews),
+    sampleLoadedChunks: () => chunks.size,
+  })
   const fixedStep = 1 / 60
   const surveyWidth = Math.max(
     content.world.width,
@@ -1296,6 +1302,7 @@ export async function createGame(
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
         lastChunkGenerationMs = chunk.generationMs
+        performanceTracker.markChunkGeneration(chunk.generationMs)
         renderChunk(chunk)
         return chunk
       })
@@ -2004,6 +2011,7 @@ export async function createGame(
       fpsStarted = now
       updateStatus()
     }
+    performanceTracker.frame(now, fps)
   })
 
   return {
@@ -2099,8 +2107,28 @@ export async function createGame(
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('resize', onResize)
+      performanceTracker.destroy()
       app.destroy(true, { children: true, texture: true })
       options.container.replaceChildren()
     },
   }
+}
+
+function estimateDrawCalls(chunkViews: Map<string, ChunkView>): number {
+  let drawCalls = 5
+  for (const view of chunkViews.values()) {
+    if (!view.container.visible) continue
+    if (view.terrain.visible) drawCalls += 1
+    if (view.transitions.visible) drawCalls += 1
+    if (view.regionalDetails.visible) drawCalls += 1
+    if (view.closeDetails.visible) drawCalls += 1
+    if (view.grid.visible) drawCalls += 1
+    if (view.surfaces.visible) drawCalls += 1
+    if (view.rivers.visible) drawCalls += 1
+    if (view.roads.visible) drawCalls += 1
+    if (view.settlements.visible) drawCalls += 1
+    if (view.landmarks.visible) drawCalls += 1
+    if (view.fog.visible) drawCalls += 2
+  }
+  return drawCalls
 }
