@@ -166,7 +166,9 @@ Planned overlay families:
 - `modifiers`: local generator hints such as settlement bias or road bias.
 
 The current implementation only has the first three. The next slice should add schemas
-for the later families before engine behavior depends on them.
+for the later families before engine behavior depends on them. The repository now
+validates those contracts as data-only overlays; runtime map/engine consumption remains
+follow-up work.
 
 ## Dependency and Compatibility Rules
 
@@ -243,6 +245,13 @@ Deliver:
 - pack-aware provenance recorded per overlay;
 - map queries that can report the winning overlay and source pack.
 
+Status:
+
+- schema coverage for `entities`, `protectedRegions`, and `modifiers` now exists in
+  `packages/config`, `scripts/validate-content.mjs`, and example pack fixtures;
+- runtime application/query support for those new overlay families is intentionally
+  tracked separately so `#7` does not blur contract work with unfinished behavior.
+
 ### Slice C: migration and diagnostics
 
 Goal: make pack growth survivable for future saves and debugging.
@@ -259,7 +268,7 @@ Deliver:
 - [x] add pack-discovery and dependency-graph validation to the content pipeline
 - [x] extend manifest/docs with the exact optional file ownership rules
 - [x] define authored overlay provenance and conflict policy by data type
-- [ ] add schemas for authored entities, protected regions, and generator modifiers
+- [x] add schemas for authored entities, protected regions, and generator modifiers
 - [x] add a dependent example pack that extends `core` without engine code changes
 - [ ] add deterministic tests for dependency order, conflicts, and world-hash stability
 - [ ] surface loader diagnostics for CI and dev tooling

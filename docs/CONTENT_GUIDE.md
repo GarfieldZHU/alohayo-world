@@ -86,5 +86,16 @@ still remains deterministic from `(seed, runtime time, world width)`.
 Custom authored areas live under `content/maps/**/areas/` and are discovered
 automatically at build time. See `config/MAPS.md`.
 
+Area files may now include four authored overlay families:
+
+- `landmarks`: stable named features rendered and queried by the map;
+- `entities`: future authored spawns/props/anchors kept as data-only definitions today;
+- `protectedRegions`: declarative no-overwrite zones for later overlay passes;
+- `modifiers`: local deterministic generator hints such as settlement or road bias.
+
+Those contracts are validated now even where runtime consumers are still pending. Add
+small examples when introducing a new overlay family, and keep the merge/provenance
+notes in `CONTENT_PACKS.md` in sync with the content examples.
+
 Characters live under `content/characters/` as separate ability, appearance, slot,
 item, pool, and archetype catalogs. See `config/CHARACTERS.md`.

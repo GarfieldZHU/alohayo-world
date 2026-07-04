@@ -102,6 +102,90 @@ Landmarks are local coordinates with stable IDs, names, kinds, and descriptions.
 demo renders a marker at regional zoom. Future systems use the same definitions for
 spawns, portals, quests, settlements, and map labels.
 
+## Authored Entities
+
+`entities` reserve future runtime actors, props, encounter seeds, portals, or spawn
+anchors without requiring engine code changes today.
+
+```json
+{
+  "id": "archipelago:cloudbreak-scout",
+  "kind": "npc-spawn",
+  "x": 10,
+  "y": 7,
+  "archetypeId": "core:wayfinder",
+  "factionId": "archipelago:cloudbreak-watch",
+  "tags": ["spawn", "coastal", "demo"],
+  "notes": "Reserved for the future authored entity runtime slice."
+}
+```
+
+Rules:
+
+- `id` must stay stable and namespaced.
+- `kind` is a data tag, not executable behavior.
+- `x` and `y` are local area-cell coordinates inside the area bounds.
+- `archetypeId`, `factionId`, `tags`, and `notes` are optional metadata for future
+  loaders and tooling.
+
+## Protected Regions
+
+`protectedRegions` define local bounds the generator or later overlay systems should
+leave alone unless an explicit override policy is introduced.
+
+```json
+{
+  "id": "archipelago:cloudbreak-lagoon-core",
+  "x": 4,
+  "y": 3,
+  "width": 10,
+  "height": 8,
+  "shape": "ellipse",
+  "reason": "Preserve the inner lagoon ring during future runtime overlay passes.",
+  "blocks": ["terrainPatches", "modifiers"]
+}
+```
+
+Rules:
+
+- `shape` currently supports `rectangle` and `ellipse`.
+- bounds must stay completely inside the local area rectangle.
+- `blocks` must be chosen from `terrainPatches`, `cells`, `landmarks`, `entities`, or
+  `modifiers`.
+- this is a declarative protection contract; the current runtime does not yet enforce
+  it during overlay application.
+
+## Generator Modifiers
+
+`modifiers` are local hints for future settlement, road, ecology, or authored-scenario
+passes. Keep them descriptive and deterministic.
+
+```json
+{
+  "id": "archipelago:cloudbreak-harbor-bias",
+  "kind": "settlement-bias",
+  "x": 6,
+  "y": 5,
+  "width": 5,
+  "height": 4,
+  "shape": "ellipse",
+  "strength": 0.42,
+  "parameters": {
+    "role": "harbor",
+    "roadBias": 0.25
+  },
+  "tags": ["future-settlement", "lagoon-edge"],
+  "notes": "Example local generator hint for the next authored-overlay runtime slice."
+}
+```
+
+Rules:
+
+- modifiers are data only; `kind` selects a registered future capability.
+- `strength` is numeric and deterministic, not an imperative script.
+- `parameters` may contain only scalar JSON values.
+- bounds must stay fully inside the authored area.
+
 ## Adding a Pack
 
 1. Create `content/maps/<pack>/areas/`.
@@ -121,6 +205,6 @@ benchmark area unless it is intended to appear in normal generated worlds.
 - Files are bundled at build time, not downloaded dynamically.
 - Cross-pack dependency resolution and runtime content downloads remain `v0.2` work.
 
-The next authored-overlay slice should add explicit schemas for landmarks, authored
-entities, protected regions, and generator modifiers without breaking deterministic patch
-application.
+The current authored-overlay contract now validates landmarks, authored entities,
+protected regions, and generator modifiers. The next slice is runtime consumption and
+inspection, not more ad hoc schema growth.

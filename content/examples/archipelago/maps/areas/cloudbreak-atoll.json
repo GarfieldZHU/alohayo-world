@@ -61,5 +61,47 @@
       "kind": "beacon",
       "description": "A bright authored landmark used to prove dependent pack loading."
     }
+  ],
+  "entities": [
+    {
+      "id": "archipelago:cloudbreak-scout",
+      "kind": "npc-spawn",
+      "x": 10,
+      "y": 7,
+      "archetypeId": "core:wayfinder",
+      "factionId": "archipelago:cloudbreak-watch",
+      "tags": ["spawn", "coastal", "demo"],
+      "notes": "Reserved for the future authored entity runtime slice."
+    }
+  ],
+  "protectedRegions": [
+    {
+      "id": "archipelago:cloudbreak-lagoon-core",
+      "x": 4,
+      "y": 3,
+      "width": 10,
+      "height": 8,
+      "shape": "ellipse",
+      "reason": "Preserve the inner lagoon ring during future runtime overlay passes.",
+      "blocks": ["terrainPatches", "modifiers"]
+    }
+  ],
+  "modifiers": [
+    {
+      "id": "archipelago:cloudbreak-harbor-bias",
+      "kind": "settlement-bias",
+      "x": 6,
+      "y": 5,
+      "width": 5,
+      "height": 4,
+      "shape": "ellipse",
+      "strength": 0.42,
+      "parameters": {
+        "role": "harbor",
+        "roadBias": 0.25
+      },
+      "tags": ["future-settlement", "lagoon-edge"],
+      "notes": "Example local generator hint for the next authored-overlay runtime slice."
+    }
   ]
 }

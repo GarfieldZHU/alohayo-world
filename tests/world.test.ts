@@ -167,6 +167,29 @@ describe('world generation', () => {
     expect(world.areaIds).toContain('core:terrain-showcase')
   })
 
+  it('keeps richer authored overlay contracts in example content packs', () => {
+    expect(cloudbreakAtoll.entities).toEqual([
+      expect.objectContaining({
+        id: 'archipelago:cloudbreak-scout',
+        kind: 'npc-spawn',
+        archetypeId: 'core:wayfinder',
+      }),
+    ])
+    expect(cloudbreakAtoll.protectedRegions).toEqual([
+      expect.objectContaining({
+        id: 'archipelago:cloudbreak-lagoon-core',
+        shape: 'ellipse',
+      }),
+    ])
+    expect(cloudbreakAtoll.modifiers).toEqual([
+      expect.objectContaining({
+        id: 'archipelago:cloudbreak-harbor-bias',
+        kind: 'settlement-bias',
+        strength: 0.42,
+      }),
+    ])
+  })
+
   it('resolves content packs in dependency order and merges authored areas deterministically', () => {
     const resolution = resolveContentPacks({
       manifests: {
@@ -215,6 +238,15 @@ describe('world generation', () => {
       sourceAreaPath: '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json',
       ownership: 'additive',
     })
+    expect(resolution.resolvedMapAreas[2]?.area.entities?.[0]?.id).toBe(
+      'archipelago:cloudbreak-scout'
+    )
+    expect(resolution.resolvedMapAreas[2]?.area.protectedRegions?.[0]?.id).toBe(
+      'archipelago:cloudbreak-lagoon-core'
+    )
+    expect(resolution.resolvedMapAreas[2]?.area.modifiers?.[0]?.id).toBe(
+      'archipelago:cloudbreak-harbor-bias'
+    )
   })
 
   it('fails on missing content-pack dependencies', () => {

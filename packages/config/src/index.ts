@@ -279,6 +279,42 @@ export interface MapLandmarkDefinition {
   description: string
 }
 
+export interface MapAuthoredEntityDefinition {
+  id: string
+  kind: string
+  x: number
+  y: number
+  archetypeId?: string
+  factionId?: string
+  tags?: string[]
+  notes?: string
+}
+
+export interface MapProtectedRegionDefinition {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  shape: 'rectangle' | 'ellipse'
+  reason: string
+  blocks: Array<'terrainPatches' | 'cells' | 'landmarks' | 'entities' | 'modifiers'>
+}
+
+export interface MapGeneratorModifierDefinition {
+  id: string
+  kind: string
+  x: number
+  y: number
+  width: number
+  height: number
+  shape: 'rectangle' | 'ellipse'
+  strength: number
+  parameters?: Record<string, string | number | boolean>
+  tags?: string[]
+  notes?: string
+}
+
 export interface MapAreaDefinition {
   schemaVersion: 1
   id: string
@@ -291,6 +327,9 @@ export interface MapAreaDefinition {
   terrainPatches: MapTerrainPatch[]
   cells?: MapCellPatch[]
   landmarks?: MapLandmarkDefinition[]
+  entities?: MapAuthoredEntityDefinition[]
+  protectedRegions?: MapProtectedRegionDefinition[]
+  modifiers?: MapGeneratorModifierDefinition[]
 }
 
 export interface ResolvedMapAreaDefinition {

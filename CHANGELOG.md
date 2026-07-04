@@ -50,6 +50,8 @@
 - Extended content-pack contracts with explicit file-ownership rules and authored
   overlay provenance metadata so later overlay families can merge without losing source
   identity.
+- Added schema-validated authored entities, protected regions, and generator modifiers
+  to authored map areas, plus example pack fixtures and docs for the next `#7` slice.
 - Added runtime performance telemetry, desktop/mobile benchmark gates, and build-size
   budget enforcement for frame time, chunk latency, long tasks, memory sampling, and
   bundle-size regressions.

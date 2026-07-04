@@ -213,6 +213,77 @@ for (const area of mapAreas) {
     if (!terrainIds.has(patch.terrainId))
       errors.push(`unknown terrain ${patch.terrainId} in ${area.id}`)
   }
+  const landmarkIds = new Set()
+  for (const landmark of area.landmarks ?? []) {
+    if (
+      !landmark.id ||
+      landmarkIds.has(landmark.id) ||
+      !landmark.name ||
+      !landmark.kind ||
+      !landmark.description ||
+      !isValidAreaCoordinate(landmark.x, area.width) ||
+      !isValidAreaCoordinate(landmark.y, area.height)
+    ) {
+      errors.push(`invalid landmark ${landmark.id || '<missing>'} in ${area.id}`)
+      continue
+    }
+    landmarkIds.add(landmark.id)
+  }
+
+  const entityIds = new Set()
+  for (const entity of area.entities ?? []) {
+    if (
+      !entity.id ||
+      entityIds.has(entity.id) ||
+      !entity.kind ||
+      !isValidAreaCoordinate(entity.x, area.width) ||
+      !isValidAreaCoordinate(entity.y, area.height) ||
+      (entity.tags && !Array.isArray(entity.tags))
+    ) {
+      errors.push(`invalid authored entity ${entity.id || '<missing>'} in ${area.id}`)
+      continue
+    }
+    entityIds.add(entity.id)
+  }
+
+  const protectedRegionIds = new Set()
+  for (const region of area.protectedRegions ?? []) {
+    if (
+      !region.id ||
+      protectedRegionIds.has(region.id) ||
+      !['rectangle', 'ellipse'].includes(region.shape) ||
+      !region.reason ||
+      !Array.isArray(region.blocks) ||
+      !region.blocks.length ||
+      region.blocks.some(
+        (block) =>
+          !['terrainPatches', 'cells', 'landmarks', 'entities', 'modifiers'].includes(block)
+      ) ||
+      !isValidAreaRect(region, area)
+    ) {
+      errors.push(`invalid protected region ${region.id || '<missing>'} in ${area.id}`)
+      continue
+    }
+    protectedRegionIds.add(region.id)
+  }
+
+  const modifierIds = new Set()
+  for (const modifier of area.modifiers ?? []) {
+    if (
+      !modifier.id ||
+      modifierIds.has(modifier.id) ||
+      !modifier.kind ||
+      !['rectangle', 'ellipse'].includes(modifier.shape) ||
+      !Number.isFinite(modifier.strength) ||
+      !isValidAreaRect(modifier, area) ||
+      (modifier.parameters &&
+        (Array.isArray(modifier.parameters) || typeof modifier.parameters !== 'object'))
+    ) {
+      errors.push(`invalid generator modifier ${modifier.id || '<missing>'} in ${area.id}`)
+      continue
+    }
+    modifierIds.add(modifier.id)
+  }
 }
 for (const area of resolvedPackAreas) {
   if (!area.terrainPatches?.length) {
@@ -469,6 +540,25 @@ function resolvePackMapAreas(entry, errors) {
 
 function resolveRelativeContentPath(fromPath, relativePath) {
   return posix.normalize(posix.join(dirname(fromPath), relativePath))
+}
+
+function isValidAreaCoordinate(value, limit) {
+  return Number.isInteger(value) && value >= 0 && value < limit
+}
+
+function isValidAreaRect(rect, area) {
+  return (
+    Number.isInteger(rect.x) &&
+    Number.isInteger(rect.y) &&
+    Number.isInteger(rect.width) &&
+    Number.isInteger(rect.height) &&
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.x >= 0 &&
+    rect.y >= 0 &&
+    rect.x + rect.width <= area.width &&
+    rect.y + rect.height <= area.height
+  )
 }
 
 function readJsonFromContentPath(contentPath) {
