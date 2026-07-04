@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '../packages/map/src'
 import {
+  CONTENT_PACK_MIGRATION_REGISTRY_SHAPE,
   resolveContentPacks,
   type ContentPackManifest,
   type MapAreaDefinition,
@@ -232,6 +233,22 @@ describe('world generation', () => {
       'core:terrain-showcase',
       'archipelago:cloudbreak-atoll',
     ])
+    expect(resolution.report.orderedPackIds).toEqual(['core', 'archipelago'])
+    expect(resolution.report.mapAreaIds).toEqual([
+      'core:wayfinder-isle',
+      'core:terrain-showcase',
+      'archipelago:cloudbreak-atoll',
+    ])
+    expect(resolution.report.resolutionHash).toBe('fnv32:10cb56c6')
+    expect(resolution.saveMetadata).toMatchObject({
+      orderedPackIds: ['core', 'archipelago'],
+      resolutionHash: 'fnv32:10cb56c6',
+      resolvedMapAreaIds: [
+        'core:wayfinder-isle',
+        'core:terrain-showcase',
+        'archipelago:cloudbreak-atoll',
+      ],
+    })
     expect(resolution.resolvedMapAreas[2]).toMatchObject({
       sourcePackId: 'archipelago',
       sourceMapAreaPackId: 'archipelago:map-areas',
@@ -247,6 +264,110 @@ describe('world generation', () => {
     expect(resolution.resolvedMapAreas[2]?.area.modifiers?.[0]?.id).toBe(
       'archipelago:cloudbreak-harbor-bias'
     )
+  })
+
+  it('changes the resolution hash when pack versions change', () => {
+    const base = resolveContentPacks({
+      manifests: {
+        '/content/examples/archipelago/manifest.json': archipelagoPackManifest,
+        '/content/core/manifest.json': corePackManifest,
+      },
+      mapAreaPacks: {
+        '/content/maps/core/index.json': coreMapAreaPack,
+        '/content/examples/archipelago/maps/index.json': archipelagoMapAreaPack,
+      },
+      mapAreas: {
+        '/content/maps/core/areas/terrain-showcase.json': terrainShowcase as MapAreaDefinition,
+        '/content/maps/core/areas/wayfinder-isle.json': wayfinderIsle as MapAreaDefinition,
+        '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json':
+          cloudbreakAtoll as MapAreaDefinition,
+      },
+    })
+    const changed = resolveContentPacks({
+      manifests: {
+        '/content/examples/archipelago/manifest.json': {
+          ...archipelagoPackManifest,
+          version: '0.1.1',
+        } satisfies ContentPackManifest,
+        '/content/core/manifest.json': corePackManifest,
+      },
+      mapAreaPacks: {
+        '/content/maps/core/index.json': coreMapAreaPack,
+        '/content/examples/archipelago/maps/index.json': archipelagoMapAreaPack,
+      },
+      mapAreas: {
+        '/content/maps/core/areas/terrain-showcase.json': terrainShowcase as MapAreaDefinition,
+        '/content/maps/core/areas/wayfinder-isle.json': wayfinderIsle as MapAreaDefinition,
+        '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json':
+          cloudbreakAtoll as MapAreaDefinition,
+      },
+    })
+
+    expect(changed.report.resolutionHash).not.toBe(base.report.resolutionHash)
+    expect(changed.saveMetadata.resolutionHash).toBe(changed.report.resolutionHash)
+  })
+
+  it('reports overlapping map-area diagnostics deterministically', () => {
+    const overlappingPack = {
+      schemaVersion: 1,
+      id: 'overlap-pack',
+      name: 'Overlap Pack',
+      version: '0.1.0',
+      description: 'Pack used to verify overlap diagnostics.',
+      dependencies: ['core'],
+      world: './world.json',
+      biomes: './biomes.json',
+      mapAreas: './maps/index.json',
+    } satisfies ContentPackManifest
+    const overlapIndex = {
+      schemaVersion: 1,
+      id: 'overlap-pack:map-areas',
+      name: 'Overlap Areas',
+      description: 'Fixture pack.',
+      areas: ['./areas/overlap-fixture.json'],
+    } satisfies MapAreaPackDefinition
+    const overlapArea = {
+      ...(wayfinderIsle as MapAreaDefinition),
+      id: 'overlap-pack:fixture',
+      placement: { mode: 'absolute', x: 12, y: 12 },
+    } satisfies MapAreaDefinition
+
+    const resolution = resolveContentPacks({
+      manifests: {
+        '/content/core/manifest.json': corePackManifest,
+        '/content/overlap/manifest.json': overlappingPack,
+      },
+      mapAreaPacks: {
+        '/content/maps/core/index.json': coreMapAreaPack,
+        '/content/overlap/maps/index.json': overlapIndex,
+      },
+      mapAreas: {
+        '/content/maps/core/areas/terrain-showcase.json': terrainShowcase as MapAreaDefinition,
+        '/content/maps/core/areas/wayfinder-isle.json': {
+          ...(wayfinderIsle as MapAreaDefinition),
+          placement: { mode: 'absolute', x: 0, y: 0 },
+        },
+        '/content/overlap/maps/areas/overlap-fixture.json': overlapArea,
+      },
+    })
+
+    expect(resolution.report.diagnostics).toContainEqual(
+      expect.objectContaining({
+        level: 'warning',
+        code: 'overlapping-map-areas',
+        relatedPackIds: ['core', 'overlap-pack'],
+        relatedAreaIds: ['core:wayfinder-isle', 'overlap-pack:fixture'],
+      })
+    )
+  })
+
+  it('exports the current migration registry shape for future schema versions', () => {
+    expect(CONTENT_PACK_MIGRATION_REGISTRY_SHAPE).toEqual({
+      currentSchemaVersion: 1,
+      supportedSchemaVersions: [1],
+      failurePolicy: 'hard-fail',
+      steps: [],
+    })
   })
 
   it('fails on missing content-pack dependencies', () => {

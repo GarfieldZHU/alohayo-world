@@ -1,4 +1,9 @@
 import type {
+  ContentPackDependencyNode,
+  ContentPackMigrationRegistryShape,
+  ContentPackResolutionDiagnostic,
+  ContentPackResolutionReport,
+  ContentPackSaveMetadata,
   ContentPackFileKind,
   ContentPackManifest,
   ContentPackOwnershipMode,
@@ -28,6 +33,8 @@ export interface ResolvedContentPacks {
   orderedPackIds: string[]
   mapAreas: MapAreaDefinition[]
   resolvedMapAreas: ResolvedMapAreaDefinition[]
+  report: ContentPackResolutionReport
+  saveMetadata: ContentPackSaveMetadata
 }
 
 interface ManifestEntry {
@@ -42,6 +49,13 @@ const CONTENT_PACK_OWNERSHIP_RULES: Record<ContentPackFileKind, ContentPackOwner
   mapAreas: 'additive',
   characters: 'authoritative',
   entities: 'additive',
+}
+
+export const CONTENT_PACK_MIGRATION_REGISTRY_SHAPE: ContentPackMigrationRegistryShape = {
+  currentSchemaVersion: 1,
+  supportedSchemaVersions: [1],
+  failurePolicy: 'hard-fail',
+  steps: [],
 }
 
 export function resolveContentPacks({
@@ -73,11 +87,16 @@ export function resolveContentPacks({
     } satisfies ResolvedContentPack
   })
 
+  const report = buildResolutionReport(orderedPacks, orderedPackIds)
+  const saveMetadata = buildSaveMetadata(orderedPacks, orderedPackIds, report.resolutionHash)
+
   return {
     orderedPacks,
     orderedPackIds,
     mapAreas: orderedPacks.flatMap((pack) => pack.mapAreas.map((entry) => entry.area)),
     resolvedMapAreas: orderedPacks.flatMap((pack) => pack.mapAreas),
+    report,
+    saveMetadata,
   }
 }
 
@@ -371,4 +390,111 @@ function normalizeModulePath(path: string): string {
     return `/${normalizedPath}`
   }
   return normalizedPath
+}
+
+function buildResolutionReport(
+  orderedPacks: ResolvedContentPack[],
+  orderedPackIds: string[]
+): ContentPackResolutionReport {
+  const dependencyGraph = orderedPacks.map(
+    (pack) =>
+      ({
+        packId: pack.pack.id,
+        dependencies: [...pack.pack.dependencies],
+        dependencyDepth: pack.dependencyDepth,
+      }) satisfies ContentPackDependencyNode
+  )
+  const mapAreaIds = orderedPacks.flatMap((pack) => pack.mapAreas.map((entry) => entry.area.id))
+  const diagnostics: ContentPackResolutionDiagnostic[] = []
+
+  for (let index = 0; index < orderedPacks.length; index += 1) {
+    const leftPack = orderedPacks[index]
+    if (!leftPack) {
+      continue
+    }
+    for (let compareIndex = index + 1; compareIndex < orderedPacks.length; compareIndex += 1) {
+      const rightPack = orderedPacks[compareIndex]
+      if (!rightPack) {
+        continue
+      }
+      for (const leftArea of leftPack.mapAreas) {
+        for (const rightArea of rightPack.mapAreas) {
+          if (areasOverlap(leftArea.area, rightArea.area)) {
+            diagnostics.push({
+              level: 'warning',
+              code: 'overlapping-map-areas',
+              message: `map areas "${leftArea.area.id}" and "${rightArea.area.id}" overlap in ${leftArea.area.placement.mode} placement space`,
+              relatedPackIds: [leftPack.pack.id, rightPack.pack.id],
+              relatedAreaIds: [leftArea.area.id, rightArea.area.id],
+            })
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    orderedPackIds,
+    dependencyGraph,
+    mapAreaIds,
+    resolutionHash: hashResolutionSignature(orderedPacks),
+    diagnostics,
+  }
+}
+
+function buildSaveMetadata(
+  orderedPacks: ResolvedContentPack[],
+  orderedPackIds: string[],
+  resolutionHash: string
+): ContentPackSaveMetadata {
+  return {
+    orderedPackIds,
+    resolutionHash,
+    packs: orderedPacks.map((pack) => ({
+      id: pack.pack.id,
+      version: pack.pack.version,
+      schemaVersion: pack.pack.schemaVersion,
+      manifestPath: pack.manifestPath,
+      dependencyDepth: pack.dependencyDepth,
+      mapAreaIds: pack.mapAreas.map((entry) => entry.area.id),
+    })),
+    resolvedMapAreaIds: orderedPacks.flatMap((pack) => pack.mapAreas.map((entry) => entry.area.id)),
+  }
+}
+
+function areasOverlap(left: MapAreaDefinition, right: MapAreaDefinition): boolean {
+  if (left.placement.mode !== right.placement.mode) {
+    return false
+  }
+
+  const leftRight = left.placement.x + left.width
+  const leftBottom = left.placement.y + left.height
+  const rightRight = right.placement.x + right.width
+  const rightBottom = right.placement.y + right.height
+
+  return (
+    left.placement.x < rightRight &&
+    leftRight > right.placement.x &&
+    left.placement.y < rightBottom &&
+    leftBottom > right.placement.y
+  )
+}
+
+function hashResolutionSignature(orderedPacks: ResolvedContentPack[]): string {
+  const signature = orderedPacks
+    .flatMap((pack) => [
+      `pack:${pack.pack.id}@${pack.pack.version}@${pack.manifestPath}@${pack.dependencyDepth}`,
+      ...pack.mapAreas.map(
+        (entry) =>
+          `area:${entry.area.id}@${entry.sourceAreaPath}@${entry.sourcePackId}@${entry.sourcePackVersion}`
+      ),
+    ])
+    .join('|')
+
+  let hash = 2166136261
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `fnv32:${(hash >>> 0).toString(16).padStart(8, '0')}`
 }

@@ -52,6 +52,9 @@
   identity.
 - Added schema-validated authored entities, protected regions, and generator modifiers
   to authored map areas, plus example pack fixtures and docs for the next `#7` slice.
+- Added content-pack resolution reports, save-ready pack metadata, a public migration
+  registry shape, and deterministic conflict/hash coverage to finish the closeable `#7`
+  loader-contract work.
 - Added runtime performance telemetry, desktop/mobile benchmark gates, and build-size
   budget enforcement for frame time, chunk latency, long tasks, memory sampling, and
   bundle-size regressions.

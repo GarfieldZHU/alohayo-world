@@ -396,8 +396,9 @@ if (errors.length) {
   console.error(errors.join('\n'))
   process.exit(1)
 }
+const resolutionSignature = hashResolutionSignature(allManifestEntries, resolvedPackAreas)
 console.log(
-  `validated ${allManifestEntries.length} content packs, ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${resolvedPackAreas.length} resolved map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes`
+  `validated ${allManifestEntries.length} content packs, ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${resolvedPackAreas.length} resolved map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes; pack order: ${orderedPackIds.join(' > ')}; resolution hash: ${resolutionSignature}`
 )
 
 function collectManifestEntries(rootUrl) {
@@ -559,6 +560,25 @@ function isValidAreaRect(rect, area) {
     rect.x + rect.width <= area.width &&
     rect.y + rect.height <= area.height
   )
+}
+
+function hashResolutionSignature(entries, areas) {
+  const packById = new Map(entries.map((entry) => [entry.manifest.id, entry]))
+  const signature = [
+    ...orderedPackIds.map((packId) => {
+      const entry = packById.get(packId)
+      const version = entry?.manifest.version ?? 'missing'
+      return `pack:${packId}@${version}@${entry?.path ?? 'missing'}`
+    }),
+    ...areas.map((area) => `area:${area.id}@${area.placement.mode}@${area.width}x${area.height}`),
+  ].join('|')
+
+  let hash = 2166136261
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `fnv32:${(hash >>> 0).toString(16).padStart(8, '0')}`
 }
 
 function readJsonFromContentPath(contentPath) {

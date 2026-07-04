@@ -1,8 +1,11 @@
 import type {
   BiomeDefinition,
   CharacterContentDefinition,
+  ContentPackResolutionReport,
+  ContentPackSaveMetadata,
   LocaleCode,
   MapAreaDefinition,
+  ResolvedMapAreaDefinition,
   WorldDefinition,
 } from '@alohayo/config'
 import type { GeneratedChunk } from '@alohayo/map'
@@ -12,6 +15,9 @@ export interface EngineContent {
   world: WorldDefinition
   biomes: BiomeDefinition[]
   mapAreas: MapAreaDefinition[]
+  resolvedMapAreas?: ResolvedMapAreaDefinition[]
+  contentPackReport?: ContentPackResolutionReport
+  contentPackSaveMetadata?: ContentPackSaveMetadata
   characters: CharacterContentDefinition
 }
 

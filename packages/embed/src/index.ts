@@ -87,6 +87,9 @@ export async function mountGame(options: MountGameOptions): Promise<GameHandle> 
     world: world.default as WorldDefinition,
     biomes: biomes.default as BiomeDefinition[],
     mapAreas: contentPacks.mapAreas,
+    resolvedMapAreas: contentPacks.resolvedMapAreas,
+    contentPackReport: contentPacks.report,
+    contentPackSaveMetadata: contentPacks.saveMetadata,
     characters,
   })
 }

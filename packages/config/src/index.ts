@@ -23,6 +23,59 @@ export type ContentPackFileKind =
   | 'entities'
 
 export type ContentPackOwnershipMode = 'authoritative' | 'additive'
+export type ContentPackDiagnosticLevel = 'info' | 'warning' | 'error'
+
+export interface ContentPackDependencyNode {
+  packId: string
+  dependencies: string[]
+  dependencyDepth: number
+}
+
+export interface ContentPackResolutionDiagnostic {
+  level: ContentPackDiagnosticLevel
+  code: string
+  message: string
+  relatedPackIds?: string[]
+  relatedAreaIds?: string[]
+}
+
+export interface ContentPackResolutionReport {
+  orderedPackIds: string[]
+  dependencyGraph: ContentPackDependencyNode[]
+  mapAreaIds: string[]
+  resolutionHash: string
+  diagnostics: ContentPackResolutionDiagnostic[]
+}
+
+export interface ContentPackSaveMetadataEntry {
+  id: string
+  version: string
+  schemaVersion: number
+  manifestPath: string
+  dependencyDepth: number
+  mapAreaIds: string[]
+}
+
+export interface ContentPackSaveMetadata {
+  orderedPackIds: string[]
+  resolutionHash: string
+  packs: ContentPackSaveMetadataEntry[]
+  resolvedMapAreaIds: string[]
+}
+
+export interface ContentPackMigrationStepDefinition {
+  fromSchemaVersion: number
+  toSchemaVersion: number
+  description: string
+  requiredFixtures: string[]
+}
+
+export interface ContentPackMigrationRegistryShape {
+  currentSchemaVersion: number
+  supportedSchemaVersions: number[]
+  failurePolicy: 'hard-fail'
+  steps: ContentPackMigrationStepDefinition[]
+}
 
 export interface WorldDefinition {
   schemaVersion: 1
@@ -468,6 +521,8 @@ export interface WorldManifest {
   terrainRules?: TerrainRulePackDefinition
   mapAreas?: MapAreaDefinition[]
   resolvedMapAreas?: ResolvedMapAreaDefinition[]
+  contentPackReport?: ContentPackResolutionReport
+  contentPackSaveMetadata?: ContentPackSaveMetadata
   characters?: CharacterContentDefinition
 }
 
@@ -503,7 +558,7 @@ export type {
   ResolvedContentPack,
   ResolvedContentPacks,
 } from './content-packs'
-export { resolveContentPacks } from './content-packs'
+export { CONTENT_PACK_MIGRATION_REGISTRY_SHAPE, resolveContentPacks } from './content-packs'
 export {
   formatI18n,
   getI18nCatalog,

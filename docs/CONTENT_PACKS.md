@@ -206,9 +206,14 @@ For `v0.2`, keep it modest:
 Issue `#11` already covers save migrations; issue `#7` should focus on pack-resolution
 metadata that saves will later consume.
 
+The repository now exposes `CONTENT_PACK_MIGRATION_REGISTRY_SHAPE` as the public shape
+for future schema migrations. At `v0.1.x`, it intentionally declares only
+`schemaVersion: 1`, `failurePolicy: "hard-fail"`, and an empty `steps` list.
+
 ## Validation and Tooling
 
-The loader should eventually produce a validation report with:
+The loader now exposes a first structured validation report contract and should
+eventually grow it with richer warnings:
 
 - resolved pack order;
 - dependency graph;
@@ -218,7 +223,16 @@ The loader should eventually produce a validation report with:
 - authored area bounds and overlap warnings;
 - world hash contribution summary.
 
-This report is for CI first and a dev inspector later.
+Current implementation:
+
+- `resolveContentPacks()` returns `report` with deterministic `orderedPackIds`,
+  `dependencyGraph`, `mapAreaIds`, `resolutionHash`, and overlap diagnostics;
+- `saveMetadata` mirrors the pack set and resolution hash in a save-ready shape for
+  issue `#11`;
+- `yarn validate:content` prints the resolved pack order and resolution hash so CI logs
+  expose the same signature.
+
+The richer overlay/dev inspector remains follow-up work in issue `#25`.
 
 ## Vertical Slices
 
@@ -270,10 +284,10 @@ Deliver:
 - [x] define authored overlay provenance and conflict policy by data type
 - [x] add schemas for authored entities, protected regions, and generator modifiers
 - [x] add a dependent example pack that extends `core` without engine code changes
-- [ ] add deterministic tests for dependency order, conflicts, and world-hash stability
-- [ ] surface loader diagnostics for CI and dev tooling
-- [ ] define the migration registry shape for future schema versions
-- [ ] connect pack-resolution metadata to the future save format under issue `#11`
+- [x] add deterministic tests for dependency order, conflicts, and world-hash stability
+- [x] surface loader diagnostics for CI and dev tooling
+- [x] define the migration registry shape for future schema versions
+- [x] connect pack-resolution metadata to the future save format under issue `#11`
 
 ## Out of Scope for This Slice
 

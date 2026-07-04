@@ -48,6 +48,13 @@ If a pack introduces a new dependency, exported ID, or overlay family, document 
 change in `CONTENT_PACKS.md` and add or update fixtures proving the resolved pack order
 and merge behavior.
 
+Resolver output is now part of the content contract too:
+
+- `contentPackReport` exposes deterministic pack order, dependency graph, map-area IDs,
+  a resolution hash, and basic overlap diagnostics for CI/dev tooling;
+- `contentPackSaveMetadata` mirrors the resolved pack set in a save-ready shape that
+  issue `#11` will later persist locally.
+
 If a pack declares `ownership`, it must match the fixed family policy documented in
 `CONTENT_PACKS.md`. In the current contract, `mapAreas` are additive overlays while
 `world`, `biomes`, and `characters` are authoritative family references.
