@@ -55,6 +55,9 @@
 - Added content-pack resolution reports, save-ready pack metadata, a public migration
   registry shape, and deterministic conflict/hash coverage to finish the closeable `#7`
   loader-contract work.
+- Added IndexedDB autosaves with versioned snapshot contracts, discovery/explorer restore,
+  import/export helpers, migration guards, and typed corruption/quota compatibility
+  handling for `#11`.
 - Added runtime performance telemetry, desktop/mobile benchmark gates, and build-size
   budget enforcement for frame time, chunk latency, long tasks, memory sampling, and
   bundle-size regressions.

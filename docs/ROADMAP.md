@@ -34,8 +34,9 @@
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by
       Rust tooling in CI and TypeScript parity fixtures.
-- [ ] IndexedDB discovery/save snapshots and restoration.
-- [ ] Content-pack dependency loading, authored overlay provenance, and schema
+- [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
+      restoration.
+- [x] Content-pack dependency loading, authored overlay provenance, and schema
       migration planning. See `docs/CONTENT_PACKS.md` and issue `#7`.
 - [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test
       equipment/weapon overrides.

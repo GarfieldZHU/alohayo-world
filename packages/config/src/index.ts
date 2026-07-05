@@ -77,6 +77,98 @@ export interface ContentPackMigrationRegistryShape {
   steps: ContentPackMigrationStepDefinition[]
 }
 
+export interface WorldSaveWorldState {
+  seed: string
+  chunkSize: number
+  surveyWidth: number
+  surveyHeight: number
+  activeChunkRadius: number
+  retainChunkRadius: number
+  minimapChunkRadius: number
+}
+
+export interface WorldSaveExplorerState {
+  archetypeId: string
+  x: number
+  y: number
+  facing: 'north' | 'east' | 'south' | 'west'
+  state: 'idle' | 'walk' | 'run' | 'action'
+  activeWeaponSlot: string | null
+}
+
+export interface WorldSaveDiscoveryChunk {
+  key: string
+  chunkX: number
+  chunkY: number
+  discovered: string
+}
+
+export interface WorldSavePreferences {
+  locale: LocaleCode
+  devMode: boolean
+  devShowGrid: boolean
+  devShowMinimap: boolean
+  devDayNight: boolean
+  devLightLevel: number
+  devPanelCollapsed: boolean
+  devPanelActiveTab: 'movement' | 'world' | 'gear'
+  minimapCollapsed: boolean
+  minimapMode: 'fit' | 'manual'
+  minimapManualRadius: number
+}
+
+export interface WorldSaveSnapshot {
+  schemaVersion: 1
+  engineVersion: string
+  savedAt: string
+  world: WorldSaveWorldState
+  explorer: WorldSaveExplorerState
+  discovery: {
+    chunks: WorldSaveDiscoveryChunk[]
+    discoveredCells: number
+    discoveredChunkKeys: string[]
+  }
+  preferences: WorldSavePreferences
+  contentPacks: ContentPackSaveMetadata
+}
+
+export interface WorldSaveMigrationStepDefinition {
+  fromSchemaVersion: number
+  toSchemaVersion: number
+  description: string
+}
+
+export interface WorldSaveMigrationRegistryShape {
+  currentSchemaVersion: number
+  supportedSchemaVersions: number[]
+  failurePolicy: 'hard-fail'
+  steps: WorldSaveMigrationStepDefinition[]
+}
+
+export type WorldSaveErrorCode =
+  | 'unavailable'
+  | 'quota-exceeded'
+  | 'corrupt'
+  | 'unsupported-version'
+  | 'incompatible-content'
+  | 'invalid-import'
+
+export interface WorldSaveSummary {
+  slotId: string
+  savedAt: string
+  seed: string
+  discoveredChunks: number
+  discoveredCells: number
+  resolutionHash: string
+}
+
+export const WORLD_SAVE_MIGRATION_REGISTRY_SHAPE: WorldSaveMigrationRegistryShape = {
+  currentSchemaVersion: 1,
+  supportedSchemaVersions: [1],
+  failurePolicy: 'hard-fail',
+  steps: [],
+}
+
 export interface WorldDefinition {
   schemaVersion: 1
   id: string
@@ -549,6 +641,10 @@ export interface GameHandle {
   setDevMode?(enabled: boolean): void
   setLocale?(locale: LocaleCode): void
   setTheme?(theme: 'light' | 'dark'): void
+  save?(): Promise<WorldSaveSummary>
+  exportSave?(): Promise<string>
+  importSave?(serialized: string): Promise<WorldSaveSummary>
+  clearSave?(): Promise<void>
   destroy(): Promise<void>
 }
 

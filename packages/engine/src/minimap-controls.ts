@@ -13,6 +13,7 @@ interface CreateMinimapControlsArgs {
   setManualRadius: (radius: number) => void
   redraw: () => void
   applyTheme: (controls: MinimapControls | null) => void
+  onStateChange?: () => void
 }
 
 export const MINIMAP_FRAME_SIZE = 154
@@ -207,6 +208,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
       collapseButton.setAttribute('aria-controls', body.id)
       window.localStorage.setItem('alohayo-world:minimap-collapsed', collapsed ? 'true' : 'false')
+      args.onStateChange?.()
       args.redraw()
     },
   }
@@ -224,6 +226,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     args.setManualRadius(
       args.clamp(args.getManualRadius() + 4, 12, Math.max(args.minimapChunkRadius * 18, 96))
     )
+    args.onStateChange?.()
     args.redraw()
     args.applyTheme(controls)
   })
@@ -233,12 +236,14 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     args.setManualRadius(
       args.clamp(args.getManualRadius() - 4, 12, Math.max(args.minimapChunkRadius * 18, 96))
     )
+    args.onStateChange?.()
     args.redraw()
     args.applyTheme(controls)
   })
 
   fitButton.addEventListener('click', () => {
     args.setMode('fit')
+    args.onStateChange?.()
     args.redraw()
     args.applyTheme(controls)
   })

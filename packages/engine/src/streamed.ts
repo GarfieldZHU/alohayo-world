@@ -13,6 +13,8 @@ import type {
   LocaleCode,
   GameHandle,
   MountGameOptions,
+  WorldSaveSnapshot,
+  WorldSaveSummary,
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
 } from '@alohayo/config'
@@ -61,6 +63,14 @@ import {
 import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
 import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
+import {
+  assertCompatibleContentPackState,
+  createWorldSaveStore,
+  decodeDiscoveredChunk,
+  encodeDiscoveredChunk,
+  WORLD_SAVE_ENGINE_VERSION,
+  WorldSaveError,
+} from './save-store'
 
 export async function createGame(
   options: MountGameOptions,
@@ -225,6 +235,11 @@ export async function createGame(
   window.localStorage.setItem('alohayo-world:locale', locale)
   const devPanelStateStorageKey = 'alohayo-world:dev-panel-collapsed'
   let minimapControls: ReturnType<typeof createMinimapControls> | null = null
+  const saveStore = createWorldSaveStore()
+  const contentPackSaveMetadata = content.contentPackSaveMetadata
+  let autosaveTimer: number | null = null
+  let saveDirty = false
+  let applyingImportedSave = false
 
   const catalog = () => getI18nCatalog(locale)
   const uiText = (key: string) => catalog().ui[key] ?? key
@@ -251,6 +266,195 @@ export async function createGame(
       : catalog().hud.fallbackExplorerName
   const translatedState = (state: string) => catalog().hud.states[state] ?? state
   const translatedRegion = (region: string) => catalog().hud.regions[region] ?? region
+
+  const saveIdentityMatches = (snapshot: WorldSaveSnapshot) =>
+    snapshot.world.seed === worldSeed &&
+    snapshot.world.chunkSize === chunkSize &&
+    snapshot.world.surveyWidth === surveyWidth &&
+    snapshot.world.surveyHeight === surveyHeight &&
+    snapshot.world.activeChunkRadius === activeChunkRadius &&
+    snapshot.world.retainChunkRadius === retainChunkRadius &&
+    snapshot.world.minimapChunkRadius === minimapChunkRadius
+
+  const applySavedPreferences = (snapshot: WorldSaveSnapshot) => {
+    if (!options.locale) {
+      locale = normalizeLocale(snapshot.preferences.locale)
+    }
+    if (options.devMode === undefined) {
+      devMode = snapshot.preferences.devMode
+    }
+    devShowGrid = snapshot.preferences.devShowGrid
+    devShowMinimap = snapshot.preferences.devShowMinimap
+    devDayNight = snapshot.preferences.devDayNight
+    devLightLevel = clamp(snapshot.preferences.devLightLevel, 0, 1)
+    devPanelCollapsed = snapshot.preferences.devPanelCollapsed
+    devPanelActiveTab = snapshot.preferences.devPanelActiveTab
+    minimapCollapsed = snapshot.preferences.minimapCollapsed
+    minimapMode = snapshot.preferences.minimapMode
+    minimapManualRadius = Math.max(12, snapshot.preferences.minimapManualRadius)
+  }
+
+  const applySavedDiscovery = (snapshot: WorldSaveSnapshot) => {
+    discovery.clear()
+    dirtyFog.clear()
+    discoveredChunks.clear()
+    for (const chunk of snapshot.discovery.chunks) {
+      discovery.set(chunk.key, decodeDiscoveredChunk(chunk.discovered))
+    }
+    for (const key of snapshot.discovery.discoveredChunkKeys) {
+      discoveredChunks.add(key)
+    }
+    discoveredCells = snapshot.discovery.discoveredCells
+  }
+
+  const buildSaveSnapshot = (): WorldSaveSnapshot | null => {
+    if (!explorer || !explorerMotion || !contentPackSaveMetadata) return null
+    return {
+      schemaVersion: 1,
+      engineVersion: WORLD_SAVE_ENGINE_VERSION,
+      savedAt: new Date().toISOString(),
+      world: {
+        seed: worldSeed,
+        chunkSize,
+        surveyWidth,
+        surveyHeight,
+        activeChunkRadius,
+        retainChunkRadius,
+        minimapChunkRadius,
+      },
+      explorer: {
+        archetypeId: explorer.archetypeId,
+        x: explorerMotion.x,
+        y: explorerMotion.y,
+        facing: explorerMotion.facing,
+        state: explorerMotion.state,
+        activeWeaponSlot: explorer.activeWeaponSlot,
+      },
+      discovery: {
+        chunks: Array.from(discovery.entries()).map(([key, found]) => {
+          const [chunkXText = '0', chunkYText = '0'] = key.split(':')
+          return {
+            key,
+            chunkX: Number.parseInt(chunkXText, 10),
+            chunkY: Number.parseInt(chunkYText, 10),
+            discovered: encodeDiscoveredChunk(found),
+          }
+        }),
+        discoveredCells,
+        discoveredChunkKeys: Array.from(discoveredChunks).sort(),
+      },
+      preferences: {
+        locale,
+        devMode,
+        devShowGrid,
+        devShowMinimap,
+        devDayNight,
+        devLightLevel,
+        devPanelCollapsed,
+        devPanelActiveTab,
+        minimapCollapsed,
+        minimapMode,
+        minimapManualRadius,
+      },
+      contentPacks: contentPackSaveMetadata,
+    }
+  }
+
+  const summarizeImportedSnapshot = (snapshot: WorldSaveSnapshot): WorldSaveSummary => ({
+    slotId: 'autosave',
+    savedAt: snapshot.savedAt,
+    seed: snapshot.world.seed,
+    discoveredChunks: snapshot.discovery.discoveredChunkKeys.length,
+    discoveredCells: snapshot.discovery.discoveredCells,
+    resolutionHash: snapshot.contentPacks.resolutionHash,
+  })
+
+  const saveNow = async (): Promise<WorldSaveSummary> => {
+    const snapshot = buildSaveSnapshot()
+    if (!snapshot) {
+      throw new WorldSaveError('unavailable', 'save snapshot is not available for this runtime')
+    }
+    const result = await saveStore.save(snapshot)
+    saveDirty = false
+    if (autosaveTimer !== null) {
+      window.clearTimeout(autosaveTimer)
+      autosaveTimer = null
+    }
+    return result
+  }
+
+  const markSaveDirty = () => {
+    if (applyingImportedSave || !contentPackSaveMetadata) return
+    saveDirty = true
+    if (autosaveTimer !== null) return
+    autosaveTimer = window.setTimeout(() => {
+      autosaveTimer = null
+      if (!saveDirty || destroyed) return
+      void saveNow().catch(() => {
+        saveDirty = true
+      })
+    }, 1200)
+  }
+
+  const restoreSnapshot = async (snapshot: WorldSaveSnapshot) => {
+    assertCompatibleContentPackState(snapshot, contentPackSaveMetadata?.resolutionHash ?? '')
+    if (!saveIdentityMatches(snapshot)) {
+      throw new WorldSaveError(
+        'incompatible-content',
+        'save world identity does not match current runtime'
+      )
+    }
+
+    applyingImportedSave = true
+    try {
+      applySavedPreferences(snapshot)
+      applySavedDiscovery(snapshot)
+      devPanel?.panel.remove()
+      devPanel = buildDevPanel()
+      if (devPanel) {
+        options.container.appendChild(devPanel.panel)
+        renderDevPanelLocale(devPanel, devText)
+        devPanel.fastMoveToggle.checked = devFastMove
+        devPanel.flyToggle.checked = devFly
+        devPanel.battleShadowToggle.checked = devBattleShadow
+        devPanel.gridToggle.checked = devShowGrid
+        devPanel.minimapToggle.checked = devShowMinimap
+        devPanel.dayNightToggle.checked = devDayNight
+        devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
+        devPanel.setCollapsed(devPanelCollapsed)
+        devPanel.setActiveTab(devPanelActiveTab)
+        attachDevPanelInteractions(devPanel)
+      }
+      renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
+      minimapControls?.setCollapsed(minimapCollapsed)
+      const targetChunkX = Math.floor(snapshot.explorer.x / chunkSize)
+      const targetChunkY = Math.floor(snapshot.explorer.y / chunkSize)
+      await ensureChunkNeighborhood(targetChunkX, targetChunkY, activeChunkRadius)
+      if (explorer) {
+        explorer.activeWeaponSlot = snapshot.explorer.activeWeaponSlot
+      }
+      if (explorerMotion && canOccupy(snapshot.explorer.x, snapshot.explorer.y)) {
+        explorerMotion.x = snapshot.explorer.x
+        explorerMotion.y = snapshot.explorer.y
+        explorerMotion.facing = snapshot.explorer.facing
+        explorerMotion.state = 'idle'
+        explorerMotion.actionTimeRemaining = 0
+      }
+      refreshGridVisibility()
+      refreshFog()
+      refreshFogVisibility()
+      drawMinimap()
+      updateStatus()
+      drawExplorer(performance.now() / 1000)
+      drawDayNightOverlay()
+      applyCurrentDevPanelTheme(devPanel)
+      applyCurrentMinimapTheme(minimapControls)
+      recenterOnExplorer()
+      saveDirty = false
+    } finally {
+      applyingImportedSave = false
+    }
+  }
 
   const applyThemeToContainer = () => {
     options.container.dataset.alohayoWorldTheme = theme
@@ -459,12 +663,14 @@ export async function createGame(
           setBattleShadow: (enabled) => {
             devBattleShadow = enabled
             refreshFogVisibility()
+            markSaveDirty()
           },
           getGrid: () => devShowGrid,
           setGrid: (enabled) => {
             devShowGrid = enabled
             window.localStorage.setItem('alohayo-world:dev-grid', enabled ? 'true' : 'false')
             refreshGridVisibility()
+            markSaveDirty()
           },
           getMinimap: () => devShowMinimap,
           setMinimap: (enabled) => {
@@ -475,24 +681,29 @@ export async function createGame(
             }
             drawMinimap()
             applyCurrentMinimapTheme(minimapControls)
+            markSaveDirty()
           },
           getFastMove: () => devFastMove,
           setFastMove: (enabled) => {
             devFastMove = enabled
+            markSaveDirty()
           },
           getFly: () => devFly,
           setFly: (enabled) => {
             devFly = enabled
+            markSaveDirty()
           },
           getDayNight: () => devDayNight,
           setDayNight: (enabled) => {
             devDayNight = enabled
             window.localStorage.setItem('alohayo-world:dev-day-night', enabled ? 'true' : 'false')
+            markSaveDirty()
           },
           getLightLevel: () => devLightLevel,
           setLightLevel: (level) => {
             devLightLevel = clamp(level, 0, 1)
             window.localStorage.setItem('alohayo-world:dev-light-level', devLightLevel.toFixed(2))
+            markSaveDirty()
           },
           teleport: (x, y) => {
             void teleportExplorer(x, y)
@@ -511,6 +722,7 @@ export async function createGame(
             actionMessageUntil = performance.now() + 1800
             updateStatus()
             drawExplorer(performance.now() / 1000)
+            markSaveDirty()
           },
           onRefreshVisuals: () => {
             refreshFog()
@@ -521,11 +733,13 @@ export async function createGame(
           getCollapsed: () => devPanelCollapsed,
           setCollapsedState: (collapsed) => {
             devPanelCollapsed = collapsed
+            markSaveDirty()
           },
           getActiveTab: () => devPanelActiveTab,
           setActiveTabState: (tab) => {
             devPanelActiveTab = tab
             window.localStorage.setItem('alohayo-world:dev-panel-tab', tab)
+            markSaveDirty()
           },
           storageKey: devPanelStateStorageKey,
         })
@@ -677,6 +891,21 @@ export async function createGame(
               radius: content.world.stream.discoveryRadius,
             }
           : undefined,
+    })
+  }
+
+  const attachDevPanelInteractions = (panelControls: DevPanelControls | null) => {
+    if (!panelControls) return
+    const panel = panelControls.panel
+    panel.addEventListener('mouseenter', () => applyCurrentDevPanelTheme(panelControls, true))
+    panel.addEventListener('mouseleave', () => applyCurrentDevPanelTheme(panelControls, false))
+    panel.addEventListener('focusin', () => applyCurrentDevPanelTheme(panelControls, true))
+    panel.addEventListener('focusout', () => {
+      window.setTimeout(() => {
+        if (!panel.contains(document.activeElement)) {
+          applyCurrentDevPanelTheme(panelControls, false)
+        }
+      }, 0)
     })
   }
 
@@ -1587,7 +1816,10 @@ export async function createGame(
       }
     }
     for (const key of affected) redrawChunkFog(key)
-    if (affected.size) drawMinimap()
+    if (affected.size) {
+      drawMinimap()
+      markSaveDirty()
+    }
   }
 
   const cameraTarget = () => {
@@ -1642,6 +1874,7 @@ export async function createGame(
     revealAroundExplorer()
     refreshFog()
     recenterOnExplorer()
+    markSaveDirty()
     actionMessage = formatI18n(devText('teleported'), { x: cellX, y: cellY })
     actionMessageUntil = performance.now() + 1800
     updateStatus()
@@ -1668,8 +1901,31 @@ export async function createGame(
   }
 
   applyThemeToContainer()
+  let restoredSnapshot: WorldSaveSnapshot | null = null
+  if (contentPackSaveMetadata) {
+    try {
+      const snapshot = await saveStore.load()
+      if (
+        snapshot &&
+        saveIdentityMatches(snapshot) &&
+        snapshot.contentPacks.resolutionHash === contentPackSaveMetadata.resolutionHash
+      ) {
+        restoredSnapshot = snapshot
+        applySavedPreferences(snapshot)
+        window.localStorage.setItem('alohayo-world:locale', locale)
+      }
+    } catch {
+      restoredSnapshot = null
+    }
+  }
   explorer = generateCharacter(content.characters, 'core:explorer', worldSeed)
-  await ensureChunkNeighborhood(0, 0, activeChunkRadius)
+  const initialChunkCenter = restoredSnapshot
+    ? {
+        x: Math.floor(restoredSnapshot.explorer.x / chunkSize),
+        y: Math.floor(restoredSnapshot.explorer.y / chunkSize),
+      }
+    : { x: 0, y: 0 }
+  await ensureChunkNeighborhood(initialChunkCenter.x, initialChunkCenter.y, activeChunkRadius)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
   let devPanel = buildDevPanel()
@@ -1691,6 +1947,7 @@ export async function createGame(
     },
     redraw: drawMinimap,
     applyTheme: applyCurrentMinimapTheme,
+    onStateChange: markSaveDirty,
   })
   if (devPanel) options.container.appendChild(devPanel.panel)
   options.container.appendChild(minimapControls.panel)
@@ -1712,6 +1969,9 @@ export async function createGame(
   )
   updateDetailLevel()
   revealAroundExplorer()
+  if (restoredSnapshot) {
+    await restoreSnapshot(restoredSnapshot)
+  }
   drawExplorer()
   refreshFogVisibility()
   refreshGridVisibility()
@@ -1721,17 +1981,7 @@ export async function createGame(
   drawMinimap()
   applyCurrentDevPanelTheme(devPanel)
   applyCurrentMinimapTheme(minimapControls)
-  if (devPanel) {
-    const panel = devPanel.panel
-    panel.addEventListener('mouseenter', () => applyCurrentDevPanelTheme(devPanel, true))
-    panel.addEventListener('mouseleave', () => applyCurrentDevPanelTheme(devPanel, false))
-    panel.addEventListener('focusin', () => applyCurrentDevPanelTheme(devPanel, true))
-    panel.addEventListener('focusout', () => {
-      window.setTimeout(() => {
-        if (!panel.contains(document.activeElement)) applyCurrentDevPanelTheme(devPanel, false)
-      }, 0)
-    })
-  }
+  attachDevPanelInteractions(devPanel)
   if (devPanel) {
     devPanel.teleportX.value = Math.floor(spawn.x).toString()
     devPanel.teleportY.value = Math.floor(spawn.y).toString()
@@ -1887,6 +2137,7 @@ export async function createGame(
       devFastMove = !devFastMove
       if (devPanel) devPanel.fastMoveToggle.checked = devFastMove
       updateStatus()
+      markSaveDirty()
     }
     if (devMode && key === 'g' && !event.repeat) {
       event.preventDefault()
@@ -1894,6 +2145,7 @@ export async function createGame(
       if (devPanel) devPanel.flyToggle.checked = devFly
       updateStatus()
       drawExplorer(performance.now() / 1000)
+      markSaveDirty()
     }
     if (key === 'm' && !event.repeat) {
       event.preventDefault()
@@ -1907,6 +2159,7 @@ export async function createGame(
         minimapControls.setCollapsed(!minimapCollapsed)
       }
       applyCurrentMinimapTheme(minimapControls)
+      markSaveDirty()
     }
     if ((key === 'e' || key === ' ') && !event.repeat) {
       event.preventDefault()
@@ -1976,6 +2229,7 @@ export async function createGame(
         viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
       }
       drawMinimap()
+      markSaveDirty()
     }
   }
 
@@ -2037,6 +2291,7 @@ export async function createGame(
       drawDayNightOverlay()
       drawBattleShadow()
       applyCurrentMinimapTheme(minimapControls)
+      markSaveDirty()
     },
     setDevMode(enabled) {
       devMode = enabled
@@ -2050,15 +2305,7 @@ export async function createGame(
         options.container.appendChild(devPanel.panel)
         renderDevPanelLocale(devPanel, devText)
         devPanel.fastMoveToggle.checked = devFastMove
-        const panel = devPanel.panel
-        panel.addEventListener('mouseenter', () => applyCurrentDevPanelTheme(devPanel, true))
-        panel.addEventListener('mouseleave', () => applyCurrentDevPanelTheme(devPanel, false))
-        panel.addEventListener('focusin', () => applyCurrentDevPanelTheme(devPanel, true))
-        panel.addEventListener('focusout', () => {
-          window.setTimeout(() => {
-            if (!panel.contains(document.activeElement)) applyCurrentDevPanelTheme(devPanel, false)
-          }, 0)
-        })
+        attachDevPanelInteractions(devPanel)
       }
       renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
       refreshFog()
@@ -2080,6 +2327,7 @@ export async function createGame(
         devPanel.dayNightToggle.checked = devDayNight
         devPanel.lightLevelSlider.value = Math.round(devLightLevel * 100).toString()
       }
+      markSaveDirty()
     },
     setTheme(nextTheme) {
       theme = normalizeTheme(nextTheme)
@@ -2090,9 +2338,40 @@ export async function createGame(
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
     },
+    async save() {
+      return saveNow()
+    },
+    async exportSave() {
+      const snapshot = buildSaveSnapshot()
+      if (!snapshot) {
+        throw new WorldSaveError('unavailable', 'save snapshot is not available for export')
+      }
+      return saveStore.exportSnapshot(snapshot)
+    },
+    async importSave(serialized) {
+      const snapshot = await saveStore.importSnapshot(serialized)
+      await restoreSnapshot(snapshot)
+      const summary = summarizeImportedSnapshot(snapshot)
+      await saveStore.save(snapshot)
+      return summary
+    },
+    async clearSave() {
+      await saveStore.clear()
+    },
     async destroy() {
       if (destroyed) return
       destroyed = true
+      if (autosaveTimer !== null) {
+        window.clearTimeout(autosaveTimer)
+        autosaveTimer = null
+      }
+      if (contentPackSaveMetadata && saveDirty) {
+        try {
+          await saveNow()
+        } catch {
+          // Best-effort save on teardown; avoid blocking destroy on storage errors.
+        }
+      }
       rpc.rejectAll(new Error('Game destroyed'))
       worker.terminate()
       resizeObserver.disconnect()

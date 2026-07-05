@@ -49,5 +49,9 @@ See `MODULE_CATALOG.md` and `modules/` for the planned service boundaries.
 
 ## Persistence
 
-`localStorage` holds seed and preferences in v0.1. IndexedDB becomes authoritative for
-chunked saves in v0.2. Saves include schema, engine, and content-pack versions.
+`localStorage` still mirrors lightweight UI preferences, but IndexedDB is now the
+authoritative home for autosave snapshots in v0.2. Saves include schema version, engine
+version, content-pack resolution metadata, world identity, explorer state, and
+discovery chunks. Import/export and migration checks operate on the same snapshot
+contract, while incompatible content or unsupported schema versions fail explicitly
+instead of partially restoring stale state.
