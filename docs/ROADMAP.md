@@ -28,9 +28,11 @@
       all-terrain showcase map.
 - [x] Extracted shared water-render helpers and added deterministic river path shaping
       for the first natural-water foundation slice.
+- [x] Deterministic hydrology pass with slope, depression handling, flow direction,
+      accumulation, watersheds, and flow-following river source selection.
 - [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
       rendering instead of cell-derived edge decoration.
-- [ ] Seam-safe coastlines across chunk borders, slope, drainage, rivers, and erosion.
+- [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [ ] Worker-side Wasm batch generation for streamed chunk terrain layers, gated by
       Rust tooling in CI and TypeScript parity fixtures.

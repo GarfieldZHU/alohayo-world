@@ -27,3 +27,7 @@ This package owns deterministic geography and worker-safe data.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.
+- The current hydrology truth is: priority-flood depression handling, downhill
+  `flowDirection`, upstream `flowAccumulation`, per-cell `watershed`, and flow-following
+  river tracing. Extend that graph before adding new wetland, floodplain, lake, or
+  erosion heuristics.

@@ -61,6 +61,8 @@
 - Added runtime performance telemetry, desktop/mobile benchmark gates, and build-size
   budget enforcement for frame time, chunk latency, long tasks, memory sampling, and
   bundle-size regressions.
+- Added a deterministic hydrology pass with depression handling, slope, flow direction,
+  accumulation, watershed IDs, and flow-following river generation for issue `#9`.
 
 ## 0.1.0-demo
 

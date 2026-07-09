@@ -108,9 +108,18 @@ Still pending:
 
 ## Hydrology
 
-Current lakes use connectivity only. The next pipeline adds depression handling, slope,
-flow direction, accumulation, rivers, and watersheds. Wetland classification then moves
-from a moisture heuristic to drainage and saturation evidence.
+The terrain pipeline now runs a deterministic hydrology pass after elevation/topology:
+
+1. mark boundary and existing water outlets;
+2. priority-flood the surface to remove accidental pits while preserving stable outlets;
+3. assign downhill flow direction;
+4. accumulate upstream contributing area;
+5. group cells into watershed IDs;
+6. classify basin, wetland, marsh, and river candidates from slope, accumulation, and
+   depression evidence instead of moisture alone.
+
+Current remaining work in this lane is cross-chunk watershed identity merge, stronger
+river/lake seam continuity, and later erosion/floodplain modeling.
 
 ## Rendering and LOD
 

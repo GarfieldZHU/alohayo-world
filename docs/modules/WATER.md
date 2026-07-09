@@ -1,6 +1,6 @@
 # Water Module
 
-**Status:** foundation planned; first renderer and river-shaping slice started.
+**Status:** drainage foundation implemented; natural contour polish still in progress.
 
 ## Owns
 
@@ -36,9 +36,10 @@ Water-specific shape logic and rendering language above the base terrain/topolog
 
 1. Coastline contour extraction rather than only cardinal edge blending.
 2. Lake perimeter treatment distinct from ocean/sea.
-3. Flow-aware river highlight direction and width variation.
+3. Flow-aware river highlight direction and width variation in the renderer.
 4. Distance-to-shore tinting for shallow water and beach shelves.
-5. Basin/drainage-aware lake generation and outlet hints.
+5. Cross-chunk watershed identity merge, seam-safe outlets, and later erosion/floodplain
+   modeling.
 
 ## Tests
 

@@ -56,6 +56,10 @@ describe('world generation', () => {
     const second = generateWorld('alohayo', 32, 24)
     expect(first.hash).toBe(second.hash)
     expect(first.biomes).toEqual(second.biomes)
+    expect(first.slope).toEqual(second.slope)
+    expect(first.flowDirection).toEqual(second.flowDirection)
+    expect(first.flowAccumulation).toEqual(second.flowAccumulation)
+    expect(first.watershed).toEqual(second.watershed)
   })
 
   it('changes when the seed changes', () => {
@@ -68,6 +72,7 @@ describe('world generation', () => {
     expect(first.hash).toBe(second.hash)
     expect(first.biomes).toEqual(second.biomes)
     expect(first.region).toEqual(second.region)
+    expect(first.flowAccumulation).toEqual(second.flowAccumulation)
   })
 
   it('uses the same FNV seed contract as Rust', () => {
@@ -126,6 +131,34 @@ describe('world generation', () => {
     const average = ratios.reduce((total, ratio) => total + ratio, 0) / ratios.length
     expect(average).toBeGreaterThanOrEqual(0.3)
     expect(average).toBeLessThanOrEqual(0.6)
+  })
+
+  it('builds hydrology outputs with real drainage fields', () => {
+    const world = generateWorld('hydrology-fields', 96, 72)
+    expect(world.slope.length).toBe(world.biomes.length)
+    expect(world.flowDirection.length).toBe(world.biomes.length)
+    expect(world.flowAccumulation.length).toBe(world.biomes.length)
+    expect(world.watershed.length).toBe(world.biomes.length)
+    expect(world.depression.length).toBe(world.biomes.length)
+    expect(world.flowAccumulation.some((value) => value > 6)).toBe(true)
+    expect(world.watershed.some((value) => value > 0)).toBe(true)
+  })
+
+  it('keeps river mouths and drainage moving toward equal or lower terrain', () => {
+    const world = generateWorld('hydrology-river-gradient', 160, 120)
+    for (const river of world.rivers.slice(0, 8)) {
+      for (let index = 1; index < river.points.length; index += 1) {
+        const previous = river.points[index - 1]!
+        const current = river.points[index]!
+        const previousX = Math.max(0, Math.min(world.width - 1, Math.round(previous.x)))
+        const previousY = Math.max(0, Math.min(world.height - 1, Math.round(previous.y)))
+        const currentX = Math.max(0, Math.min(world.width - 1, Math.round(current.x)))
+        const currentY = Math.max(0, Math.min(world.height - 1, Math.round(current.y)))
+        const previousElevation = world.elevation[previousY * world.width + previousX]! / 255
+        const currentElevation = world.elevation[currentY * world.width + currentX]! / 255
+        expect(currentElevation).toBeLessThanOrEqual(previousElevation + 0.06)
+      }
+    }
   })
 
   it('applies authored map areas and landmarks deterministically', () => {

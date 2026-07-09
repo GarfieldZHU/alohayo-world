@@ -5,6 +5,11 @@ import type {
   WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
 } from '@alohayo/config'
+import {
+  buildHydrologyRaster,
+  hydrologyNeighborIndex,
+  type HydrologyRaster,
+} from './hydrology'
 
 export const BIOME = {
   deepOcean: 0,
@@ -52,6 +57,11 @@ export interface GeneratedWorld {
   moisture: Uint8Array
   temperature: Uint8Array
   biomes: Uint8Array
+  slope: Uint8Array
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+  watershed: Uint32Array
+  depression: Uint8Array
   landmass: Uint16Array
   waterbody: Uint16Array
   authoredArea: Uint16Array
@@ -76,6 +86,11 @@ export interface GeneratedChunk {
   moisture: Uint8Array
   temperature: Uint8Array
   biomes: Uint8Array
+  slope: Uint8Array
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+  watershed: Uint32Array
+  depression: Uint8Array
   authoredArea: Uint16Array
   region: Uint8Array
   areaIds: string[]
@@ -593,12 +608,21 @@ function streamBasinValue(
   return clamp01((rimElevation - elevationValue - 0.06) * 4.5)
 }
 
+function normalizeAccumulation(value: number, sampleSize: number): number {
+  return clamp01(
+    Math.log2(1 + Math.max(0, value)) / Math.log2(Math.max(8, sampleSize * 0.12) + 1)
+  )
+}
+
 function classifyTerrain(args: {
   elevationValue: number
   seaLevel: number
   moistureValue: number
   temperatureValue: number
   ruggednessValue: number
+  slopeValue: number
+  accumulationValue: number
+  depressionValue: number
   hotspotValue: number
   basinValue: number
   water: boolean
@@ -613,6 +637,9 @@ function classifyTerrain(args: {
     moistureValue,
     temperatureValue,
     ruggednessValue,
+    slopeValue,
+    accumulationValue,
+    depressionValue,
     hotspotValue,
     basinValue,
     water,
@@ -640,13 +667,23 @@ function classifyTerrain(args: {
   if (elevationValue > 0.83 && temperatureValue < 0.44) return BIOME.snow
   if (temperatureValue < 0.26 && elevationValue < 0.76) return BIOME.tundra
   if (ruggednessValue > 0.78 && elevationValue > 0.56 && moistureValue < 0.48) return BIOME.canyon
-  if (elevationValue > 0.7 && ruggednessValue < 0.34) return BIOME.plateau
-  if (elevationValue > 0.81) return BIOME.mountain
-  if (elevationValue > 0.74 && moistureValue < 0.56) return BIOME.bareRock
+  if (elevationValue > 0.7 && ruggednessValue < 0.34 && slopeValue < 0.12) return BIOME.plateau
+  if (elevationValue > 0.81 || (elevationValue > 0.74 && slopeValue > 0.3)) return BIOME.mountain
+  if (elevationValue > 0.74 && (moistureValue < 0.56 || slopeValue > 0.2)) return BIOME.bareRock
   if (elevationValue > 0.64) return BIOME.highland
-  if (basinValue > 0.66 && elevationValue < 0.58 && ruggednessValue < 0.5) return BIOME.basin
-  if (moistureValue > 0.82 && temperatureValue > 0.5 && elevationValue < 0.58) return BIOME.marsh
-  if (moistureValue > 0.74 && elevationValue < 0.58) return BIOME.wetland
+  if (
+    (depressionValue > 0.16 || (basinValue > 0.66 && slopeValue < 0.12)) &&
+    elevationValue < 0.58 &&
+    ruggednessValue < 0.5
+  ) {
+    return BIOME.basin
+  }
+  const saturatedLowland =
+    elevationValue < 0.58 &&
+    slopeValue < 0.16 &&
+    (accumulationValue > 0.22 || depressionValue > 0.06 || touchingWater)
+  if (moistureValue > 0.82 && temperatureValue > 0.5 && saturatedLowland) return BIOME.marsh
+  if (moistureValue > 0.74 && saturatedLowland) return BIOME.wetland
   if (temperatureValue > 0.72 && moistureValue < 0.26) {
     if (oasisChance > 0.86 && elevationValue < 0.68) return BIOME.oasis
     return BIOME.desert
@@ -744,6 +781,9 @@ interface EvaluatedCell {
   moistureValue: number
   temperatureValue: number
   ruggednessValue: number
+  slopeValue: number
+  accumulationValue: number
+  depressionValue: number
   nearWater: boolean
 }
 
@@ -773,6 +813,9 @@ function evaluateStreamCell(globalX: number, globalY: number, seed: number): Eva
     moistureValue,
     temperatureValue,
     ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
+    slopeValue: clamp01(streamRuggednessValue(globalX, globalY, seed) * 0.55),
+    accumulationValue: 0,
+    depressionValue: 0,
     nearWater,
   }
 }
@@ -795,6 +838,62 @@ function localRuggednessFromElevation(
     count += 1
   }
   return clamp01((total / Math.max(1, count)) * 7 + Math.abs(center - 0.62) * 0.12)
+}
+
+function buildHydrologyFromElevationAndWater(
+  elevation: Uint8Array,
+  width: number,
+  height: number,
+  isWater: (index: number) => boolean
+): HydrologyRaster {
+  return buildHydrologyRaster({
+    width,
+    height,
+    sample: (x, y, index) => ({
+      elevationValue: elevation[index]! / 255,
+      water: isWater(index),
+    }),
+  })
+}
+
+function hydrologyCellValues(
+  hydrology: HydrologyRaster,
+  x: number,
+  y: number
+): { slopeValue: number; accumulationValue: number; depressionValue: number } {
+  const index = y * hydrology.width + x
+  return {
+    slopeValue: hydrology.slope[index]! / 255,
+    accumulationValue: normalizeAccumulation(
+      hydrology.flowAccumulation[index]!,
+      hydrology.width * hydrology.height
+    ),
+    depressionValue: hydrology.depression[index]! / 255,
+  }
+}
+
+function assignHydrologyToWorld(
+  world: GeneratedWorld,
+  hydrology: HydrologyRaster
+): GeneratedWorld {
+  world.slope = hydrology.slope
+  world.flowDirection = hydrology.flowDirection
+  world.flowAccumulation = hydrology.flowAccumulation
+  world.watershed = hydrology.watershed
+  world.depression = hydrology.depression
+  return world
+}
+
+function assignHydrologyToChunk(
+  chunk: GeneratedChunk,
+  hydrology: HydrologyRaster
+): GeneratedChunk {
+  chunk.slope = hydrology.slope
+  chunk.flowDirection = hydrology.flowDirection
+  chunk.flowAccumulation = hydrology.flowAccumulation
+  chunk.watershed = hydrology.watershed
+  chunk.depression = hydrology.depression
+  return chunk
 }
 
 function buildBiomeDefinitionMap(
@@ -855,6 +954,12 @@ function populateChunkFeatures(
             localY
           ) +
           streamHotspotValue(x, y, seed) * 0.08,
+        slopeValue: chunk.slope[index]! / 255,
+        accumulationValue: normalizeAccumulation(
+          chunk.flowAccumulation[index]!,
+          chunk.chunkSize * chunk.chunkSize
+        ),
+        depressionValue: chunk.depression[index]! / 255,
         nearWater,
       }
     }
@@ -918,6 +1023,12 @@ function populateWorldFeatures(
           clampedY
         ) +
         streamHotspotValue(clampedX * 4, clampedY * 4, seed) * 0.08,
+      slopeValue: world.slope[index]! / 255,
+      accumulationValue: normalizeAccumulation(
+        world.flowAccumulation[index]!,
+        world.width * world.height
+      ),
+      depressionValue: world.depression[index]! / 255,
       nearWater: touchesWater(index, world.width, world.height, world.waterbody),
     }
   }
@@ -1137,6 +1248,54 @@ const EIGHT_NEIGHBORS = [
   [-1, -1],
 ] as const
 
+interface HydrologyBoundsView {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  hydrology: HydrologyRaster
+}
+
+function buildHydrologyBoundsView(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  evaluateCell: (x: number, y: number) => EvaluatedCell
+): HydrologyBoundsView {
+  const width = maxX - minX + 1
+  const height = maxY - minY + 1
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    hydrology: buildHydrologyRaster({
+      width,
+      height,
+      sample: (x, y) => {
+        const cell = evaluateCell(minX + x, minY + y)
+        return {
+          elevationValue: cell.elevationValue,
+          water: isWaterBiome(cell.biome),
+        }
+      },
+    }),
+  }
+}
+
+function hydrologyBoundsIndex(view: HydrologyBoundsView, x: number, y: number): number {
+  if (x < view.minX || y < view.minY || x > view.maxX || y > view.maxY) return -1
+  return (y - view.minY) * view.hydrology.width + (x - view.minX)
+}
+
+function hydrologyBoundsPoint(view: HydrologyBoundsView, index: number): { x: number; y: number } {
+  return {
+    x: view.minX + (index % view.hydrology.width),
+    y: view.minY + Math.floor(index / view.hydrology.width),
+  }
+}
+
 function smoothRoadPoints(
   points: Array<{ x: number; y: number }>,
   iterations: number
@@ -1337,59 +1496,49 @@ function buildRoadNetwork(
   return roads
 }
 
-function traceRiverPath(
-  sourceX: number,
-  sourceY: number,
+function traceRiverPathFromHydrology(
+  sourceIndex: number,
+  view: HydrologyBoundsView,
   evaluateCell: (x: number, y: number) => EvaluatedCell,
   riverSystem: WorldRiverSystemDefinition
 ): Array<{ x: number; y: number }> {
-  const points: Array<{ x: number; y: number }> = [{ x: sourceX, y: sourceY }]
-  const visited = new Set<string>([`${sourceX},${sourceY}`])
-  const source = evaluateCell(sourceX, sourceY)
-  let currentX = sourceX
-  let currentY = sourceY
+  const points: Array<{ x: number; y: number }> = []
+  const visited = new Set<number>()
+  let current = sourceIndex
 
   for (let step = 0; step < riverSystem.generation.maxLength; step += 1) {
-    const current = evaluateCell(currentX, currentY)
-    if (isWaterBiome(current.biome)) break
-
-    let best: { x: number; y: number; score: number; water: boolean } | null = null
-    for (const [dx, dy] of EIGHT_NEIGHBORS) {
-      const nextX = currentX + dx
-      const nextY = currentY + dy
-      const key = `${nextX},${nextY}`
-      if (visited.has(key)) continue
-      const candidate = evaluateCell(nextX, nextY)
-      const water = isWaterBiome(candidate.biome)
-      const depthDrop =
-        current.elevationValue -
-        candidate.elevationValue +
-        (candidate.moistureValue - current.moistureValue) * 0.12
-      const score =
-        (water ? 10 : 0) +
-        depthDrop * 8 -
-        candidate.ruggednessValue * 0.15 -
-        Math.abs(dx) * 0.03 -
-        Math.abs(dy) * 0.03
-      if (!best || score > best.score) {
-        best = { x: nextX, y: nextY, score, water }
-      }
+    if (current < 0 || visited.has(current)) break
+    visited.add(current)
+    const point = hydrologyBoundsPoint(view, current)
+    points.push(point)
+    const currentCell = evaluateCell(point.x, point.y)
+    if (isWaterBiome(currentCell.biome)) break
+    const direction = view.hydrology.flowDirection[current]!
+    if (direction < 0) break
+    const next = hydrologyNeighborIndex(
+      current,
+      direction,
+      view.hydrology.width,
+      view.hydrology.height
+    )
+    if (next < 0) break
+    const nextPoint = hydrologyBoundsPoint(view, next)
+    const nextCell = evaluateCell(nextPoint.x, nextPoint.y)
+    const drop = currentCell.elevationValue - nextCell.elevationValue
+    if (
+      points.length > 1 &&
+      !isWaterBiome(nextCell.biome) &&
+      drop < -riverSystem.generation.channelDepthMin * 0.5
+    ) {
+      break
     }
-
-    if (!best) break
-    if (!best.water && best.score < riverSystem.generation.channelDepthMin * 8) break
-    currentX = best.x
-    currentY = best.y
-    points.push({ x: currentX, y: currentY })
-    visited.add(`${currentX},${currentY}`)
-    if (best.water) break
+    current = next
   }
 
   const last = points[points.length - 1]
   if (!last) return []
   const mouth = evaluateCell(last.x, last.y)
-  if (isWaterBiome(mouth.biome)) return points
-  if (mouth.elevationValue <= source.elevationValue - riverSystem.generation.channelDepthMin * 4) {
+  if (isWaterBiome(mouth.biome) || points.length >= riverSystem.generation.minLength) {
     return points
   }
   return []
@@ -1475,11 +1624,20 @@ function buildRiverNetwork(
 ): GeneratedRiver[] {
   if (!riverSystem.enabled) return []
   const seed = hashSeed(seedText)
+  const hydrologyView = buildHydrologyBoundsView(minX, minY, maxX, maxY, evaluateCell)
+  const hydrology = hydrologyView.hydrology
   const rivers: GeneratedRiver[] = []
   const seenMouths = new Set<string>()
+  const usedCells = new Uint8Array(hydrology.width * hydrology.height)
   const stride = riverSystem.generation.sourceStride
   const startX = Math.floor(minX / stride) * stride
   const startY = Math.floor(minY / stride) * stride
+  const accumulationFloor = Math.max(4, Math.floor(riverSystem.generation.minLength * 0.75))
+  const majorAccumulation = Math.max(
+    accumulationFloor + 2,
+    Math.floor(riverSystem.generation.minLength * 1.8)
+  )
+  const candidates: Array<{ x: number; y: number; index: number; score: number }> = []
 
   for (let y = startY; y <= maxY; y += stride) {
     for (let x = startX; x <= maxX; x += stride) {
@@ -1489,76 +1647,81 @@ function buildRiverNetwork(
       if (isWaterBiome(source.biome)) continue
       if (source.elevationValue < riverSystem.generation.sourceElevationMin) continue
       if (source.moistureValue < riverSystem.generation.sourceMoistureMin) continue
-      const path = traceRiverPath(x, y, evaluateCell, riverSystem)
-      if (path.length < riverSystem.generation.minLength) continue
-      const mouth = path[path.length - 1]!
-      const mouthKey = `${mouth.x},${mouth.y}`
-      if (seenMouths.has(mouthKey)) continue
-      seenMouths.add(mouthKey)
-      const shapedPath = shapeRiverPath(path, seed + x * 31 + y * 17, riverSystem)
-      rivers.push({
-        id: `river:${x}:${y}`,
-        width:
-          path.length > riverSystem.generation.minLength * 2
-            ? riverSystem.renderWidth.major
-            : riverSystem.renderWidth.minor,
-        flow: clamp01(path.length / riverSystem.generation.maxLength),
-        source: { x, y },
-        mouth: { x: mouth.x, y: mouth.y },
-        points: shapedPath,
-      })
+      const index = hydrologyBoundsIndex(hydrologyView, x, y)
+      if (index < 0 || hydrology.water[index]) continue
+      const flow = hydrology.flowAccumulation[index]!
+      if (flow < accumulationFloor) continue
+      const slopeValue = hydrology.slope[index]! / 255
+      const score =
+        flow * 3.6 +
+        source.elevationValue * 28 +
+        source.moistureValue * 12 -
+        slopeValue * 8 -
+        source.ruggednessValue * 4
+      candidates.push({ x, y, index, score })
     }
   }
 
+  candidates.sort((left, right) => right.score - left.score)
+  for (const candidate of candidates) {
+    const path = traceRiverPathFromHydrology(
+      candidate.index,
+      hydrologyView,
+      evaluateCell,
+      riverSystem
+    )
+    if (path.length < riverSystem.generation.minLength) continue
+    const overlap = path.reduce((total, point) => {
+      const index = hydrologyBoundsIndex(hydrologyView, point.x, point.y)
+      return total + Number(index >= 0 && usedCells[index])
+    }, 0)
+    if (overlap / Math.max(1, path.length) > 0.35) continue
+    const mouth = path[path.length - 1]!
+    const mouthIndex = hydrologyBoundsIndex(hydrologyView, mouth.x, mouth.y)
+    const mouthKey = `${mouth.x},${mouth.y}:${mouthIndex >= 0 ? hydrology.watershed[mouthIndex] : 0}`
+    if (seenMouths.has(mouthKey)) continue
+    seenMouths.add(mouthKey)
+    for (const point of path) {
+      const index = hydrologyBoundsIndex(hydrologyView, point.x, point.y)
+      if (index >= 0) usedCells[index] = 1
+    }
+    const sourceFlow = hydrology.flowAccumulation[candidate.index]!
+    const shapedPath = shapeRiverPath(path, seed + candidate.x * 31 + candidate.y * 17, riverSystem)
+    rivers.push({
+      id: `river:${candidate.x}:${candidate.y}`,
+      width: sourceFlow >= majorAccumulation ? riverSystem.renderWidth.major : riverSystem.renderWidth.minor,
+      flow: clamp01(
+        Math.log2(sourceFlow + 1) / Math.log2(Math.max(sourceFlow + 1, majorAccumulation * 2))
+      ),
+      source: { x: candidate.x, y: candidate.y },
+      mouth: { x: mouth.x, y: mouth.y },
+      points: shapedPath,
+    })
+  }
+
   if (!rivers.length) {
-    let fallbackSource: { x: number; y: number; score: number } | null = null
+    let fallbackSource: { x: number; y: number; index: number; score: number } | null = null
     for (let y = minY; y <= maxY; y += Math.max(6, Math.floor(stride / 2))) {
       for (let x = minX; x <= maxX; x += Math.max(6, Math.floor(stride / 2))) {
+        const index = hydrologyBoundsIndex(hydrologyView, x, y)
+        if (index < 0 || hydrology.water[index]) continue
         const cell = evaluateCell(x, y)
-        if (isWaterBiome(cell.biome)) continue
         const score =
-          cell.elevationValue * 0.7 + cell.moistureValue * 0.3 - cell.ruggednessValue * 0.15
-        if (!fallbackSource || score > fallbackSource.score) fallbackSource = { x, y, score }
+          hydrology.flowAccumulation[index]! * 4 +
+          cell.elevationValue * 20 +
+          cell.moistureValue * 8 -
+          cell.ruggednessValue * 3
+        if (!fallbackSource || score > fallbackSource.score) fallbackSource = { x, y, index, score }
       }
     }
 
     if (fallbackSource) {
-      const points: Array<{ x: number; y: number }> = [{ x: fallbackSource.x, y: fallbackSource.y }]
-      const visited = new Set<string>([`${fallbackSource.x},${fallbackSource.y}`])
-      let currentX = fallbackSource.x
-      let currentY = fallbackSource.y
-      for (let step = 0; step < riverSystem.generation.maxLength; step += 1) {
-        const current = evaluateCell(currentX, currentY)
-        let best: { x: number; y: number; value: number } | null = null
-        for (const [dx, dy] of EIGHT_NEIGHBORS) {
-          const nextX = currentX + dx
-          const nextY = currentY + dy
-          const key = `${nextX},${nextY}`
-          if (visited.has(key)) continue
-          const next = evaluateCell(nextX, nextY)
-          const value =
-            next.elevationValue +
-            (Math.abs(nextX - minX) / Math.max(1, maxX - minX)) * 0.01 +
-            (Math.abs(nextY - minY) / Math.max(1, maxY - minY)) * 0.01
-          if (!best || value < best.value) best = { x: nextX, y: nextY, value }
-          if (isWaterBiome(next.biome)) {
-            best = { x: nextX, y: nextY, value: -1 }
-            break
-          }
-        }
-        if (!best) break
-        currentX = best.x
-        currentY = best.y
-        points.push({ x: currentX, y: currentY })
-        visited.add(`${currentX},${currentY}`)
-        if (isWaterBiome(evaluateCell(currentX, currentY).biome)) break
-        if (
-          best.value >= current.elevationValue &&
-          points.length >= riverSystem.generation.minLength
-        )
-          break
-      }
-
+      const points = traceRiverPathFromHydrology(
+        fallbackSource.index,
+        hydrologyView,
+        evaluateCell,
+        riverSystem
+      )
       if (points.length >= riverSystem.generation.minLength) {
         const mouth = points[points.length - 1]!
         const shapedPath = shapeRiverPath(
@@ -1569,7 +1732,10 @@ function buildRiverNetwork(
         rivers.push({
           id: `river:fallback:${fallbackSource.x}:${fallbackSource.y}`,
           width: riverSystem.renderWidth.minor,
-          flow: clamp01(points.length / riverSystem.generation.maxLength),
+          flow: clamp01(
+            Math.log2(hydrology.flowAccumulation[fallbackSource.index]! + 1) /
+              Math.log2(Math.max(8, majorAccumulation * 2))
+          ),
           source: { x: fallbackSource.x, y: fallbackSource.y },
           mouth: { x: mouth.x, y: mouth.y },
           points: shapedPath,
@@ -1685,9 +1851,16 @@ export function applyMapAreas(
   }
 
   const topology = classifyTopologyFromBiomes(world.biomes, world.width, world.height)
+  const hydrology = buildHydrologyFromElevationAndWater(
+    world.elevation,
+    world.width,
+    world.height,
+    (index) => isWaterBiome(world.biomes[index]!)
+  )
   world.landmass = topology.landmass
   world.waterbody = topology.waterbody
   world.mainlandId = topology.mainlandId
+  assignHydrologyToWorld(world, hydrology)
   world.authoredArea = authoredArea
   world.areaIds = areaIds
   world.landmarks = landmarks
@@ -1701,6 +1874,7 @@ export function applyMapAreas(
     worldHash ^=
       world.biomes[index]! +
       world.elevation[index]! +
+      world.slope[index]! +
       world.landmass[index]! +
       world.waterbody[index]! +
       world.authoredArea[index]!
@@ -1824,6 +1998,15 @@ function applyAreasToChunk(
   chunk.areaIds = areaIds
   chunk.landmarks = landmarks
   chunk.region = classifyChunkRegions(chunk.biomes, chunk.chunkSize)
+  assignHydrologyToChunk(
+    chunk,
+    buildHydrologyFromElevationAndWater(
+      chunk.elevation,
+      chunk.chunkSize,
+      chunk.chunkSize,
+      (index) => isWaterBiome(chunk.biomes[index]!)
+    )
+  )
   chunk.settlements = []
   chunk.rivers = []
   chunk.roads = []
@@ -1836,6 +2019,7 @@ function applyAreasToChunk(
       chunk.elevation[index]! +
       chunk.moisture[index]! +
       chunk.temperature[index]! +
+      chunk.slope[index]! +
       chunk.authoredArea[index]! +
       chunk.region[index]!
     chunkHash = Math.imul(chunkHash, 16777619)
@@ -1907,6 +2091,12 @@ export function generateWorld(
   }
 
   const topology = classifyTopology(elevation, width, height, seaLevel)
+  const hydrology = buildHydrologyFromElevationAndWater(
+    elevation,
+    width,
+    height,
+    (index) => Boolean(topology.waterbody[index])
+  )
   let worldHash = 2166136261
 
   for (let index = 0; index < size; index += 1) {
@@ -1915,6 +2105,7 @@ export function generateWorld(
     const elevationValue = elevation[index]! / 255
     const moistureValue = moisture[index]! / 255
     const temperatureValue = temperature[index]! / 255
+    const hydrologyValues = hydrologyCellValues(hydrology, x, y)
     const biome = classifyTerrain({
       elevationValue,
       seaLevel,
@@ -1923,6 +2114,9 @@ export function generateWorld(
       ruggednessValue:
         localRuggednessFromElevation(elevation, width, height, x, y) +
         streamHotspotValue(x * 4, y * 4, seed) * 0.08,
+      slopeValue: hydrologyValues.slopeValue,
+      accumulationValue: hydrologyValues.accumulationValue,
+      depressionValue: hydrologyValues.depressionValue,
       hotspotValue: streamHotspotValue(x * 4, y * 4, seed),
       basinValue: streamBasinValue(x * 4, y * 4, seed, elevationValue),
       water: Boolean(topology.waterbody[index]),
@@ -1947,6 +2141,11 @@ export function generateWorld(
     moisture,
     temperature,
     biomes,
+    slope: hydrology.slope,
+    flowDirection: hydrology.flowDirection,
+    flowAccumulation: hydrology.flowAccumulation,
+    watershed: hydrology.watershed,
+    depression: hydrology.depression,
     landmass: topology.landmass,
     waterbody: topology.waterbody,
     authoredArea: new Uint16Array(size),
@@ -1989,21 +2188,49 @@ export function generateChunk(
       const elevationValue = streamElevationValue(globalX, globalY, seed)
       const moistureValue = streamMoistureValue(globalX, globalY, seed, elevationValue)
       const temperatureValue = streamTemperatureValue(globalX, globalY, seed, elevationValue)
-      const biome = classifyStreamBiome(
-        globalX,
-        globalY,
-        seed,
-        seaLevel,
-        elevationValue,
-        moistureValue,
-        temperatureValue
-      )
 
       elevation[index] = Math.round(elevationValue * 255)
       moisture[index] = Math.round(moistureValue * 255)
       temperature[index] = Math.round(temperatureValue * 255)
-      biomes[index] = biome
+    }
+  }
 
+  const topology = classifyTopology(elevation, chunkSize, chunkSize, seaLevel)
+  const hydrology = buildHydrologyFromElevationAndWater(
+    elevation,
+    chunkSize,
+    chunkSize,
+    (index) => Boolean(topology.waterbody[index])
+  )
+  for (let localY = 0; localY < chunkSize; localY += 1) {
+    for (let localX = 0; localX < chunkSize; localX += 1) {
+      const globalX = originX + localX
+      const globalY = originY + localY
+      const index = localY * chunkSize + localX
+      const elevationValue = elevation[index]! / 255
+      const moistureValue = moisture[index]! / 255
+      const temperatureValue = temperature[index]! / 255
+      const hydrologyValues = hydrologyCellValues(hydrology, localX, localY)
+      const biome = classifyTerrain({
+        elevationValue,
+        seaLevel,
+        moistureValue,
+        temperatureValue,
+        ruggednessValue:
+          localRuggednessFromElevation(elevation, chunkSize, chunkSize, localX, localY) +
+          streamHotspotValue(globalX, globalY, seed) * 0.08,
+        slopeValue: hydrologyValues.slopeValue,
+        accumulationValue: hydrologyValues.accumulationValue,
+        depressionValue: hydrologyValues.depressionValue,
+        hotspotValue: streamHotspotValue(globalX, globalY, seed),
+        basinValue: streamBasinValue(globalX, globalY, seed, elevationValue),
+        water: Boolean(topology.waterbody[index]),
+        oceanConnected: Boolean(topology.ocean[index]),
+        touchingWater: touchesWater(index, chunkSize, chunkSize, topology.waterbody),
+        reefChance: valueNoise(globalX + 220, globalY - 160, 18, seed + 8011),
+        oasisChance: valueNoise(globalX - 150, globalY + 180, 24, seed + 8039),
+      })
+      biomes[index] = biome
       chunkHash ^= biome + elevation[index]! + moisture[index]! + temperature[index]!
       chunkHash = Math.imul(chunkHash, 16777619)
     }
@@ -2022,6 +2249,11 @@ export function generateChunk(
     moisture,
     temperature,
     biomes,
+    slope: hydrology.slope,
+    flowDirection: hydrology.flowDirection,
+    flowAccumulation: hydrology.flowAccumulation,
+    watershed: hydrology.watershed,
+    depression: hydrology.depression,
     authoredArea: new Uint16Array(size),
     region: classifyChunkRegions(biomes, chunkSize),
     areaIds: [''],
