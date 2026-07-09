@@ -82,6 +82,9 @@ renderer.
 - The main thread never performs full-world generation.
 - Wasm is introduced only for measured CPU-heavy work and keeps a deterministic
   TypeScript reference or fallback.
+- Move renderer-adjacent hot loops to Wasm only as worker-produced render hints or other
+  coarse typed-array batches. PixiJS draw calls, DOM UI, and per-frame scene ownership
+  stay in TypeScript.
 - Every worker, listener, animation loop, GPU object, and DOM node is owned by a
   `GameHandle` and released by `destroy`.
 - No network gameplay, telemetry, account, or server-side save system is added.

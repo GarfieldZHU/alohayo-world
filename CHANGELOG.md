@@ -63,6 +63,9 @@
   bundle-size regressions.
 - Added a deterministic hydrology pass with depression handling, slope, flow direction,
   accumulation, watershed IDs, and flow-following river generation for issue `#9`.
+- Added the first Rust/Wasm renderer-adjacent migration slice: worker-produced chunk
+  render hints for noise, transition masks, and detail markers with a deterministic
+  TypeScript fallback and unit tests.
 
 ## 0.1.0-demo
 

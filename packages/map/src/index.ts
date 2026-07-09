@@ -10,6 +10,7 @@ import {
   hydrologyNeighborIndex,
   type HydrologyRaster,
 } from './hydrology'
+import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
 
 export const BIOME = {
   deepOcean: 0,
@@ -91,6 +92,7 @@ export interface GeneratedChunk {
   flowAccumulation: Uint32Array
   watershed: Uint32Array
   depression: Uint8Array
+  renderHints: ChunkRenderHints
   authoredArea: Uint16Array
   region: Uint8Array
   areaIds: string[]
@@ -176,6 +178,7 @@ export interface GenerateChunkRequest {
   biomeDefinitions?: BiomeDefinition[]
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
+  wasmBaseUrl?: string
 }
 
 export interface GenerateWorldResponse {
@@ -1998,6 +2001,13 @@ function applyAreasToChunk(
   chunk.areaIds = areaIds
   chunk.landmarks = landmarks
   chunk.region = classifyChunkRegions(chunk.biomes, chunk.chunkSize)
+  chunk.renderHints = generateChunkRenderHints({
+    biomes: chunk.biomes,
+    elevation: chunk.elevation,
+    chunkSize: chunk.chunkSize,
+    originX: chunk.originX,
+    originY: chunk.originY,
+  })
   assignHydrologyToChunk(
     chunk,
     buildHydrologyFromElevationAndWater(
@@ -2254,6 +2264,13 @@ export function generateChunk(
     flowAccumulation: hydrology.flowAccumulation,
     watershed: hydrology.watershed,
     depression: hydrology.depression,
+    renderHints: generateChunkRenderHints({
+      biomes,
+      elevation,
+      chunkSize,
+      originX,
+      originY,
+    }),
     authoredArea: new Uint16Array(size),
     region: classifyChunkRegions(biomes, chunkSize),
     areaIds: [''],

@@ -27,6 +27,7 @@ import {
 } from '@alohayo/config'
 import { hashSeed, type GeneratedChunk, type GeneratedLandmark } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
+import { CLOSE_DETAIL_KIND } from '../../map/src/render-hints'
 import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './dev-panel'
 import {
   applyThemeToMinimapControls,
@@ -1331,21 +1332,18 @@ export async function createGame(
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
         const index = localY * chunk.chunkSize + localX
         const biome = biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!
-        const noise = cellNoise(
-          chunk.originX + localX,
-          chunk.originY + localY,
-          chunk.elevation[index]!
-        )
+        const noise = chunk.renderHints.noise[index]!
         const originX = localX * cellSize
         const originY = localY * cellSize
         view.terrain
           .rect(originX - 0.4, originY - 0.4, cellSize + 0.8, cellSize + 0.8)
           .fill(biome.color)
 
-        const rightBiome =
-          localX + 1 < chunk.chunkSize
+        const rightBiome = localX + 1 < chunk.chunkSize
+          ? chunk.renderHints.eastBoundaryMask[index]
             ? (biomeByCode.get(chunk.biomes[index + 1]!) ?? biome)
-            : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
+            : null
+          : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
         if (rightBiome && rightBiome.code !== biome.code) {
           drawBoundaryBlend(
             view.transitions,
@@ -1359,10 +1357,11 @@ export async function createGame(
           )
         }
 
-        const belowBiome =
-          localY + 1 < chunk.chunkSize
+        const belowBiome = localY + 1 < chunk.chunkSize
+          ? chunk.renderHints.southBoundaryMask[index]
             ? (biomeByCode.get(chunk.biomes[index + chunk.chunkSize]!) ?? biome)
-            : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
+            : null
+          : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
         if (belowBiome && belowBiome.code !== biome.code) {
           drawBoundaryBlend(
             view.transitions,
@@ -1376,16 +1375,19 @@ export async function createGame(
           )
         }
 
-        if ((devMode || scale >= 2.05) && noise % 11 === 0) {
+        if ((devMode || scale >= 2.05) && chunk.renderHints.regionalDetailMask[index]) {
           view.regionalDetails
             .rect(originX + 1, originY + 1, Math.max(1, cellSize - 2), 0.5)
             .fill({ color: biome.accent, alpha: 0.52 })
         }
 
-        if ((devMode || scale >= 3.35) && noise % 7 === 0) {
-          const detailX = originX + 1 + ((noise >>> 7) % Math.max(1, cellSize - 2))
-          const detailY = originY + 1 + ((noise >>> 11) % Math.max(1, cellSize - 2))
-          if (biome.id.includes('ocean') || biome.id.includes('sea') || biome.id.includes('lake')) {
+        const closeDetailKind = chunk.renderHints.closeDetailKind[index]!
+        if ((devMode || scale >= 3.35) && closeDetailKind !== CLOSE_DETAIL_KIND.none) {
+          const detailX =
+            originX + 1 + (chunk.renderHints.detailOffsetX[index]! % Math.max(1, cellSize - 2))
+          const detailY =
+            originY + 1 + (chunk.renderHints.detailOffsetY[index]! % Math.max(1, cellSize - 2))
+          if (closeDetailKind === CLOSE_DETAIL_KIND.water) {
             drawWaterCloseDetail(
               view.closeDetails,
               originX,
@@ -1394,22 +1396,18 @@ export async function createGame(
               noise,
               colorFromHex(biome.accent, 0x7bd3f7)
             )
-          } else if (biome.id.includes('forest')) {
+          } else if (closeDetailKind === CLOSE_DETAIL_KIND.forest) {
             view.closeDetails.circle(detailX, detailY, 0.8).fill({
               color: biome.accent,
               alpha: 0.86,
             })
-          } else if (
-            biome.id.includes('mountain') ||
-            biome.id.includes('rock') ||
-            biome.id.includes('highland')
-          ) {
+          } else if (closeDetailKind === CLOSE_DETAIL_KIND.mountain) {
             view.closeDetails
               .moveTo(originX + 0.5, originY + cellSize - 0.5)
               .lineTo(originX + cellSize / 2, originY + 0.5)
               .lineTo(originX + cellSize - 0.5, originY + cellSize - 0.5)
               .stroke({ color: biome.accent, width: 0.55, alpha: 0.82 })
-          } else if (biome.id.includes('wetland')) {
+          } else if (closeDetailKind === CLOSE_DETAIL_KIND.wetland) {
             view.closeDetails
               .moveTo(detailX, originY + cellSize - 0.5)
               .lineTo(detailX, originY + 1)
@@ -1524,6 +1522,7 @@ export async function createGame(
         biomeDefinitions: content.biomes,
         riverSystem: content.world.rivers,
         roadSystem: content.world.roads,
+        wasmBaseUrl: options.assetBaseUrl,
       })
       .then((chunk) => {
         pendingChunks.delete(key)

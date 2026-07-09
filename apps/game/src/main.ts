@@ -114,6 +114,7 @@ const launch = async () => {
     const preset = sizePresets[sizeIndex]!
     handle = await mountGame({
       container,
+      assetBaseUrl: new URL('./embed/', window.location.href).toString(),
       locale,
       initialWorld: {
         seed: seedInput.value.trim() || 'alohayo',

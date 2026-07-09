@@ -40,6 +40,11 @@ chunk-layer batch, then TypeScript continues to apply authored overlays, settlem
 roads, topology helpers, rendering contracts, and fallback behavior. Do not move PixiJS
 or per-frame rendering into Wasm.
 
+The first renderer-adjacent migration slice now follows the same rule: worker-side chunk
+render-hint generation may use Wasm for deterministic `noise`, transition masks, and
+detail markers, while PixiJS drawing stays in TypeScript on the main thread. Expand this
+surface before considering any deeper renderer migration.
+
 ## Extension
 
 Registries map known IDs to engine capabilities. Content packs can reference registered
