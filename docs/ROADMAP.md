@@ -35,8 +35,8 @@
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
 - [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
 - [~] Worker-side Wasm batch generation for streamed chunk terrain layers: base climate
-      layers are now a coarse worker batch with TypeScript fallback and parity fixtures;
-      topology/hydrology/biome authority remains staged under issue `#30`.
+  layers are now a coarse worker batch with TypeScript fallback and parity fixtures;
+  topology/hydrology/biome authority remains staged under issue `#30`.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
       restoration.
 - [x] Content-pack dependency loading, authored overlay provenance, and schema

@@ -20,6 +20,7 @@ jobs:
         with:
           toolchain: 1.87.0
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
       - run: corepack enable
       - run: yarn install --immutable
       - run: cargo install wasm-pack --version 0.13.1 --locked
@@ -40,6 +41,7 @@ jobs:
         with:
           toolchain: 1.87.0
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
       - run: cargo test --manifest-path crates/world-core/Cargo.toml
       - run: cargo fmt --manifest-path crates/world-core/Cargo.toml --check
       - run: cargo clippy --manifest-path crates/world-core/Cargo.toml -- -D warnings
