@@ -71,8 +71,10 @@ async function buildChunkRenderHints(
           (wasmHints as ChunkRenderHints & { east_boundary_mask?: Uint8Array }).eastBoundaryMask ??
           (wasmHints as ChunkRenderHints & { east_boundary_mask?: Uint8Array }).east_boundary_mask!,
         southBoundaryMask:
-          (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array }).southBoundaryMask ??
-          (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array }).south_boundary_mask!,
+          (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array })
+            .southBoundaryMask ??
+          (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array })
+            .south_boundary_mask!,
         regionalDetailMask:
           (wasmHints as ChunkRenderHints & { regional_detail_mask?: Uint8Array })
             .regionalDetailMask ??

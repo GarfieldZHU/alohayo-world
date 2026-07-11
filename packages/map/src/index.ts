@@ -5,11 +5,7 @@ import type {
   WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
 } from '@alohayo/config'
-import {
-  buildHydrologyRaster,
-  hydrologyNeighborIndex,
-  type HydrologyRaster,
-} from './hydrology'
+import { buildHydrologyRaster, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
 
 export const BIOME = {
@@ -612,9 +608,7 @@ function streamBasinValue(
 }
 
 function normalizeAccumulation(value: number, sampleSize: number): number {
-  return clamp01(
-    Math.log2(1 + Math.max(0, value)) / Math.log2(Math.max(8, sampleSize * 0.12) + 1)
-  )
+  return clamp01(Math.log2(1 + Math.max(0, value)) / Math.log2(Math.max(8, sampleSize * 0.12) + 1))
 }
 
 function classifyTerrain(args: {
@@ -875,10 +869,7 @@ function hydrologyCellValues(
   }
 }
 
-function assignHydrologyToWorld(
-  world: GeneratedWorld,
-  hydrology: HydrologyRaster
-): GeneratedWorld {
+function assignHydrologyToWorld(world: GeneratedWorld, hydrology: HydrologyRaster): GeneratedWorld {
   world.slope = hydrology.slope
   world.flowDirection = hydrology.flowDirection
   world.flowAccumulation = hydrology.flowAccumulation
@@ -887,10 +878,7 @@ function assignHydrologyToWorld(
   return world
 }
 
-function assignHydrologyToChunk(
-  chunk: GeneratedChunk,
-  hydrology: HydrologyRaster
-): GeneratedChunk {
+function assignHydrologyToChunk(chunk: GeneratedChunk, hydrology: HydrologyRaster): GeneratedChunk {
   chunk.slope = hydrology.slope
   chunk.flowDirection = hydrology.flowDirection
   chunk.flowAccumulation = hydrology.flowAccumulation
@@ -1692,7 +1680,10 @@ function buildRiverNetwork(
     const shapedPath = shapeRiverPath(path, seed + candidate.x * 31 + candidate.y * 17, riverSystem)
     rivers.push({
       id: `river:${candidate.x}:${candidate.y}`,
-      width: sourceFlow >= majorAccumulation ? riverSystem.renderWidth.major : riverSystem.renderWidth.minor,
+      width:
+        sourceFlow >= majorAccumulation
+          ? riverSystem.renderWidth.major
+          : riverSystem.renderWidth.minor,
       flow: clamp01(
         Math.log2(sourceFlow + 1) / Math.log2(Math.max(sourceFlow + 1, majorAccumulation * 2))
       ),
@@ -2101,11 +2092,8 @@ export function generateWorld(
   }
 
   const topology = classifyTopology(elevation, width, height, seaLevel)
-  const hydrology = buildHydrologyFromElevationAndWater(
-    elevation,
-    width,
-    height,
-    (index) => Boolean(topology.waterbody[index])
+  const hydrology = buildHydrologyFromElevationAndWater(elevation, width, height, (index) =>
+    Boolean(topology.waterbody[index])
   )
   let worldHash = 2166136261
 
@@ -2206,11 +2194,8 @@ export function generateChunk(
   }
 
   const topology = classifyTopology(elevation, chunkSize, chunkSize, seaLevel)
-  const hydrology = buildHydrologyFromElevationAndWater(
-    elevation,
-    chunkSize,
-    chunkSize,
-    (index) => Boolean(topology.waterbody[index])
+  const hydrology = buildHydrologyFromElevationAndWater(elevation, chunkSize, chunkSize, (index) =>
+    Boolean(topology.waterbody[index])
   )
   for (let localY = 0; localY < chunkSize; localY += 1) {
     for (let localX = 0; localX < chunkSize; localX += 1) {

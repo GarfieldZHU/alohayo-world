@@ -77,7 +77,8 @@ export function generateChunkRenderHints(args: {
       noise[index] = cellNoise
       const biome = biomes[index]!
       if (localX + 1 < chunkSize && biomes[index + 1] !== biome) eastBoundaryMask[index] = 1
-      if (localY + 1 < chunkSize && biomes[index + chunkSize] !== biome) southBoundaryMask[index] = 1
+      if (localY + 1 < chunkSize && biomes[index + chunkSize] !== biome)
+        southBoundaryMask[index] = 1
       if (cellNoise % 11 === 0) regionalDetailMask[index] = 1
       if (cellNoise % 7 === 0) {
         closeDetailKind[index] = closeDetailKindForBiome(biome)

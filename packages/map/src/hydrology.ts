@@ -46,10 +46,7 @@ class MinHeap {
       const parent = Math.floor((cursor - 1) / 2)
       const parentPriority = this.priorities[parent]!
       const parentIndex = this.indices[parent]!
-      if (
-        parentPriority < priority ||
-        (parentPriority === priority && parentIndex <= index)
-      ) {
+      if (parentPriority < priority || (parentPriority === priority && parentIndex <= index)) {
         break
       }
       this.indices[cursor] = parentIndex

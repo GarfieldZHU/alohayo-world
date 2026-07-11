@@ -1339,11 +1339,12 @@ export async function createGame(
           .rect(originX - 0.4, originY - 0.4, cellSize + 0.8, cellSize + 0.8)
           .fill(biome.color)
 
-        const rightBiome = localX + 1 < chunk.chunkSize
-          ? chunk.renderHints.eastBoundaryMask[index]
-            ? (biomeByCode.get(chunk.biomes[index + 1]!) ?? biome)
-            : null
-          : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
+        const rightBiome =
+          localX + 1 < chunk.chunkSize
+            ? chunk.renderHints.eastBoundaryMask[index]
+              ? (biomeByCode.get(chunk.biomes[index + 1]!) ?? biome)
+              : null
+            : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
         if (rightBiome && rightBiome.code !== biome.code) {
           drawBoundaryBlend(
             view.transitions,
@@ -1357,11 +1358,12 @@ export async function createGame(
           )
         }
 
-        const belowBiome = localY + 1 < chunk.chunkSize
-          ? chunk.renderHints.southBoundaryMask[index]
-            ? (biomeByCode.get(chunk.biomes[index + chunk.chunkSize]!) ?? biome)
-            : null
-          : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
+        const belowBiome =
+          localY + 1 < chunk.chunkSize
+            ? chunk.renderHints.southBoundaryMask[index]
+              ? (biomeByCode.get(chunk.biomes[index + chunk.chunkSize]!) ?? biome)
+              : null
+            : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
         if (belowBiome && belowBiome.code !== biome.code) {
           drawBoundaryBlend(
             view.transitions,
