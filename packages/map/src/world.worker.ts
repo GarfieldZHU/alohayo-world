@@ -79,6 +79,9 @@ function validBaseLayers(layers: WasmChunkBaseLayers, size: number): layers is C
 async function buildChunkBaseLayers(
   request: Extract<WorldWorkerRequest, { type: 'generate-chunk' }>
 ): Promise<ChunkBaseLayers | undefined> {
+  // Keep production on the proven TypeScript reference until browser-side byte parity is
+  // exercised explicitly. `?wasm=1` is the opt-in test switch for the coarse batch path.
+  if (!request.wasmBaseUrl?.includes('wasm=1')) return undefined
   const module = await loadWasmRenderHintsModule(request.wasmBaseUrl)
   if (!module?.generate_chunk_base_layers) return undefined
   try {
