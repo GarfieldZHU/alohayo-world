@@ -7,6 +7,15 @@ import type {
 } from '@alohayo/config'
 import { buildHydrologyRaster, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
+import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
+
+export {
+  ChunkTopologyResolver,
+  summarizeChunkTopology,
+  type ChunkTopologySummary,
+  type ResolvedTopologyIdentity,
+  type TopologyMedium,
+} from './topology'
 
 export const BIOME = {
   deepOcean: 0,
@@ -89,6 +98,7 @@ export interface GeneratedChunk {
   watershed: Uint32Array
   depression: Uint8Array
   renderHints: ChunkRenderHints
+  topology: ChunkTopologySummary
   authoredArea: Uint16Array
   region: Uint8Array
   areaIds: string[]
@@ -2288,6 +2298,12 @@ export function generateChunk(
       chunkSize,
       originX,
       originY,
+    }),
+    topology: summarizeChunkTopology({
+      chunkX,
+      chunkY,
+      chunkSize,
+      isWater: (index) => Boolean(topology.waterbody[index]),
     }),
     authoredArea: new Uint16Array(size),
     region: classifyChunkRegions(biomes, chunkSize),

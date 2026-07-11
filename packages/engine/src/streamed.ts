@@ -25,7 +25,12 @@ import {
   translateContentDescription,
   translateContentName,
 } from '@alohayo/config'
-import { hashSeed, type GeneratedChunk, type GeneratedLandmark } from '@alohayo/map'
+import {
+  ChunkTopologyResolver,
+  hashSeed,
+  type GeneratedChunk,
+  type GeneratedLandmark,
+} from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 import { CLOSE_DETAIL_KIND } from '../../map/src/render-hints'
 import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './dev-panel'
@@ -158,6 +163,7 @@ export async function createGame(
   let lastChunkGenerationMs = 0
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
+  const topologyResolver = new ChunkTopologyResolver()
   const chunkViews = new Map<string, ChunkView>()
   const roadMasks = new Map<string, Uint8Array>()
   const riverMasks = new Map<string, Uint8Array>()
@@ -1529,6 +1535,7 @@ export async function createGame(
       .then((chunk) => {
         pendingChunks.delete(key)
         chunks.set(key, chunk)
+        topologyResolver.add(chunk.topology)
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
         lastChunkGenerationMs = chunk.generationMs
@@ -1569,6 +1576,7 @@ export async function createGame(
         chunkViews.delete(key)
       }
       chunks.delete(key)
+      topologyResolver.release(chunk.chunkX, chunk.chunkY)
       roadMasks.delete(key)
       riverMasks.delete(key)
       bridgeMasks.delete(key)
@@ -1599,6 +1607,7 @@ export async function createGame(
       biome: biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!,
       areaId: chunk.areaIds[chunk.authoredArea[index]!] ?? '',
       region: REGION_NAME[chunk.region[index]!] ?? 'frontier',
+      topology: topologyResolver.resolveCell(chunk.chunkX, chunk.chunkY, index),
     }
   }
 

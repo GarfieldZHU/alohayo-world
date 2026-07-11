@@ -54,6 +54,13 @@ For streamed chunks, the runtime currently exposes chunk-local `region` labels:
 `sea`, `lake`, `mainland`, and `island`. These are stable enough for inspection,
 discovery, and movement decisions, but they are not yet cross-chunk global identities.
 
+Issue `#12` provides retained-horizon topology resolution. Each chunk carries edge
+component samples; a deterministic resolver joins matching land or water components as
+neighboring chunks arrive. A frontier identity remains `provisional` until its unseen
+neighbors are loaded, while canonical IDs and retained aliases let UI, saves, and
+downstream hydrology respond to a merge without depending on renderer state. See
+`modules/MAP.md` for the contract and regression matrix.
+
 ### Future layers
 
 Slope, flow direction, accumulation, watershed, river, soil, resources, occupancy,

@@ -69,6 +69,8 @@
 - Added local Rust/Wasm bootstrap and verification guidance, required real Wasm artifacts
   for CI/Pages/releases, and started worker-side `ChunkBaseLayers` migration with
   deterministic TypeScript and cross-language parity coverage.
+- Added retained-horizon chunk topology summaries and deterministic seam resolution for
+  streamed land and water identities, including load-order and eviction regression tests.
 
 ## 0.1.0-demo
 
