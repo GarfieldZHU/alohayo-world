@@ -11,7 +11,7 @@
   "stream": {
     "initialChunkRadius": 2,
     "retainChunkRadius": 3,
-    "discoveryRadius": 3,
+    "discoveryRadius": 5,
     "minimapChunkRadius": 6,
     "maxChunkRadius": 6
   },
@@ -56,6 +56,29 @@
         "edgeColor": "#655c57",
         "terrainTextureStrength": 0.38,
         "weatherTextureStrength": 0.22
+      }
+    ],
+    "conditions": [
+      { "id": "dry", "movementMultiplier": 1, "trafficMultiplier": 1, "surfaceAlpha": 0 },
+      { "id": "wet", "movementMultiplier": 1.08, "trafficMultiplier": 0.9, "surfaceAlpha": 0.16 },
+      { "id": "muddy", "movementMultiplier": 1.24, "trafficMultiplier": 0.68, "surfaceAlpha": 0.3 },
+      {
+        "id": "snowy",
+        "movementMultiplier": 1.18,
+        "trafficMultiplier": 0.72,
+        "surfaceAlpha": 0.24
+      },
+      {
+        "id": "slushy",
+        "movementMultiplier": 1.32,
+        "trafficMultiplier": 0.58,
+        "surfaceAlpha": 0.34
+      },
+      {
+        "id": "flooded",
+        "movementMultiplier": 1.55,
+        "trafficMultiplier": 0.3,
+        "surfaceAlpha": 0.42
       }
     ],
     "generation": {

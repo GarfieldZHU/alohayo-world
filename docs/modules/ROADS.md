@@ -14,7 +14,9 @@ weather.
 - four road tiers: trail, road, trade route, and pass;
 - content-tuned widths, colors, and movement multipliers;
 - curved road geometry built from smoothed pathfinding output;
-- terrain-aware road texturing plus first weather-reactive overlays.
+- terrain-aware road texturing and deterministic dry/wet/muddy/snowy/slushy/flooded
+  conditions shared with weather;
+- condition-tuned movement and traffic multipliers from `content/core/world.json`.
 
 ## Middle-Age Magic World Guidance
 
@@ -30,6 +32,6 @@ passes or major routes.
 ## Next Work
 
 - explicit bridges, ferries, causeways, and switchbacks;
-- weathered road condition state that feeds movement and traffic;
+- settlement traffic and route choice consuming the existing condition multipliers;
 - city-street interiors and paving quality;
 - vehicles and mounts consuming the same road-profile queries.

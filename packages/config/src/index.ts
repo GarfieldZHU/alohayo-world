@@ -218,6 +218,15 @@ export interface WorldRoadProfileDefinition {
   weatherTextureStrength: number
 }
 
+export type WorldRoadConditionId = 'dry' | 'wet' | 'muddy' | 'snowy' | 'slushy' | 'flooded'
+
+export interface WorldRoadConditionDefinition {
+  id: WorldRoadConditionId
+  movementMultiplier: number
+  trafficMultiplier: number
+  surfaceAlpha: number
+}
+
 export interface WorldRoadGenerationDefinition {
   candidateDistance: number
   trafficRoadMin: number
@@ -229,6 +238,7 @@ export interface WorldRoadGenerationDefinition {
 
 export interface WorldRoadSystemDefinition {
   profiles: WorldRoadProfileDefinition[]
+  conditions: WorldRoadConditionDefinition[]
   generation: WorldRoadGenerationDefinition
 }
 

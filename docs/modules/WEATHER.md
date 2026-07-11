@@ -1,6 +1,6 @@
 # Weather Module
 
-**Status:** planned with basic visual surfacing active.
+**Status:** deterministic surface-and-condition foundation active.
 
 ## Owns
 
@@ -35,12 +35,15 @@ The current runtime uses deterministic weather phases only for render surfaces:
 - chunk overlays can add wet sheen, mud, snow dusting, or slush over terrain and roads;
 - intensity fades through the cycle instead of switching abruptly.
 
-This is intentionally visual-first and does not yet alter movement, economy, or AI.
+The shared surface query now returns local `dry`, `wet`, `muddy`, `snowy`, `slushy`, or
+`flooded` condition from seed, clock phase, biome, and world cell. It is reversible and
+does not mutate base terrain. Roads consume the same query for movement and rendering;
+traffic, settlements, creatures, and saves remain the next modular consumers.
 
 ## Planned Vertical Slices
 
-1. Visual surface cycle over terrain and roads.
-2. Movement and road-condition modifiers from weather state.
+1. Complete: visual surface cycle over terrain and roads.
+2. Complete: movement and road-condition modifiers from weather state.
 3. Settlement traffic and supply effects.
 4. Region-scale fronts, wind, and drainage feedback.
 5. Saveable world weather history and forecast surfaces.

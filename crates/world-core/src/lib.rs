@@ -162,7 +162,8 @@ pub fn generate_chunk_base_layers(
             let global_y = origin_y.wrapping_add(local_y as i32);
             let elevation_value = stream_elevation_value(global_x, global_y, seed);
             let moisture_value = stream_moisture_value(global_x, global_y, seed, elevation_value);
-            let temperature_value = stream_temperature_value(global_x, global_y, seed, elevation_value);
+            let temperature_value =
+                stream_temperature_value(global_x, global_y, seed, elevation_value);
             elevation[index] = (elevation_value * 255.0).round() as u8;
             moisture[index] = (moisture_value * 255.0).round() as u8;
             temperature[index] = (temperature_value * 255.0).round() as u8;

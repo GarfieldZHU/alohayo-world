@@ -17,6 +17,7 @@ import type {
   WorldSaveSummary,
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
+  WorldRoadConditionDefinition,
 } from '@alohayo/config'
 import {
   formatI18n,
@@ -69,6 +70,7 @@ import {
 import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
 import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
+import { sampleWeatherSurface } from './weather'
 import {
   assertCompatibleContentPackState,
   createWorldSaveStore,
@@ -135,6 +137,15 @@ export async function createGame(
 
   const biomeByCode = new Map(content.biomes.map((biome) => [biome.code, biome]))
   const roadProfiles = profileById(content.world)
+  const roadConditions = new Map(
+    content.world.roads.conditions.map(
+      (condition) =>
+        [condition.id, condition] satisfies [
+          WorldRoadConditionDefinition['id'],
+          WorldRoadConditionDefinition,
+        ]
+    )
+  )
   const terrainCodes = Object.fromEntries(content.biomes.map((biome) => [biome.id, biome.code]))
   const enabledMapAreaIds = new Set(options.initialWorld?.mapAreaIds ?? [])
   const mapAreas = content.mapAreas
@@ -1084,6 +1095,24 @@ export async function createGame(
           : roadProfile('trail')
   }
 
+  const roadConditionAt = (chunk: GeneratedChunk, index: number, state = activeWeather()) => {
+    const localX = index % chunk.chunkSize
+    const localY = Math.floor(index / chunk.chunkSize)
+    const biome = biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!
+    const surface = sampleWeatherSurface({
+      state,
+      weather: content.world.weather,
+      biome,
+      cellX: chunk.originX + localX,
+      cellY: chunk.originY + localY,
+      seed: hashSeed(worldSeed),
+    })
+    return {
+      surface,
+      definition: roadConditions.get(surface.condition) ?? content.world.roads.conditions[0]!,
+    }
+  }
+
   const rebuildRiverMask = (chunk: GeneratedChunk) => {
     const riverMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
     const bridgeMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
@@ -1207,6 +1236,7 @@ export async function createGame(
       const profile = roadProfile(road.kind)
       const width = profile.width * 0.58
       let started = false
+      let maxConditionAlpha = 0
       for (const point of road.points) {
         const localX = Math.round(point.x - chunk.originX)
         const localY = Math.round(point.y - chunk.originY)
@@ -1216,7 +1246,14 @@ export async function createGame(
         const biome = biomeByCode.get(chunk.biomes[index]!) ?? content.biomes[0]!
         const x = (point.x - chunk.originX) * cellSize + cellSize / 2
         const y = (point.y - chunk.originY) * cellSize + cellSize / 2
-        const tint = roadTextureTint(biome, state)
+        const condition = roadConditionAt(chunk, index, state)
+        maxConditionAlpha = Math.max(maxConditionAlpha, condition.definition.surfaceAlpha)
+        const tint = roadTextureTint(biome, {
+          ...state,
+          wetness: condition.surface.wetness,
+          snowCover: condition.surface.snowCover,
+          mud: condition.surface.mud,
+        })
         if (!started) {
           view.surfaces.moveTo(x, y)
           started = true
@@ -1249,7 +1286,7 @@ export async function createGame(
         view.surfaces.stroke({
           color: overlayColor,
           width,
-          alpha: profile.weatherTextureStrength * state.fade * 0.3,
+          alpha: profile.weatherTextureStrength * maxConditionAlpha,
         })
       }
     }
@@ -1637,7 +1674,10 @@ export async function createGame(
     if (!data) return 1
     const road = roadProfileAt(data.chunk, data.index)
     const roadMultiplier = road?.movementMultiplier ?? 1
-    return Math.max(0.38, data.biome.movementCost * roadMultiplier)
+    const conditionMultiplier = road
+      ? roadConditionAt(data.chunk, data.index).definition.movementMultiplier
+      : 1
+    return Math.max(0.38, data.biome.movementCost * roadMultiplier * conditionMultiplier)
   }
 
   const isDiscoveredCell = (cellX: number, cellY: number) => {

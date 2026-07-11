@@ -71,6 +71,8 @@
   deterministic TypeScript and cross-language parity coverage.
 - Added retained-horizon chunk topology summaries and deterministic seam resolution for
   streamed land and water identities, including load-order and eviction regression tests.
+- Added deterministic per-cell weather surface conditions and configurable road movement/
+  traffic modifiers for wet, muddy, snowy, slushy, and flooded routes.
 
 ## 0.1.0-demo
 
