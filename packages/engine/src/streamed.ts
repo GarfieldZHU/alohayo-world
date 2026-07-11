@@ -2176,6 +2176,11 @@ export async function createGame(
 
   const onResize = () => {
     if (!explorerMotion) return
+    const width = Math.max(1, Math.floor(options.container.clientWidth))
+    const height = Math.max(1, Math.floor(options.container.clientHeight))
+    if (app.renderer.width !== width || app.renderer.height !== height) {
+      app.renderer.resize(width, height)
+    }
     syncGameCameraScale()
     updateCamera(true)
     drawMinimap()
