@@ -6,6 +6,10 @@ mkdirSync(output, { recursive: true })
 
 const version = spawnSync('wasm-pack', ['--version'], { stdio: 'ignore' })
 if (version.status !== 0) {
+  if (process.env.REQUIRE_WASM === '1') {
+    console.error('wasm-pack is required but was not found on PATH')
+    process.exit(1)
+  }
   writeFileSync(
     new URL('README.txt', output),
     'Wasm build unavailable; deterministic TS fallback active.\n'

@@ -17,6 +17,9 @@ yarn dev
 yarn build
 ```
 
+For the Rust/Wasm toolchain, local artifact verification, and the complete development
+checklist, see [Local Development Setup](docs/LOCAL_DEVELOPMENT.md).
+
 The production build is written to `dist/`. The integration entry is
 `dist/embed/bootstrap.js`; distribute it together with the sibling `dist/assets/`
 directory referenced by the module.

@@ -18,6 +18,13 @@ const CLOSE_DETAIL_MOUNTAIN: u8 = 3;
 const CLOSE_DETAIL_WETLAND: u8 = 4;
 const CLOSE_DETAIL_GENERIC: u8 = 5;
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct ChunkBaseLayers {
+    pub elevation: Vec<u8>,
+    pub moisture: Vec<u8>,
+    pub temperature: Vec<u8>,
+}
+
 #[wasm_bindgen]
 pub fn hash_seed(seed: &str) -> u32 {
     seed.bytes().fold(2_166_136_261_u32, |hash, value| {
@@ -57,6 +64,115 @@ pub fn classify_biome(elevation: u8, moisture: u8, temperature: u8) -> u8 {
         5
     } else {
         6
+    }
+}
+
+fn random2d(x: i32, y: i32, seed: u32) -> f64 {
+    let mut value = (x as u32)
+        .wrapping_mul(374_761_393)
+        .wrapping_add((y as u32).wrapping_mul(668_265_263))
+        .wrapping_add(seed.wrapping_mul(69_069));
+    value ^= value >> 13;
+    value = value.wrapping_mul(1_274_126_177);
+    (value ^ (value >> 16)) as f64 / u32::MAX as f64
+}
+
+fn smoothstep(value: f64) -> f64 {
+    value * value * (3.0 - 2.0 * value)
+}
+
+fn value_noise(x: i32, y: i32, scale: f64, seed: u32) -> f64 {
+    let px = x as f64 / scale;
+    let py = y as f64 / scale;
+    let x0 = px.floor() as i32;
+    let y0 = py.floor() as i32;
+    let tx = smoothstep(px - x0 as f64);
+    let ty = smoothstep(py - y0 as f64);
+    let a = random2d(x0, y0, seed);
+    let b = random2d(x0.wrapping_add(1), y0, seed);
+    let c = random2d(x0, y0.wrapping_add(1), seed);
+    let d = random2d(x0.wrapping_add(1), y0.wrapping_add(1), seed);
+    let top = a + (b - a) * tx;
+    let bottom = c + (d - c) * tx;
+    top + (bottom - top) * ty
+}
+
+fn octave_noise(x: i32, y: i32, seed: u32) -> f64 {
+    value_noise(x, y, 46.0, seed) * 0.52
+        + value_noise(x, y, 22.0, seed.wrapping_add(101)) * 0.28
+        + value_noise(x, y, 10.0, seed.wrapping_add(211)) * 0.14
+        + value_noise(x, y, 5.0, seed.wrapping_add(307)) * 0.06
+}
+
+fn clamp01(value: f64) -> f64 {
+    value.clamp(0.0, 1.0)
+}
+
+fn stream_latitude(global_y: i32) -> f64 {
+    let wrapped = ((global_y as f64 / 640.0).rem_euclid(2.0) - 1.0).abs();
+    1.0 - wrapped
+}
+
+fn stream_elevation_value(global_x: i32, global_y: i32, seed: u32) -> f64 {
+    let macro_value = value_noise(global_x, global_y, 360.0, seed.wrapping_add(1301));
+    let continents = value_noise(global_x, global_y, 180.0, seed.wrapping_add(1709));
+    let fine = octave_noise(global_x, global_y, seed);
+    let ridges = (value_noise(global_x, global_y, 88.0, seed.wrapping_add(2503)) * 2.0 - 1.0).abs();
+    clamp01(macro_value * 0.46 + continents * 0.26 + fine * 0.38 - ridges * 0.14 - 0.12)
+}
+
+fn stream_moisture_value(global_x: i32, global_y: i32, seed: u32, elevation: f64) -> f64 {
+    let rain = value_noise(
+        global_x.wrapping_add(710),
+        global_y.wrapping_sub(390),
+        92.0,
+        seed.wrapping_add(503),
+    );
+    let saturation = value_noise(
+        global_x.wrapping_sub(180),
+        global_y.wrapping_add(820),
+        34.0,
+        seed.wrapping_add(1187),
+    );
+    clamp01(rain * 0.64 + saturation * 0.22 + (1.0 - elevation) * 0.18)
+}
+
+fn stream_temperature_value(global_x: i32, global_y: i32, seed: u32, elevation: f64) -> f64 {
+    let latitude = stream_latitude(global_y);
+    let climate = value_noise(global_x, global_y, 54.0, seed.wrapping_add(907));
+    clamp01(latitude * 0.72 + climate * 0.24 - (elevation - 0.68).max(0.0) * 0.78)
+}
+
+#[wasm_bindgen]
+pub fn generate_chunk_base_layers(
+    seed: u32,
+    chunk_size: usize,
+    origin_x: i32,
+    origin_y: i32,
+) -> ChunkBaseLayers {
+    let size = chunk_size * chunk_size;
+    let mut elevation = vec![0_u8; size];
+    let mut moisture = vec![0_u8; size];
+    let mut temperature = vec![0_u8; size];
+
+    for local_y in 0..chunk_size {
+        for local_x in 0..chunk_size {
+            let index = local_y * chunk_size + local_x;
+            let global_x = origin_x.wrapping_add(local_x as i32);
+            let global_y = origin_y.wrapping_add(local_y as i32);
+            let elevation_value = stream_elevation_value(global_x, global_y, seed);
+            let moisture_value = stream_moisture_value(global_x, global_y, seed, elevation_value);
+            let temperature_value = stream_temperature_value(global_x, global_y, seed, elevation_value);
+            elevation[index] = (elevation_value * 255.0).round() as u8;
+            moisture[index] = (moisture_value * 255.0).round() as u8;
+            temperature[index] = (temperature_value * 255.0).round() as u8;
+        }
+    }
+
+    ChunkBaseLayers {
+        elevation,
+        moisture,
+        temperature,
     }
 }
 
@@ -170,5 +286,15 @@ mod tests {
             .iter()
             .zip(hints.close_detail_kind.iter())
             .any(|(regional, close)| *regional > 0 || *close > CLOSE_DETAIL_NONE));
+    }
+
+    #[test]
+    fn chunk_base_layers_are_deterministic() {
+        let first = generate_chunk_base_layers(hash_seed("alohayo"), 16, -48, 80);
+        let second = generate_chunk_base_layers(hash_seed("alohayo"), 16, -48, 80);
+        assert_eq!(first.elevation, second.elevation);
+        assert_eq!(first.moisture, second.moisture);
+        assert_eq!(first.temperature, second.temperature);
+        assert_eq!(first.elevation.len(), 256);
     }
 }

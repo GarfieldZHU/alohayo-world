@@ -98,6 +98,16 @@ export interface GeneratedChunk {
   roads: GeneratedRoad[]
 }
 
+/**
+ * The deterministic climate fields sampled before chunk-local topology and
+ * gameplay features are derived. This is the coarse Rust/Wasm worker boundary.
+ */
+export interface ChunkBaseLayers {
+  elevation: Uint8Array
+  moisture: Uint8Array
+  temperature: Uint8Array
+}
+
 export interface GeneratedLandmark extends MapLandmarkDefinition {
   areaId: string
 }
@@ -291,6 +301,38 @@ function streamTemperatureValue(
   const latitude = streamLatitude(globalY)
   const climate = valueNoise(globalX, globalY, 54, seed + 907)
   return clamp01(latitude * 0.72 + climate * 0.24 - Math.max(0, elevationValue - 0.68) * 0.78)
+}
+
+export function generateChunkBaseLayers(
+  seedText: string,
+  chunkX: number,
+  chunkY: number,
+  chunkSize: number
+): ChunkBaseLayers {
+  const seed = hashSeed(seedText)
+  const originX = chunkX * chunkSize
+  const originY = chunkY * chunkSize
+  const size = chunkSize * chunkSize
+  const elevation = new Uint8Array(size)
+  const moisture = new Uint8Array(size)
+  const temperature = new Uint8Array(size)
+
+  for (let localY = 0; localY < chunkSize; localY += 1) {
+    for (let localX = 0; localX < chunkSize; localX += 1) {
+      const globalX = originX + localX
+      const globalY = originY + localY
+      const index = localY * chunkSize + localX
+      const elevationValue = streamElevationValue(globalX, globalY, seed)
+      const moistureValue = streamMoistureValue(globalX, globalY, seed, elevationValue)
+      const temperatureValue = streamTemperatureValue(globalX, globalY, seed, elevationValue)
+
+      elevation[index] = Math.round(elevationValue * 255)
+      moisture[index] = Math.round(moistureValue * 255)
+      temperature[index] = Math.round(temperatureValue * 255)
+    }
+  }
+
+  return { elevation, moisture, temperature }
 }
 
 function visitRegion(
@@ -2168,7 +2210,8 @@ export function generateChunk(
   chunkSize: number,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  baseLayers?: ChunkBaseLayers
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -2176,26 +2219,12 @@ export function generateChunk(
   const size = chunkSize * chunkSize
   const originX = chunkX * chunkSize
   const originY = chunkY * chunkSize
-  const elevation = new Uint8Array(size)
-  const moisture = new Uint8Array(size)
-  const temperature = new Uint8Array(size)
+  const generatedBaseLayers =
+    baseLayers ?? generateChunkBaseLayers(seedText, chunkX, chunkY, chunkSize)
+  const { elevation, moisture, temperature } = generatedBaseLayers
   const biomes = new Uint8Array(size)
 
   let chunkHash = 2166136261
-  for (let localY = 0; localY < chunkSize; localY += 1) {
-    for (let localX = 0; localX < chunkSize; localX += 1) {
-      const globalX = originX + localX
-      const globalY = originY + localY
-      const index = localY * chunkSize + localX
-      const elevationValue = streamElevationValue(globalX, globalY, seed)
-      const moistureValue = streamMoistureValue(globalX, globalY, seed, elevationValue)
-      const temperatureValue = streamTemperatureValue(globalX, globalY, seed, elevationValue)
-
-      elevation[index] = Math.round(elevationValue * 255)
-      moisture[index] = Math.round(moistureValue * 255)
-      temperature[index] = Math.round(temperatureValue * 255)
-    }
-  }
 
   const topology = classifyTopology(elevation, chunkSize, chunkSize, seaLevel)
   const hydrology = buildHydrologyFromElevationAndWater(elevation, chunkSize, chunkSize, (index) =>
@@ -2282,7 +2311,8 @@ export function generateChunkWithAreas(
   terrainCodes: Record<string, number>,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  baseLayers?: ChunkBaseLayers
 ): GeneratedChunk {
   const chunk = generateChunk(
     seedText,
@@ -2291,7 +2321,8 @@ export function generateChunkWithAreas(
     chunkSize,
     biomeDefinitions,
     riverSystem,
-    roadSystem
+    roadSystem,
+    baseLayers
   )
   return applyAreasToChunk(
     chunk,

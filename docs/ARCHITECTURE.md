@@ -35,10 +35,17 @@ main thread.
 
 The streamed-map loop is the first credible Wasm refactor target because it repeatedly
 builds typed `elevation`, `moisture`, `temperature`, and `biomes` buffers for each
-chunk. The production boundary should stay coarse: the worker asks Wasm for a complete
-chunk-layer batch, then TypeScript continues to apply authored overlays, settlements,
-roads, topology helpers, rendering contracts, and fallback behavior. Do not move PixiJS
-or per-frame rendering into Wasm.
+chunk. The first production batch is `ChunkBaseLayers`: elevation, moisture, and
+temperature generated in the worker by Wasm, then validated by buffer length and fed to
+the existing TypeScript topology, hydrology, biome classification, authored overlays,
+settlements, roads, and fallback path. This keeps world semantics stable while removing
+the repeated climate sampling loop from TypeScript. Do not move PixiJS or per-frame
+rendering into Wasm.
+
+Rust ownership expands only when the TypeScript reference and built Wasm module match
+byte-for-byte for representative positive and negative chunk coordinates. If a module,
+asset, initialization, or length check fails, the worker generates the same batch in
+TypeScript and continues normally.
 
 The first renderer-adjacent migration slice now follows the same rule: worker-side chunk
 render-hint generation may use Wasm for deterministic `noise`, transition masks, and

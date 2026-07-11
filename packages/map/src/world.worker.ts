@@ -2,6 +2,8 @@ import {
   applyMapAreas,
   generateChunkWithAreas,
   generateWorld,
+  hashSeed,
+  type ChunkBaseLayers,
   type WorldWorkerRequest,
   type WorldWorkerResponse,
 } from './index'
@@ -12,8 +14,20 @@ const workerScope = self as unknown as {
   postMessage(message: WorldWorkerResponse, options: { transfer: ArrayBufferLike[] }): void
 }
 
-type WasmRenderHintsModule = {
+type WasmChunkBaseLayers = {
+  elevation: Uint8Array
+  moisture: Uint8Array
+  temperature: Uint8Array
+}
+
+type WasmWorldCoreModule = {
   default?: (input?: string | URL | WebAssembly.Module) => Promise<unknown>
+  generate_chunk_base_layers?: (
+    seed: number,
+    chunkSize: number,
+    originX: number,
+    originY: number
+  ) => WasmChunkBaseLayers
   prepare_chunk_render_hints?: (
     biomes: Uint8Array,
     elevation: Uint8Array,
@@ -24,7 +38,7 @@ type WasmRenderHintsModule = {
 }
 
 let wasmRenderHintsBaseUrl: string | null = null
-let wasmRenderHintsPromise: Promise<WasmRenderHintsModule | null> | null = null
+let wasmRenderHintsPromise: Promise<WasmWorldCoreModule | null> | null = null
 
 function normalizeBaseUrl(baseUrl?: string) {
   if (!baseUrl) return null
@@ -40,7 +54,7 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
     try {
       const moduleUrl = new URL('wasm/world_core.js', normalized).toString()
       const wasmUrl = new URL('wasm/world_core_bg.wasm', normalized).toString()
-      const module = (await import(/* @vite-ignore */ moduleUrl)) as WasmRenderHintsModule
+      const module = (await import(/* @vite-ignore */ moduleUrl)) as WasmWorldCoreModule
       if (typeof module.default === 'function') await module.default(wasmUrl)
       if (typeof module.prepare_chunk_render_hints !== 'function') return null
       return module
@@ -49,6 +63,36 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
     }
   })()
   return wasmRenderHintsPromise
+}
+
+function validBaseLayers(layers: WasmChunkBaseLayers, size: number): layers is ChunkBaseLayers {
+  return (
+    layers.elevation instanceof Uint8Array &&
+    layers.moisture instanceof Uint8Array &&
+    layers.temperature instanceof Uint8Array &&
+    layers.elevation.length === size &&
+    layers.moisture.length === size &&
+    layers.temperature.length === size
+  )
+}
+
+async function buildChunkBaseLayers(
+  request: Extract<WorldWorkerRequest, { type: 'generate-chunk' }>
+): Promise<ChunkBaseLayers | undefined> {
+  const module = await loadWasmRenderHintsModule(request.wasmBaseUrl)
+  if (!module?.generate_chunk_base_layers) return undefined
+  try {
+    const layers = module.generate_chunk_base_layers(
+      hashSeed(request.seed),
+      request.chunkSize,
+      request.chunkX * request.chunkSize,
+      request.chunkY * request.chunkSize
+    )
+    return validBaseLayers(layers, request.chunkSize * request.chunkSize) ? layers : undefined
+  } catch {
+    // The TypeScript batch remains the deterministic fallback for stale or failed Wasm assets.
+    return undefined
+  }
 }
 
 async function buildChunkRenderHints(
@@ -147,6 +191,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
   }
 
   if (event.data.type !== 'generate-chunk') return
+  const baseLayers = await buildChunkBaseLayers(event.data)
   const chunk = generateChunkWithAreas(
     event.data.seed,
     event.data.chunkX,
@@ -158,7 +203,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
     event.data.terrainCodes ?? {},
     event.data.biomeDefinitions,
     event.data.riverSystem,
-    event.data.roadSystem
+    event.data.roadSystem,
+    baseLayers
   )
   chunk.renderHints = await buildChunkRenderHints(chunk, event.data.wasmBaseUrl)
   workerScope.postMessage(

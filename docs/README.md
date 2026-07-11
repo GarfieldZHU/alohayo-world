@@ -12,6 +12,7 @@ blindly.
 
 ## Engineering
 
+- `LOCAL_DEVELOPMENT.md`: Node/Rust/Wasm setup, reproducible local builds, and full checks.
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
 - `PERFORMANCE_BUDGETS.md`: enforced runtime, benchmark, and bundle-size budgets.

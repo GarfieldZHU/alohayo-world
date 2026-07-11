@@ -21,9 +21,10 @@ This package owns deterministic geography and worker-safe data.
   future cross-chunk global topology IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
 - Rust/Wasm output must have parity tests before becoming authoritative.
-- The first Wasm production path should be chunk-layer generation as one coarse worker
-  call, not per-cell calls from TypeScript. Preserve typed-array transfer semantics and
-  keep the TypeScript fallback as the reference until CI runs Rust and Wasm parity.
+- The first Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
+  temperature from one coarse worker call. Preserve typed-array transfer semantics and
+  keep TypeScript topology, hydrology, biome classification, overlays, and fallback as
+  the reference until CI runs Rust/Wasm byte-parity fixtures.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.

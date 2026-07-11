@@ -12,6 +12,7 @@
     "dev": "vite --config apps/game/vite.config.ts",
     "build": "vite build --config apps/game/vite.config.ts && yarn build:wasm && node scripts/package-release.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
+    "verify:wasm": "REQUIRE_WASM=1 yarn build:wasm",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

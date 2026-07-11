@@ -66,6 +66,9 @@
 - Added the first Rust/Wasm renderer-adjacent migration slice: worker-produced chunk
   render hints for noise, transition masks, and detail markers with a deterministic
   TypeScript fallback and unit tests.
+- Added local Rust/Wasm bootstrap and verification guidance, required real Wasm artifacts
+  for CI/Pages/releases, and started worker-side `ChunkBaseLayers` migration with
+  deterministic TypeScript and cross-language parity coverage.
 
 ## 0.1.0-demo
 

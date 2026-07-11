@@ -227,7 +227,18 @@ yarn test:e2e
 ```
 
 Use Node from `.nvmrc`, Yarn from `packageManager`, and Rust from
-`rust-toolchain.toml`.
+`rust-toolchain.toml`. Read `docs/LOCAL_DEVELOPMENT.md` before changing Rust, Wasm,
+the map worker, or build automation. It is the authoritative local toolchain and
+artifact-verification guide.
+
+For a Rust/Wasm change, run the TypeScript reference tests first, then:
+
+```sh
+cargo fmt --manifest-path crates/world-core/Cargo.toml --check
+cargo clippy --manifest-path crates/world-core/Cargo.toml -- -D warnings
+cargo test --manifest-path crates/world-core/Cargo.toml
+yarn build:wasm
+```
 
 ## Verification Matrix
 
@@ -280,9 +291,8 @@ world topology, scalable map sizes, streamed chunks, i18n-first UI plumbing, and
 agent-readable module plans. The next runtime priority after the active streamed-world
 slice is seam-safe global topology merging plus drainage and rivers.
 
-Known boundary: the Rust crate defines and tests portable deterministic primitives, but
-the active browser generator is TypeScript until the worker-side Wasm loader and parity
-suite are complete. Do not wire Wasm into production as one call per cell. The first
-runtime Wasm migration should be a coarse `generate_stream_chunk_layers`-style worker
-API that returns transferable elevation, moisture, temperature, and biome buffers for a
-whole chunk, with TypeScript parity fixtures and a TypeScript fallback kept active.
+Known boundary: the worker already has an optional Wasm render-hint path. The next active
+migration slice is a coarse chunk base-layer batch for elevation, moisture, and
+temperature, with TypeScript-owned topology, hydrology, biome classification, overlays,
+and fallback behavior. Do not wire Wasm into production as one call per cell. Extend
+authority only after cross-language parity and browser-worker checks pass.
