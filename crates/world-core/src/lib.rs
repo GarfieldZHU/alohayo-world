@@ -285,7 +285,7 @@ mod tests {
             .regional_detail_mask
             .iter()
             .zip(hints.close_detail_kind.iter())
-            .any(|(regional, close)| *regional > 0 || *close > CLOSE_DETAIL_NONE));
+            .any(|(regional, close)| *regional > 0 || *close > 0));
     }
 
     #[test]
