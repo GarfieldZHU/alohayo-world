@@ -707,12 +707,16 @@ function classifyStreamBiome(
   const north = streamElevationValue(globalX, globalY - 1, seed) < seaLevel
   const south = streamElevationValue(globalX, globalY + 1, seed) < seaLevel
   const enclosed = !west && !east && !north && !south && elevationValue > 0.28
+  const ruggednessValue = streamRuggednessValue(globalX, globalY, seed)
   return classifyTerrain({
     elevationValue,
     seaLevel,
     moistureValue,
     temperatureValue,
-    ruggednessValue: streamRuggednessValue(globalX, globalY, seed),
+    ruggednessValue,
+    slopeValue: clamp01(ruggednessValue * 0.55),
+    accumulationValue: 0,
+    depressionValue: 0,
     hotspotValue: streamHotspotValue(globalX, globalY, seed),
     basinValue: streamBasinValue(globalX, globalY, seed, elevationValue),
     water,

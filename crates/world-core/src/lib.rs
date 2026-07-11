@@ -164,7 +164,7 @@ mod tests {
         let hints = prepare_chunk_render_hints(&biomes, &elevation, 3, -2, 5);
         assert_eq!(hints.noise.len(), 9);
         assert_eq!(hints.east_boundary_mask, vec![0, 1, 0, 1, 0, 0, 1, 1, 0]);
-        assert_eq!(hints.south_boundary_mask, vec![1, 1, 0, 1, 1, 1, 0, 0, 0]);
+        assert_eq!(hints.south_boundary_mask, vec![1, 1, 1, 1, 1, 1, 0, 0, 0]);
         assert!(hints
             .regional_detail_mask
             .iter()

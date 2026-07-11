@@ -224,7 +224,7 @@ export function buildHydrologyRaster(args: {
     if (direction < 0) continue
     const downstream = hydrologyNeighborIndex(index, direction, width, height)
     if (downstream < 0 || downstream === index) continue
-    flowAccumulation[downstream] += flowAccumulation[index]!
+    flowAccumulation[downstream] = flowAccumulation[downstream]! + flowAccumulation[index]!
   }
 
   const resolveWatershed = (start: number): number => {
