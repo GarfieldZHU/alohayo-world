@@ -231,6 +231,11 @@ Use Node from `.nvmrc`, Yarn from `packageManager`, and Rust from
 the map worker, or build automation. It is the authoritative local toolchain and
 artifact-verification guide.
 
+For migration ownership, rollout states, batch ABI, benchmarks, and the required
+TypeScript/Rust/browser parity gates, also read `docs/RUST_WASM_MIGRATION.md`. Do not
+enable a new Wasm batch merely because it compiles: it must complete that document's
+reference, parity, shadow, and browser-worker verification stages first.
+
 For a Rust/Wasm change, run the TypeScript reference tests first, then:
 
 ```sh

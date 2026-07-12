@@ -13,6 +13,8 @@ blindly.
 ## Engineering
 
 - `LOCAL_DEVELOPMENT.md`: Node/Rust/Wasm setup, reproducible local builds, and full checks.
+- `RUST_WASM_MIGRATION.md`: worker-only Rust/Wasm ownership, ABI, rollout, parity, and
+  benchmark gates for issue #30.
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
 - `PERFORMANCE_BUDGETS.md`: enforced runtime, benchmark, and bundle-size budgets.
