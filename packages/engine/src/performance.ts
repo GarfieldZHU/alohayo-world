@@ -54,7 +54,7 @@ export function createRuntimePerformanceTracker({
   }
 
   let frameSamples = 0
-  let lastFrameNow = performance.now()
+  let lastFrameNow: number | null = null
   let longTaskObserver: PerformanceObserver | null = null
 
   if (typeof PerformanceObserver !== 'undefined') {
@@ -115,6 +115,12 @@ export function createRuntimePerformanceTracker({
       ]
     },
     frame(nowMs, fps) {
+      if (lastFrameNow === null) {
+        lastFrameNow = nowMs
+        metrics.fps = fps
+        sync()
+        return
+      }
       const frameMs = Math.min(250, Math.max(0, nowMs - lastFrameNow))
       lastFrameNow = nowMs
       frameSamples += 1

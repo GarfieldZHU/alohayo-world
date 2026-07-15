@@ -1,4 +1,12 @@
-import { Application, Container, Graphics, Text } from 'pixi.js'
+import {
+  Application,
+  Container,
+  CullerPlugin,
+  extensions,
+  Graphics,
+  Rectangle,
+  Text,
+} from 'pixi.js'
 import {
   CHARACTER_CELL_FRACTION,
   createCharacterMotion,
@@ -79,6 +87,8 @@ import {
   WORLD_SAVE_ENGINE_VERSION,
   WorldSaveError,
 } from './save-store'
+
+extensions.add(CullerPlugin)
 
 export async function createGame(
   options: MountGameOptions,
@@ -1321,6 +1331,13 @@ export async function createGame(
       const fogCutout = new Graphics()
       fogCutout.blendMode = 'erase'
       fog.addChild(fogFill, fogCutout)
+      container.cullable = true
+      container.cullArea = new Rectangle(
+        0,
+        0,
+        chunk.chunkSize * cellSize,
+        chunk.chunkSize * cellSize
+      )
       container.addChild(
         terrain,
         transitions,
@@ -2456,7 +2473,7 @@ export async function createGame(
 function estimateDrawCalls(chunkViews: Map<string, ChunkView>): number {
   let drawCalls = 5
   for (const view of chunkViews.values()) {
-    if (!view.container.visible) continue
+    if (!view.container.visible || view.container.culled) continue
     if (view.terrain.visible) drawCalls += 1
     if (view.transitions.visible) drawCalls += 1
     if (view.regionalDetails.visible) drawCalls += 1
