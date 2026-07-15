@@ -29,7 +29,7 @@ base biome.
 
 ## Current Slice
 
-The current runtime uses deterministic weather phases only for render surfaces:
+The current runtime uses deterministic weather phases and derived local surface conditions:
 
 - clear, rain, snow, and thaw states are defined in `world.json`;
 - chunk overlays can add wet sheen, mud, snow dusting, or slush over terrain and roads;
@@ -47,6 +47,9 @@ traffic, settlements, creatures, and saves remain the next modular consumers.
 3. Settlement traffic and supply effects.
 4. Region-scale fronts, wind, and drainage feedback.
 5. Saveable world weather history and forecast surfaces.
+
+Slices 3-5 continue together in issue `#31`, which owns regional fronts, persistence,
+and non-road consumers on top of this completed reversible surface contract.
 
 ## Dependencies and Tests
 

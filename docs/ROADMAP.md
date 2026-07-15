@@ -46,8 +46,8 @@
       equipment/weapon overrides.
 - [ ] Convert debug flight into a real locomotion capability granted by gear, mounts,
       vehicles, or abilities instead of a dev-only bypass.
-- [ ] Expand weather into a full simulation system with movement, roads, settlements,
-      creature, and city interactions plus fadeable surface history.
+- [~] Deterministic reversible weather surfaces and road movement effects are active;
+  regional fronts, persistence, settlements, creatures, and cities continue in issue `#31`.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - [x] Explicit desktop/mobile performance budgets with runtime telemetry, benchmark
       gates, and build-budget enforcement. See `docs/PERFORMANCE_BUDGETS.md` and issue
