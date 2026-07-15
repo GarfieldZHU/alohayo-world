@@ -30,14 +30,20 @@ const readPerformanceMetrics = (page: Page) =>
       .__ALOHAYO_WORLD_PERF__
   })
 
+const waitForRuntimeSample = async (page: Page) => {
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await page.waitForTimeout(1500)
+  const metrics = await readPerformanceMetrics(page)
+  console.info('runtime metrics', metrics)
+  return metrics
+}
+
 test('tracks broad desktop runtime performance budgets', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toBeVisible()
-  await page.waitForTimeout(1500)
-
-  const metrics = await readPerformanceMetrics(page)
+  const metrics = await waitForRuntimeSample(page)
 
   expect(metrics).toBeTruthy()
   expect(Number(metrics?.avgFrameMs)).toBeLessThan(35)
@@ -52,9 +58,7 @@ test('tracks broad mobile runtime performance budgets', async ({ page }) => {
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toBeVisible()
-  await page.waitForTimeout(1500)
-
-  const metrics = await readPerformanceMetrics(page)
+  const metrics = await waitForRuntimeSample(page)
 
   expect(metrics).toBeTruthy()
   expect(Number(metrics?.avgFrameMs)).toBeLessThan(45)
