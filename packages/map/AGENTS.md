@@ -27,7 +27,7 @@ This package owns deterministic geography and worker-safe data.
 - The first Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
   temperature from one coarse worker call. Preserve typed-array transfer semantics and
   keep TypeScript topology, hydrology, biome classification, overlays, and fallback as
-  the reference until CI runs Rust/Wasm byte-parity fixtures.
+  the reference until issue `#35` passes the full benchmark and browser promotion gates.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.

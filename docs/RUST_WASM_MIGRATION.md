@@ -74,17 +74,18 @@ structured fallback reason. Renderer objects and JSON content are never part of 
 canvas diagnostics and no embed API change. The default/fallback browser path is covered
 under #33; Wasm-enabled browser parity and promotion remain gated by #35.
 
-### M1: Chunk base layers
+### M1: Chunk base layers (boundary complete; promotion tracked in #35)
 
 - Inputs: seed, origin, chunk size.
 - Outputs: `elevation`, `moisture`, `temperature` `Uint8Array`s.
 - Keep topology, hydrology, biome classification, areas, settlements, rivers, and roads in
   TypeScript.
-- Add fixture matrix: 16/64 sizes; positive/negative coordinates; several seeds; exact
-  byte equality and hash equality after the TypeScript consumer runs.
+- Baseline fixtures cover 16/64 sizes and positive/negative coordinates with exact byte
+  equality. Issue `#35` owns the larger 16/64/128 matrix, worker/browser parity, transfer
+  metrics, and promotion benchmark.
 
-**Gate:** shadow benchmark shows a meaningful improvement and browser worker E2E passes
-both Wasm-enabled and forced-fallback runs.
+**Promotion gate (#35):** shadow benchmarks show a meaningful improvement and browser
+worker E2E passes both Wasm-enabled and forced-fallback runs.
 
 ### M2: Render hints
 
