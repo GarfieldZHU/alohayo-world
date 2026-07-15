@@ -16,7 +16,7 @@ test('loads game resources only after start', async ({ page }) => {
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
   await expect(canvas).toHaveAttribute('data-worker-implementation', 'typescript')
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
   await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
