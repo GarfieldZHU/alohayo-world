@@ -50,16 +50,14 @@ finite land region and the rest are islands.
 This lets inspection and future systems distinguish a forest on the mainland from a
 forest on an island without inventing duplicate biome codes.
 
-For streamed chunks, the runtime currently exposes chunk-local `region` labels:
-`sea`, `lake`, `mainland`, and `island`. These are stable enough for inspection,
-discovery, and movement decisions, but they are not yet cross-chunk global identities.
-
-Issue `#12` provides retained-horizon topology resolution. Each chunk carries edge
+For streamed chunks, the runtime exposes both chunk-local `region` labels (`sea`, `lake`,
+`mainland`, and `island`) and retained-horizon topology identities. Each chunk carries edge
 component samples; a deterministic resolver joins matching land or water components as
 neighboring chunks arrive. A frontier identity remains `provisional` until its unseen
 neighbors are loaded, while canonical IDs and retained aliases let UI, saves, and
 downstream hydrology respond to a merge without depending on renderer state. See
-`modules/MAP.md` for the contract and regression matrix.
+`modules/MAP.md` for the contract and regression matrix. Issue `#37` owns persistence of
+alias history across browser restarts and typed change events for long-lived consumers.
 
 ### Future layers
 

@@ -33,7 +33,8 @@
 - [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
       rendering instead of cell-derived edge decoration.
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
-- [ ] Global landmass/waterbody identity merge beyond chunk-local region labels.
+- [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
+      persistent aliases and change events continue in issue `#37`.
 - [~] Worker-side Wasm batch generation for streamed chunk terrain layers: base climate
   layers are now a coarse worker batch with TypeScript fallback and parity fixtures;
   topology/hydrology/biome authority remains staged under issue `#30`.

@@ -58,8 +58,8 @@ renderer-only guesses about topology.
 
 The resolver may report a provisional identity at the exploration frontier because an
 unbounded world cannot prove global connectivity from unloaded space. Its canonical ID
-and alias chain must still be deterministic for the retained horizon and must update
-through an explicit topology event when the horizon expands.
+and alias chain remain deterministic for the retained horizon. Persistent alias history
+and explicit topology-change events for cached consumers continue in issue `#37`.
 
 Read `../CONTENT_PACKS.md` when the work touches authored overlays, pack discovery,
 optional map-area activation, or future overlay conflict tooling.
