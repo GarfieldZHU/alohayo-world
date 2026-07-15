@@ -198,6 +198,8 @@ export async function createGame(
   let explorerMotion: CharacterMotionState | null = null
   let scale = 1
   let weatherTick = -1
+  let nextDayNightRenderMs = 0
+  let lastVisionFogBackground = ''
   let devDayNight = window.localStorage.getItem('alohayo-world:dev-day-night') !== 'false'
   const storedDevLightLevel = Number.parseFloat(
     window.localStorage.getItem('alohayo-world:dev-light-level') ?? ''
@@ -949,8 +951,11 @@ export async function createGame(
   const drawBattleShadow = () => {
     const showVisionFog = !devMode || devBattleShadow
     if (!showVisionFog || !explorerMotion) {
-      visionFogElement.style.opacity = '0'
-      visionFogElement.style.background = 'transparent'
+      if (visionFogElement.style.opacity !== '0') visionFogElement.style.opacity = '0'
+      if (lastVisionFogBackground) {
+        lastVisionFogBackground = ''
+        visionFogElement.style.background = 'transparent'
+      }
       return
     }
 
@@ -966,17 +971,23 @@ export async function createGame(
     const exploredFog = devMode ? 'rgba(28, 40, 52, 0.075)' : 'rgba(30, 42, 54, 0.06)'
     const memoryFog = devMode ? 'rgba(34, 48, 62, 0.12)' : 'rgba(36, 50, 64, 0.095)'
     const outerFog = devMode ? 'rgba(40, 55, 70, 0.18)' : 'rgba(42, 56, 72, 0.14)'
-    visionFogElement.style.opacity = '1'
-    visionFogElement.style.background = `radial-gradient(circle at ${center},
+    const background = `radial-gradient(circle at ${center},
       rgba(0, 0, 0, 0) 0px,
       rgba(0, 0, 0, 0) ${fadeStartRadius.toFixed(2)}px,
       ${edgeTint} ${innerRadius.toFixed(2)}px,
       ${exploredFog} ${exploredRadius.toFixed(2)}px,
       ${memoryFog} ${memoryRadius.toFixed(2)}px,
       ${outerFog} 100%)`
+    if (visionFogElement.style.opacity !== '1') visionFogElement.style.opacity = '1'
+    if (background !== lastVisionFogBackground) {
+      lastVisionFogBackground = background
+      visionFogElement.style.background = background
+    }
   }
 
-  const drawDayNightOverlay = (nowMs = performance.now()) => {
+  const drawDayNightOverlay = (nowMs = performance.now(), force = true) => {
+    if (!force && nowMs < nextDayNightRenderMs) return
+    nextDayNightRenderMs = nowMs + 250
     const state = activeDayNight(nowMs)
     if (!state.enabled) {
       dayNightOverlayElement.style.opacity = '0'
@@ -2352,7 +2363,7 @@ export async function createGame(
     renderVisibleChunks()
     refreshWeatherLayers(simulationNow)
     drawExplorer(simulationNow / 1000)
-    drawDayNightOverlay(simulationNow)
+    drawDayNightOverlay(simulationNow, false)
     drawBattleShadow()
     frameCount += 1
     const now = performance.now()
