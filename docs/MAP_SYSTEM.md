@@ -123,8 +123,8 @@ The terrain pipeline now runs a deterministic hydrology pass after elevation/top
 6. classify basin, wetland, marsh, and river candidates from slope, accumulation, and
    depression evidence instead of moisture alone.
 
-Current remaining work in this lane is cross-chunk watershed identity merge, stronger
-river/lake seam continuity, and later erosion/floodplain modeling.
+Issue `#38` owns cross-chunk watershed identity and river graph continuity. Stronger
+river/lake visual seams remain in `#20`; erosion and floodplain modeling remain in `#29`.
 
 ## Rendering and LOD
 

@@ -38,8 +38,8 @@ Water-specific shape logic and rendering language above the base terrain/topolog
 2. Lake perimeter treatment distinct from ocean/sea.
 3. Flow-aware river highlight direction and width variation in the renderer.
 4. Distance-to-shore tinting for shallow water and beach shelves.
-5. Cross-chunk watershed identity merge, seam-safe outlets, and later erosion/floodplain
-   modeling.
+5. Cross-chunk watershed identity and seam-safe outlets in issue `#38`; erosion and
+   floodplain modeling in issue `#29`.
 
 ## Tests
 

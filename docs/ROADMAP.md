@@ -30,6 +30,8 @@
       for the first natural-water foundation slice.
 - [x] Deterministic hydrology pass with slope, depression handling, flow direction,
       accumulation, watersheds, and flow-following river source selection.
+- [ ] Cross-chunk watershed aliases, seam-safe drainage outlets, and continuous river
+      graph segments in issue `#38`.
 - [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
       rendering instead of cell-derived edge decoration.
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
