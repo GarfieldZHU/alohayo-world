@@ -1,6 +1,7 @@
 name: Security
 on:
   pull_request:
+  workflow_dispatch:
   schedule:
     - cron: '23 5 * * 1'
 permissions:

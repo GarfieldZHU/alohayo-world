@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "yarn@3.6.1",
+  "packageManager": "yarn@4.17.1+sha512.ccbfabf7d7b6b32075088be9386fb9a2e00bb6887ef07fa56effabc890a56d53da1ccc4128d62db245fcbd3961b236d75335bdf7d5320ed6eafb7588b7ad4697",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -31,14 +31,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.15.29",
     "eslint": "^9.28.0",
     "globals": "^16.2.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.1",
-    "vite": "^6.3.5",
-    "vitest": "^3.1.4"
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
   }
 }

@@ -73,6 +73,8 @@
   streamed land and water identities, including load-order and eviction regression tests.
 - Added deterministic per-cell weather surface conditions and configurable road movement/
   traffic modifiers for wet, muddy, snowy, slushy, and flooded routes.
+- Fixed dependency auditing with a supported Yarn release and patched Vite, esbuild, and
+  undici resolutions.
 
 ## 0.1.0-demo
 
