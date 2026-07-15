@@ -1979,7 +1979,8 @@ export async function createGame(
         y: Math.floor(restoredSnapshot.explorer.y / chunkSize),
       }
     : { x: 0, y: 0 }
-  await ensureChunkNeighborhood(initialChunkCenter.x, initialChunkCenter.y, activeChunkRadius)
+  // Mount as soon as the center is playable; the simulation loop streams the wider radius.
+  await ensureChunkNeighborhood(initialChunkCenter.x, initialChunkCenter.y, 0)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
   let devPanel = buildDevPanel()
