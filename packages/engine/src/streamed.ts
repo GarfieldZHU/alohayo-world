@@ -1564,6 +1564,25 @@ export async function createGame(
     redrawChunkGrid(chunk)
   }
 
+  const chunkIntersectsViewport = (chunk: GeneratedChunk) => {
+    const margin = 96
+    const size = chunk.chunkSize * cellSize * scale
+    const left = viewport.x + chunk.originX * cellSize * scale
+    const top = viewport.y + chunk.originY * cellSize * scale
+    return (
+      left + size >= -margin &&
+      top + size >= -margin &&
+      left <= app.screen.width + margin &&
+      top <= app.screen.height + margin
+    )
+  }
+
+  const renderVisibleChunks = () => {
+    for (const [key, chunk] of chunks) {
+      if (!chunkViews.has(key) && chunkIntersectsViewport(chunk)) renderChunk(chunk)
+    }
+  }
+
   const ensureChunk = (chunkX: number, chunkY: number) => {
     const key = chunkKey(chunkX, chunkY)
     const existing = chunks.get(key)
@@ -1598,7 +1617,7 @@ export async function createGame(
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
         }
         performanceTracker.markChunkGeneration(chunk.generationMs)
-        renderChunk(chunk)
+        if (!explorerMotion || chunkIntersectsViewport(chunk)) renderChunk(chunk)
         return chunk
       })
       .catch((error) => {
@@ -2330,6 +2349,7 @@ export async function createGame(
       simulationAccumulator -= fixedStep
     }
     if (!devMode) updateCamera()
+    renderVisibleChunks()
     refreshWeatherLayers(simulationNow)
     drawExplorer(simulationNow / 1000)
     drawDayNightOverlay(simulationNow)

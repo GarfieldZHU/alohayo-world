@@ -77,8 +77,8 @@
   undici resolutions.
 - Fixed production world startup by capability-gating Wasm worker batches, adding
   structured fallback diagnostics, message-error handling, and request timeouts.
-- Made startup center-first and enabled PixiJS chunk culling so background streaming
-  stays responsive and performance telemetry measures rendered frames accurately.
+- Made startup center-first and added viewport-lazy PixiJS chunk geometry/culling so
+  background streaming stays responsive and telemetry measures rendered frames accurately.
 
 ## 0.1.0-demo
 
