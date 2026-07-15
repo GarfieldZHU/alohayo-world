@@ -36,6 +36,12 @@ Each batch follows this state machine:
 No browser query string is a production rollout mechanism. The engine must receive an
 explicit local developer capability and a versioned worker request field.
 
+The active protocol is `protocolVersion: 1`. Its production default disables Wasm and
+names no batches. A batch may load Wasm only when `enabled` is true, ABI version 1 is
+present, and that batch appears in the request list. Responses report per-batch
+implementation and fallback reasons; request failures are structured and the engine
+rejects stalled requests after 15 seconds.
+
 ## Batch ABI
 
 Every migrated message includes:
@@ -64,8 +70,9 @@ structured fallback reason. Renderer objects and JSON content are never part of 
   surfaces an actionable fallback reason instead of an endless loading state.
 - Preserve the current TypeScript implementation as an independently testable reference.
 
-**Gate:** a missing/corrupt Wasm artifact starts the game through TypeScript with a visible
-diagnostic in dev mode and no embed API change.
+**Gate:** a missing/corrupt Wasm artifact starts the game through TypeScript with stable
+canvas diagnostics and no embed API change. The default/fallback browser path is covered
+under #33; Wasm-enabled browser parity and promotion remain gated by #35.
 
 ### M1: Chunk base layers
 

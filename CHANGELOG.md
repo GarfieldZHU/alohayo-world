@@ -75,6 +75,8 @@
   traffic modifiers for wet, muddy, snowy, slushy, and flooded routes.
 - Fixed dependency auditing with a supported Yarn release and patched Vite, esbuild, and
   undici resolutions.
+- Fixed production world startup by capability-gating Wasm worker batches, adding
+  structured fallback diagnostics, message-error handling, and request timeouts.
 
 ## 0.1.0-demo
 

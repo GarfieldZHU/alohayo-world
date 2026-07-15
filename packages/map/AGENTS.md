@@ -21,6 +21,9 @@ This package owns deterministic geography and worker-safe data.
   future cross-chunk global topology IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
 - Rust/Wasm output must have parity tests before becoming authoritative.
+- Worker requests must carry the versioned capability contract. TypeScript is the default;
+  never load a Wasm batch merely because an asset URL exists. Worker failures must return
+  structured request-scoped errors instead of leaving callers pending.
 - The first Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
   temperature from one coarse worker call. Preserve typed-array transfer semantics and
   keep TypeScript topology, hydrology, biome classification, overlays, and fallback as

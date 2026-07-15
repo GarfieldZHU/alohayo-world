@@ -21,6 +21,9 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - The engine may request chunks opportunistically, but it must tolerate frontier cells
   not being loaded yet and cleanly release evicted chunk display objects.
 - Verify browser-facing changes with E2E tests.
+- Every worker request needs a bounded timeout plus `error` and `messageerror` cleanup.
+  Keep worker implementation/fallback diagnostics on stable canvas data attributes so
+  browser tests can distinguish TypeScript fallback from an enabled Wasm batch.
 - HUD, tooltip, and dev-panel strings must resolve through the shared locale helpers.
 - When adding a new visible label, put it in `i18n/` first and then thread the message
   key or translated content ID through the engine.

@@ -3,7 +3,12 @@ import type {
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
 } from '@alohayo/config'
-import type { GeneratedChunk, WorldWorkerRequest, WorldWorkerResponse } from '@alohayo/map'
+import {
+  DEFAULT_WORLD_WORKER_CAPABILITIES,
+  type GeneratedChunk,
+  type WorldWorkerRequest,
+  type WorldWorkerResponse,
+} from '@alohayo/map'
 import type { RpcPending, UiTheme } from './types'
 
 export const REGION_NAME: Record<number, string> = {
@@ -13,24 +18,40 @@ export const REGION_NAME: Record<number, string> = {
   3: 'island',
 }
 
-export function createWorkerRpc(worker: Worker) {
+export function createWorkerRpc(worker: Worker, options: { timeoutMs?: number } = {}) {
   let nextId = 1
   const pending = new Map<string, RpcPending>()
+  const timeoutMs = options.timeoutMs ?? 15_000
+
+  const rejectPending = (reason: Error) => {
+    for (const request of pending.values()) {
+      clearTimeout(request.timeout)
+      request.reject(reason)
+    }
+    pending.clear()
+  }
 
   worker.onmessage = (event: MessageEvent<WorldWorkerResponse>) => {
-    if (event.data.type !== 'generated-chunk') return
+    if (event.data.type === 'generated') return
     const request = pending.get(event.data.id)
     if (!request) return
     pending.delete(event.data.id)
+    clearTimeout(request.timeout)
+    if (event.data.type === 'worker-error') {
+      request.reject(new Error(`${event.data.error.code}: ${event.data.error.message}`))
+      return
+    }
+    if (event.data.type !== 'generated-chunk') return
+    event.data.chunk.workerDiagnostics = event.data.diagnostics
     request.resolve(event.data.chunk)
   }
 
   worker.onerror = (event) => {
-    for (const request of pending.values()) {
-      request.reject(new Error(event.message || 'World worker failed'))
-    }
-    pending.clear()
+    rejectPending(new Error(event.message || 'World worker failed'))
   }
+
+  worker.onmessageerror = () =>
+    rejectPending(new Error('World worker response could not be decoded'))
 
   return {
     requestChunk(
@@ -38,13 +59,21 @@ export function createWorkerRpc(worker: Worker) {
     ) {
       return new Promise<GeneratedChunk>((resolve, reject) => {
         const id = `chunk-${nextId++}`
-        pending.set(id, { resolve, reject })
-        worker.postMessage({ type: 'generate-chunk', id, ...payload })
+        const timeout = setTimeout(() => {
+          pending.delete(id)
+          reject(new Error(`World worker request timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+        pending.set(id, { resolve, reject, timeout })
+        worker.postMessage({
+          type: 'generate-chunk',
+          id,
+          capabilities: DEFAULT_WORLD_WORKER_CAPABILITIES,
+          ...payload,
+        })
       })
     },
     rejectAll(reason: Error) {
-      for (const request of pending.values()) request.reject(reason)
-      pending.clear()
+      rejectPending(reason)
     },
   }
 }

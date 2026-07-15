@@ -41,6 +41,7 @@ export interface ChunkView {
 export interface RpcPending {
   resolve: (value: GeneratedChunk) => void
   reject: (reason?: unknown) => void
+  timeout: ReturnType<typeof setTimeout>
 }
 
 export interface ActiveWeatherState {

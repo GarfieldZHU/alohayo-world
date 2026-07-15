@@ -106,6 +106,7 @@ export interface GeneratedChunk {
   settlements: GeneratedSettlement[]
   rivers: GeneratedRiver[]
   roads: GeneratedRoad[]
+  workerDiagnostics?: WorldWorkerDiagnostics
 }
 
 /**
@@ -195,6 +196,30 @@ export interface GenerateChunkRequest {
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
   wasmBaseUrl?: string
+  capabilities?: WorldWorkerCapabilities
+}
+
+export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints'
+
+export interface WorldWorkerCapabilities {
+  protocolVersion: 1
+  wasm: {
+    abiVersion: 1
+    enabled: boolean
+    batches: WorldWorkerWasmBatch[]
+  }
+}
+
+export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
+  protocolVersion: 1,
+  wasm: { abiVersion: 1, enabled: false, batches: [] },
+}
+
+export interface WorldWorkerDiagnostics {
+  protocolVersion: 1
+  implementation: 'typescript' | 'wasm' | 'mixed'
+  batches: Record<WorldWorkerWasmBatch, 'typescript' | 'wasm'>
+  fallbacks: Array<{ batch: WorldWorkerWasmBatch; reason: string }>
 }
 
 export interface GenerateWorldResponse {
@@ -207,10 +232,24 @@ export interface GenerateChunkResponse {
   type: 'generated-chunk'
   id: string
   chunk: GeneratedChunk
+  diagnostics: WorldWorkerDiagnostics
+}
+
+export interface WorldWorkerErrorResponse {
+  type: 'worker-error'
+  id: string
+  error: {
+    code: 'generation-failed'
+    message: string
+    recoverable: true
+  }
 }
 
 export type WorldWorkerRequest = GenerateWorldRequest | GenerateChunkRequest
-export type WorldWorkerResponse = GenerateWorldResponse | GenerateChunkResponse
+export type WorldWorkerResponse =
+  | GenerateWorldResponse
+  | GenerateChunkResponse
+  | WorldWorkerErrorResponse
 
 const DEFAULT_SEA_LEVEL = 0.43
 const FOUR_NEIGHBORS = [

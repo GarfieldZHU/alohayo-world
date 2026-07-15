@@ -1576,6 +1576,10 @@ export async function createGame(
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
         lastChunkGenerationMs = chunk.generationMs
+        if (chunk.workerDiagnostics) {
+          app.canvas.dataset.workerImplementation = chunk.workerDiagnostics.implementation
+          app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
+        }
         performanceTracker.markChunkGeneration(chunk.generationMs)
         renderChunk(chunk)
         return chunk
