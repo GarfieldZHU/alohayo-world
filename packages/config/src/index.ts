@@ -39,12 +39,24 @@ export interface ContentPackResolutionDiagnostic {
   relatedAreaIds?: string[]
 }
 
+export interface ContentPackMapAreaProvenance {
+  areaId: string
+  sourcePackId: string
+  sourcePackVersion: string
+  sourceManifestPath: string
+  sourceMapAreaPackId: string
+  sourceAreaPath: string
+  ownership: ContentPackOwnershipMode
+  resolutionOrder: number
+}
+
 export interface ContentPackResolutionReport {
   orderedPackIds: string[]
   dependencyGraph: ContentPackDependencyNode[]
   mapAreaIds: string[]
   resolutionHash: string
   diagnostics: ContentPackResolutionDiagnostic[]
+  mapAreaProvenance: ContentPackMapAreaProvenance[]
 }
 
 export interface ContentPackSaveMetadataEntry {

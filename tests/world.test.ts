@@ -273,6 +273,14 @@ describe('world generation', () => {
       'archipelago:cloudbreak-atoll',
     ])
     expect(resolution.report.resolutionHash).toBe('fnv32:10cb56c6')
+    expect(resolution.report.mapAreaProvenance[2]).toMatchObject({
+      areaId: 'archipelago:cloudbreak-atoll',
+      sourcePackId: 'archipelago',
+      sourcePackVersion: '0.1.0',
+      sourceMapAreaPackId: 'archipelago:map-areas',
+      ownership: 'additive',
+      resolutionOrder: 2,
+    })
     expect(resolution.saveMetadata).toMatchObject({
       orderedPackIds: ['core', 'archipelago'],
       resolutionHash: 'fnv32:10cb56c6',
@@ -446,5 +454,32 @@ describe('world generation', () => {
         },
       })
     ).toThrow('must declare ownership "additive" for "mapAreas"')
+  })
+
+  it('reports both sources when map area IDs collide', () => {
+    const duplicateArea = {
+      ...(cloudbreakAtoll as MapAreaDefinition),
+      id: 'core:wayfinder-isle',
+    } satisfies MapAreaDefinition
+
+    expect(() =>
+      resolveContentPacks({
+        manifests: {
+          '/content/core/manifest.json': corePackManifest,
+          '/content/examples/archipelago/manifest.json': archipelagoPackManifest,
+        },
+        mapAreaPacks: {
+          '/content/maps/core/index.json': coreMapAreaPack,
+          '/content/examples/archipelago/maps/index.json': archipelagoMapAreaPack,
+        },
+        mapAreas: {
+          '/content/maps/core/areas/terrain-showcase.json': terrainShowcase as MapAreaDefinition,
+          '/content/maps/core/areas/wayfinder-isle.json': wayfinderIsle as MapAreaDefinition,
+          '/content/examples/archipelago/maps/areas/cloudbreak-atoll.json': duplicateArea,
+        },
+      })
+    ).toThrow(
+      'duplicate map area id "core:wayfinder-isle" from pack "archipelago" at "/content/examples/archipelago/maps/areas/cloudbreak-atoll.json"; first declared by pack "core" at "/content/maps/core/areas/wayfinder-isle.json"'
+    )
   })
 })

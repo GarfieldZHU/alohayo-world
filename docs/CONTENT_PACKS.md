@@ -226,13 +226,17 @@ eventually grow it with richer warnings:
 Current implementation:
 
 - `resolveContentPacks()` returns `report` with deterministic `orderedPackIds`,
-  `dependencyGraph`, `mapAreaIds`, `resolutionHash`, and overlap diagnostics;
+  `dependencyGraph`, `mapAreaIds`, `resolutionHash`, overlap diagnostics, and a
+  `mapAreaProvenance` row for every resolved authored area;
+- duplicate map-area IDs hard-fail with both source pack IDs and source paths, instead
+  of silently choosing a winner;
 - `saveMetadata` mirrors the pack set and resolution hash in a save-ready shape for
   issue `#11`;
 - `yarn validate:content` prints the resolved pack order and resolution hash so CI logs
   expose the same signature.
 
-The richer overlay/dev inspector remains follow-up work in issue `#25`.
+The report is the stable data source for future in-game overlay inspectors. UI work must
+not reproduce pack resolution or infer provenance from IDs.
 
 ## Vertical Slices
 

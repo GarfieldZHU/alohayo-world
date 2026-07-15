@@ -1,6 +1,7 @@
 import type {
   ContentPackDependencyNode,
   ContentPackMigrationRegistryShape,
+  ContentPackMapAreaProvenance,
   ContentPackResolutionDiagnostic,
   ContentPackResolutionReport,
   ContentPackSaveMetadata,
@@ -67,7 +68,7 @@ export function resolveContentPacks({
   const orderedPackIds = resolvePackOrder(manifestEntries)
   const depthByPackId = computeDependencyDepths(manifestEntries)
   const packById = new Map(manifestEntries.map((entry) => [entry.pack.id, entry]))
-  const seenMapAreaIds = new Set<string>()
+  const seenMapAreaIds = new Map<string, { packId: string; sourceAreaPath: string }>()
   const orderedPacks = orderedPackIds.map((packId) => {
     const entry = packById.get(packId)
     if (!entry) {
@@ -237,7 +238,7 @@ function resolveMapAreasForPack(
   entry: ManifestEntry,
   mapAreaPacks: Record<string, MapAreaPackDefinition>,
   mapAreas: Record<string, MapAreaDefinition>,
-  seenMapAreaIds: Set<string>
+  seenMapAreaIds: Map<string, { packId: string; sourceAreaPath: string }>
 ): Pick<ResolvedContentPack, 'mapAreaPack' | 'mapAreaPackPath' | 'mapAreas' | 'mapAreaPaths'> {
   if (!entry.pack.mapAreas) {
     return {
@@ -263,10 +264,13 @@ function resolveMapAreasForPack(
     if (!area) {
       throw new Error(`map area pack "${mapAreaPack.id}" references missing area "${areaPath}"`)
     }
-    if (seenMapAreaIds.has(area.id)) {
-      throw new Error(`duplicate map area id "${area.id}"`)
+    const previous = seenMapAreaIds.get(area.id)
+    if (previous) {
+      throw new Error(
+        `duplicate map area id "${area.id}" from pack "${entry.pack.id}" at "${resolvedPath}"; first declared by pack "${previous.packId}" at "${previous.sourceAreaPath}"`
+      )
     }
-    seenMapAreaIds.add(area.id)
+    seenMapAreaIds.set(area.id, { packId: entry.pack.id, sourceAreaPath: resolvedPath })
     return { area, resolvedPath }
   })
 
@@ -406,6 +410,19 @@ function buildResolutionReport(
   )
   const mapAreaIds = orderedPacks.flatMap((pack) => pack.mapAreas.map((entry) => entry.area.id))
   const diagnostics: ContentPackResolutionDiagnostic[] = []
+  let resolutionOrder = 0
+  const mapAreaProvenance: ContentPackMapAreaProvenance[] = orderedPacks.flatMap((pack) =>
+    pack.mapAreas.map((entry) => ({
+      areaId: entry.area.id,
+      sourcePackId: entry.sourcePackId,
+      sourcePackVersion: entry.sourcePackVersion,
+      sourceManifestPath: entry.sourceManifestPath,
+      sourceMapAreaPackId: entry.sourceMapAreaPackId,
+      sourceAreaPath: entry.sourceAreaPath,
+      ownership: entry.ownership,
+      resolutionOrder: resolutionOrder++,
+    }))
+  )
 
   for (let index = 0; index < orderedPacks.length; index += 1) {
     const leftPack = orderedPacks[index]
@@ -439,6 +456,7 @@ function buildResolutionReport(
     mapAreaIds,
     resolutionHash: hashResolutionSignature(orderedPacks),
     diagnostics,
+    mapAreaProvenance,
   }
 }
 
