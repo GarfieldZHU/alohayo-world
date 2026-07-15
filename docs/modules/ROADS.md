@@ -5,8 +5,8 @@
 ## Owns
 
 Road tier definitions, inter-settlement connection rules, path smoothing, terrain-aware
-road surfacing, movement bonuses on roads, and future road-condition interaction with
-weather.
+road surfacing, movement bonuses, and weather-derived road conditions shared by
+rendering, traversal, and future traffic consumers.
 
 ## Current Slice
 
@@ -35,3 +35,6 @@ passes or major routes.
 - settlement traffic and route choice consuming the existing condition multipliers;
 - city-street interiors and paving quality;
 - vehicles and mounts consuming the same road-profile queries.
+
+These infrastructure and simulation extensions continue together in issue `#32`; they
+build on the completed tier and condition contract rather than replacing it.
