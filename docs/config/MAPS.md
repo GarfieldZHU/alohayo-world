@@ -104,8 +104,9 @@ spawns, portals, quests, settlements, and map labels.
 
 ## Authored Entities
 
-`entities` reserve future runtime actors, props, encounter seeds, portals, or spawn
-anchors without requiring engine code changes today.
+`entities` define deterministic runtime anchors for actors, props, encounters, portals,
+or spawns. The current explorer renders them through the inspectable landmark layer;
+actor lifecycle and respawn policy remain a separate gameplay capability.
 
 ```json
 {
@@ -125,8 +126,8 @@ Rules:
 - `id` must stay stable and namespaced.
 - `kind` is a data tag, not executable behavior.
 - `x` and `y` are local area-cell coordinates inside the area bounds.
-- `archetypeId`, `factionId`, `tags`, and `notes` are optional metadata for future
-  loaders and tooling.
+- `archetypeId`, `factionId`, `tags`, and `notes` are optional metadata for loaders and
+  tooling.
 
 ## Protected Regions
 
@@ -150,15 +151,17 @@ Rules:
 
 - `shape` currently supports `rectangle` and `ellipse`.
 - bounds must stay completely inside the local area rectangle.
-- `blocks` must be chosen from `terrainPatches`, `cells`, `landmarks`, `entities`, or
-  `modifiers`.
-- this is a declarative protection contract; the current runtime does not yet enforce
-  it during overlay application.
+- `blocks` must be chosen from `terrainPatches`, `cells`, `landmarks`, `entities`,
+  `modifiers`, `settlements`, `roads`, or `rivers`.
+- protection is order-sensitive: a region blocks later authored areas, while procedural
+  settlements, roads, and rivers are always considered later than authored content.
+- a region never erases content from its own area. Put a reserve area before another
+  authored area when its purpose is to suppress that later overlay.
 
 ## Generator Modifiers
 
-`modifiers` are local hints for future settlement, road, ecology, or authored-scenario
-passes. Keep them descriptive and deterministic.
+`modifiers` are local hints for settlement, road, ecology, or authored-scenario passes.
+Keep them descriptive and deterministic.
 
 ```json
 {
@@ -181,10 +184,15 @@ passes. Keep them descriptive and deterministic.
 
 Rules:
 
-- modifiers are data only; `kind` selects a registered future capability.
+- modifiers are data only; `kind` selects a registered capability.
 - `strength` is numeric and deterministic, not an imperative script.
 - `parameters` may contain only scalar JSON values.
 - bounds must stay fully inside the authored area.
+
+The first registered capability is `settlement-bias`. Its strengths combine and clamp
+to `[-1, 1]`; the result adjusts procedural site suitability without directly spawning
+a settlement. Unknown kinds remain validated inert data so packs can be forward
+compatible without executing arbitrary code.
 
 ## Adding a Pack
 
@@ -205,6 +213,7 @@ benchmark area unless it is intended to appear in normal generated worlds.
 - Files are bundled at build time, not downloaded dynamically.
 - Cross-pack dependency resolution and runtime content downloads remain `v0.2` work.
 
-The current authored-overlay contract now validates landmarks, authored entities,
-protected regions, and generator modifiers. The next slice is runtime consumption and
-inspection, not more ad hoc schema growth.
+The authored-overlay runtime validates and resolves landmarks, entities, protected
+regions, and generator modifiers into world coordinates with provenance. Actor
+lifecycle, conflict visualization, and additional registered modifier consumers remain
+follow-up modules rather than ad hoc schema growth.

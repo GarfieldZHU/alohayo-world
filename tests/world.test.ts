@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { BIOME, applyMapAreas, generateChunk, generateWorld, hashSeed } from '../packages/map/src'
+import {
+  BIOME,
+  applyMapAreas,
+  generateChunk,
+  generateWorld,
+  hashSeed,
+  overlayBlockedAt,
+} from '../packages/map/src'
 import {
   CONTENT_PACK_MIGRATION_REGISTRY_SHAPE,
   resolveContentPacks,
@@ -182,6 +189,24 @@ describe('world generation', () => {
     expect(first.hash).toBe(second.hash)
     expect(first.areaIds).toContain('core:wayfinder-isle')
     expect(first.landmarks[0]?.id).toBe('core:wayfinder-beacon')
+    expect(first.landmarks.some((landmark) => landmark.id === 'core:wayfinder-isle-keeper')).toBe(
+      true
+    )
+    expect(first.authoredEntities[0]).toMatchObject({
+      id: 'core:wayfinder-isle-keeper',
+      areaId: 'core:wayfinder-isle',
+    })
+    expect(first.protectedRegions[0]?.blocks).toContain('settlements')
+    expect(first.generatorModifiers[0]).toMatchObject({
+      kind: 'settlement-bias',
+      strength: 0.35,
+    })
+    expect(
+      first.settlements.every(
+        (settlement) =>
+          !overlayBlockedAt(first.protectedRegions, 'settlements', settlement.x, settlement.y)
+      )
+    ).toBe(true)
     expect(first.authoredArea.some((area) => area > 0)).toBe(true)
   })
 

@@ -6,6 +6,15 @@ import type {
   WorldRoadSystemDefinition,
 } from '@alohayo/config'
 import { buildHydrologyRaster, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
+import {
+  modifierStrengthAt,
+  overlayBlockedAt,
+  resolveAuthoredOverlays,
+  type GeneratedAuthoredEntity,
+  type GeneratedGeneratorModifier,
+  type GeneratedProtectedRegion,
+  type ResolvedAuthoredOverlays,
+} from './authored-overlays'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
 import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
 
@@ -17,6 +26,17 @@ export {
   type TopologyMedium,
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
+export {
+  modifierStrengthAt,
+  overlayBlockedAt,
+  pointInProtectedRegion,
+  resolveAuthoredOverlays,
+  type GeneratedAuthoredEntity,
+  type GeneratedGeneratorModifier,
+  type GeneratedProtectedRegion,
+  type ProtectedOverlayKind,
+  type ResolvedAuthoredOverlays,
+} from './authored-overlays'
 
 export const BIOME = {
   deepOcean: 0,
@@ -74,6 +94,9 @@ export interface GeneratedWorld {
   authoredArea: Uint16Array
   mainlandId: number
   areaIds: string[]
+  authoredEntities: GeneratedAuthoredEntity[]
+  protectedRegions: GeneratedProtectedRegion[]
+  generatorModifiers: GeneratedGeneratorModifier[]
   landmarks: GeneratedLandmark[]
   settlements: GeneratedSettlement[]
   rivers: GeneratedRiver[]
@@ -103,6 +126,9 @@ export interface GeneratedChunk {
   authoredArea: Uint16Array
   region: Uint8Array
   areaIds: string[]
+  authoredEntities: GeneratedAuthoredEntity[]
+  protectedRegions: GeneratedProtectedRegion[]
+  generatorModifiers: GeneratedGeneratorModifier[]
   landmarks: GeneratedLandmark[]
   settlements: GeneratedSettlement[]
   rivers: GeneratedRiver[]
@@ -267,6 +293,38 @@ export function hashSeed(seed: string): number {
     hash = Math.imul(hash, 16777619)
   }
   return hash >>> 0
+}
+
+function mixHashText(hash: number, value: string): number {
+  let mixed = hash
+  for (let index = 0; index < value.length; index += 1) {
+    mixed ^= value.charCodeAt(index)
+    mixed = Math.imul(mixed, 16777619)
+  }
+  return mixed
+}
+
+function mixOverlayHash(hash: number, overlays: ResolvedAuthoredOverlays): number {
+  let mixed = hash
+  for (const entity of overlays.entities) {
+    mixed = mixHashText(
+      mixed,
+      `${entity.areaId}:${entity.id}:${entity.kind}:${entity.x}:${entity.y}`
+    )
+  }
+  for (const region of overlays.protectedRegions) {
+    mixed = mixHashText(
+      mixed,
+      `${region.areaId}:${region.id}:${region.x}:${region.y}:${region.width}:${region.height}:${region.blocks.join(',')}`
+    )
+  }
+  for (const modifier of overlays.modifiers) {
+    mixed = mixHashText(
+      mixed,
+      `${modifier.areaId}:${modifier.id}:${modifier.kind}:${modifier.x}:${modifier.y}:${modifier.width}:${modifier.height}:${modifier.strength}`
+    )
+  }
+  return mixed
 }
 
 function random2d(x: number, y: number, seed: number): number {
@@ -1068,13 +1126,27 @@ function populateChunkFeatures(
     maxX,
     maxY,
     evaluate,
-    biomeMap
+    biomeMap,
+    {
+      entities: chunk.authoredEntities,
+      protectedRegions: chunk.protectedRegions,
+      modifiers: chunk.generatorModifiers,
+    }
   )
+  const overlays = {
+    entities: chunk.authoredEntities,
+    protectedRegions: chunk.protectedRegions,
+    modifiers: chunk.generatorModifiers,
+  }
   const rivers = buildRiverNetwork(seedText, minX, minY, maxX, maxY, evaluate, riversConfig).filter(
-    (river) => riverTouchesChunk(river, chunk.originX, chunk.originY, chunk.chunkSize)
+    (river) =>
+      riverTouchesChunk(river, chunk.originX, chunk.originY, chunk.chunkSize) &&
+      !pathBlockedByProtectedRegion(river.points, 'rivers', overlays)
   )
-  const roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter((road) =>
-    roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize)
+  const roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter(
+    (road) =>
+      roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize) &&
+      !pathBlockedByProtectedRegion(road.points, 'roads', overlays)
   )
   chunk.settlements = settlements.filter(
     (settlement) =>
@@ -1085,7 +1157,11 @@ function populateChunkFeatures(
   )
   chunk.rivers = rivers
   chunk.roads = roads
-  chunk.landmarks = [...chunk.landmarks, ...chunk.settlements.map(settlementToLandmark)]
+  chunk.landmarks = [
+    ...chunk.landmarks,
+    ...chunk.authoredEntities.map(authoredEntityToLandmark),
+    ...chunk.settlements.map(settlementToLandmark),
+  ]
   return chunk
 }
 
@@ -1134,9 +1210,19 @@ function populateWorldFeatures(
     world.width - 1,
     world.height - 1,
     evaluate,
-    biomeMap
+    biomeMap,
+    {
+      entities: world.authoredEntities,
+      protectedRegions: world.protectedRegions,
+      modifiers: world.generatorModifiers,
+    }
   )
   world.settlements = settlements
+  const overlays = {
+    entities: world.authoredEntities,
+    protectedRegions: world.protectedRegions,
+    modifiers: world.generatorModifiers,
+  }
   world.rivers = buildRiverNetwork(
     seedText,
     0,
@@ -1145,9 +1231,15 @@ function populateWorldFeatures(
     world.height - 1,
     evaluate,
     riversConfig
+  ).filter((river) => !pathBlockedByProtectedRegion(river.points, 'rivers', overlays))
+  world.roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter(
+    (road) => !pathBlockedByProtectedRegion(road.points, 'roads', overlays)
   )
-  world.roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig)
-  world.landmarks = [...world.landmarks, ...settlements.map(settlementToLandmark)]
+  world.landmarks = [
+    ...world.landmarks,
+    ...world.authoredEntities.map(authoredEntityToLandmark),
+    ...settlements.map(settlementToLandmark),
+  ]
   return world
 }
 
@@ -1258,7 +1350,8 @@ function generateSettlementsForBounds(
   maxX: number,
   maxY: number,
   evaluateCell: (x: number, y: number) => EvaluatedCell,
-  biomeDefinitions: Map<number, BiomeDefinition>
+  biomeDefinitions: Map<number, BiomeDefinition>,
+  overlays?: ResolvedAuthoredOverlays
 ): GeneratedSettlement[] {
   const seed = hashSeed(seedText)
   const settlements: GeneratedSettlement[] = []
@@ -1278,8 +1371,14 @@ function generateSettlementsForBounds(
         if (y < minY || y > maxY) continue
         for (let x = centerX - searchRadius; x <= centerX + searchRadius; x += 1) {
           if (x < minX || x > maxX) continue
+          if (overlays && overlayBlockedAt(overlays.protectedRegions, 'settlements', x, y)) {
+            continue
+          }
           const cell = evaluateCell(x, y)
-          const score = scoreSettlementSite(biomeDefinitions, cell)
+          const settlementBias = overlays
+            ? modifierStrengthAt(overlays.modifiers, 'settlement-bias', x, y)
+            : 0
+          const score = scoreSettlementSite(biomeDefinitions, cell) + settlementBias * 45
           if (!Number.isFinite(score)) continue
           if (!best || score > best.score) best = { ...cell, x, y, score }
         }
@@ -1871,6 +1970,26 @@ function settlementToLandmark(settlement: GeneratedSettlement): GeneratedLandmar
   }
 }
 
+function authoredEntityToLandmark(entity: GeneratedAuthoredEntity): GeneratedLandmark {
+  return {
+    id: entity.id,
+    name: entity.id.split(':').at(-1)?.replaceAll('-', ' ') ?? entity.id,
+    x: entity.x,
+    y: entity.y,
+    kind: `entity:${entity.kind}`,
+    description: entity.notes ?? `${entity.kind} authored by ${entity.areaId}.`,
+    areaId: entity.areaId,
+  }
+}
+
+function pathBlockedByProtectedRegion(
+  points: Array<{ x: number; y: number }>,
+  kind: 'roads' | 'rivers',
+  overlays: ResolvedAuthoredOverlays
+) {
+  return points.some((point) => overlayBlockedAt(overlays.protectedRegions, kind, point.x, point.y))
+}
+
 export function applyMapAreas(
   world: GeneratedWorld,
   areas: MapAreaDefinition[],
@@ -1882,17 +2001,26 @@ export function applyMapAreas(
   const authoredArea = new Uint16Array(world.biomes.length)
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
+  const overlays = resolveAuthoredOverlays({
+    areas,
+    surveyWidth: world.width,
+    surveyHeight: world.height,
+    centered: false,
+  })
 
   const applyCell = (
     worldX: number,
     worldY: number,
     areaIndex: number,
+    areaOrder: number,
+    overlayKind: 'terrainPatches' | 'cells',
     terrainId: string,
     elevation?: number,
     moisture?: number,
     temperature?: number
   ) => {
     if (worldX < 0 || worldY < 0 || worldX >= world.width || worldY >= world.height) return
+    if (overlayBlockedAt(overlays.protectedRegions, overlayKind, worldX, worldY, areaOrder)) return
     const terrainCode = terrainCodes[terrainId]
     if (terrainCode === undefined) throw new Error(`unknown terrain id ${terrainId}`)
     const index = worldY * world.width + worldX
@@ -1903,8 +2031,8 @@ export function applyMapAreas(
     if (temperature !== undefined) world.temperature[index] = temperature
   }
 
-  for (const area of areas) {
-    if (!area.enabled) continue
+  areas.forEach((area, areaOrder) => {
+    if (!area.enabled) return
     const areaIndex = areaIds.length
     areaIds.push(area.id)
     const origin = resolveAreaOrigin(area, world.width, world.height)
@@ -1917,6 +2045,8 @@ export function applyMapAreas(
             origin.x + patch.x + x,
             origin.y + patch.y + y,
             areaIndex,
+            areaOrder,
+            'terrainPatches',
             patch.terrainId,
             patch.elevation,
             patch.moisture,
@@ -1931,6 +2061,8 @@ export function applyMapAreas(
         origin.x + cell.x,
         origin.y + cell.y,
         areaIndex,
+        areaOrder,
+        'cells',
         cell.terrainId,
         cell.elevation,
         cell.moisture,
@@ -1939,14 +2071,19 @@ export function applyMapAreas(
     }
 
     for (const landmark of area.landmarks ?? []) {
+      const worldX = origin.x + landmark.x
+      const worldY = origin.y + landmark.y
+      if (overlayBlockedAt(overlays.protectedRegions, 'landmarks', worldX, worldY, areaOrder)) {
+        continue
+      }
       landmarks.push({
         ...landmark,
-        x: origin.x + landmark.x,
-        y: origin.y + landmark.y,
+        x: worldX,
+        y: worldY,
         areaId: area.id,
       })
     }
-  }
+  })
 
   const topology = classifyTopologyFromBiomes(world.biomes, world.width, world.height)
   const hydrology = buildHydrologyFromElevationAndWater(
@@ -1961,6 +2098,9 @@ export function applyMapAreas(
   assignHydrologyToWorld(world, hydrology)
   world.authoredArea = authoredArea
   world.areaIds = areaIds
+  world.authoredEntities = overlays.entities
+  world.protectedRegions = overlays.protectedRegions
+  world.generatorModifiers = overlays.modifiers
   world.landmarks = landmarks
   world.settlements = []
   world.rivers = []
@@ -1978,6 +2118,7 @@ export function applyMapAreas(
       world.authoredArea[index]!
     worldHash = Math.imul(worldHash, 16777619)
   }
+  worldHash = mixOverlayHash(worldHash, overlays)
   world.hash = (worldHash >>> 0).toString(16).padStart(8, '0')
   return world
 }
@@ -1996,11 +2137,25 @@ function applyAreasToChunk(
   const landmarks: GeneratedLandmark[] = []
   const chunkMaxX = chunk.originX + chunk.chunkSize - 1
   const chunkMaxY = chunk.originY + chunk.chunkSize - 1
+  const overlays = resolveAuthoredOverlays({
+    areas,
+    surveyWidth,
+    surveyHeight,
+    centered: true,
+    bounds: {
+      minX: chunk.originX,
+      minY: chunk.originY,
+      maxX: chunkMaxX,
+      maxY: chunkMaxY,
+    },
+  })
 
   const applyCell = (
     worldX: number,
     worldY: number,
     areaIndex: number,
+    areaOrder: number,
+    overlayKind: 'terrainPatches' | 'cells',
     terrainId: string,
     elevation?: number,
     moisture?: number,
@@ -2014,6 +2169,7 @@ function applyAreasToChunk(
     ) {
       return
     }
+    if (overlayBlockedAt(overlays.protectedRegions, overlayKind, worldX, worldY, areaOrder)) return
     const terrainCode = terrainCodes[terrainId]
     if (terrainCode === undefined) throw new Error(`unknown terrain id ${terrainId}`)
     const localX = worldX - chunk.originX
@@ -2026,8 +2182,8 @@ function applyAreasToChunk(
     if (temperature !== undefined) chunk.temperature[index] = temperature
   }
 
-  for (const area of areas) {
-    if (!area.enabled) continue
+  areas.forEach((area, areaOrder) => {
+    if (!area.enabled) return
     const origin = resolveAreaOrigin(area, surveyWidth, surveyHeight, true)
     const areaMinX = origin.x
     const areaMinY = origin.y
@@ -2039,7 +2195,7 @@ function applyAreasToChunk(
       areaMinX > chunkMaxX ||
       areaMinY > chunkMaxY
     )
-    if (!intersects) continue
+    if (!intersects) return
 
     const areaIndex = areaIds.length
     areaIds.push(area.id)
@@ -2052,6 +2208,8 @@ function applyAreasToChunk(
             origin.x + patch.x + x,
             origin.y + patch.y + y,
             areaIndex,
+            areaOrder,
+            'terrainPatches',
             patch.terrainId,
             patch.elevation,
             patch.moisture,
@@ -2066,6 +2224,8 @@ function applyAreasToChunk(
         origin.x + cell.x,
         origin.y + cell.y,
         areaIndex,
+        areaOrder,
+        'cells',
         cell.terrainId,
         cell.elevation,
         cell.moisture,
@@ -2084,6 +2244,9 @@ function applyAreasToChunk(
       ) {
         continue
       }
+      if (overlayBlockedAt(overlays.protectedRegions, 'landmarks', worldX, worldY, areaOrder)) {
+        continue
+      }
       landmarks.push({
         ...landmark,
         x: worldX,
@@ -2091,9 +2254,12 @@ function applyAreasToChunk(
         areaId: area.id,
       })
     }
-  }
+  })
 
   chunk.areaIds = areaIds
+  chunk.authoredEntities = overlays.entities
+  chunk.protectedRegions = overlays.protectedRegions
+  chunk.generatorModifiers = overlays.modifiers
   chunk.landmarks = landmarks
   chunk.region = classifyChunkRegions(chunk.biomes, chunk.chunkSize)
   chunk.renderHints = generateChunkRenderHints({
@@ -2129,6 +2295,7 @@ function applyAreasToChunk(
       chunk.region[index]!
     chunkHash = Math.imul(chunkHash, 16777619)
   }
+  chunkHash = mixOverlayHash(chunkHash, overlays)
   chunk.hash = (chunkHash >>> 0).toString(16).padStart(8, '0')
   return chunk
 }
@@ -2253,6 +2420,9 @@ export function generateWorld(
     authoredArea: new Uint16Array(size),
     mainlandId: topology.mainlandId,
     areaIds: [''],
+    authoredEntities: [],
+    protectedRegions: [],
+    generatorModifiers: [],
     landmarks: [],
     settlements: [],
     rivers: [],
@@ -2356,6 +2526,9 @@ export function generateChunk(
     authoredArea: new Uint16Array(size),
     region: classifyChunkRegions(biomes, chunkSize),
     areaIds: [''],
+    authoredEntities: [],
+    protectedRegions: [],
+    generatorModifiers: [],
     landmarks: [],
     settlements: [],
     rivers: [],

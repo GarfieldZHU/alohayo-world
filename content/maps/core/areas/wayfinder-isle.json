@@ -56,5 +56,42 @@
       "kind": "beacon",
       "description": "A weathered signal tower at the island's high point."
     }
+  ],
+  "entities": [
+    {
+      "id": "core:wayfinder-isle-keeper",
+      "kind": "npc-spawn",
+      "x": 10,
+      "y": 9,
+      "archetypeId": "core:wayfinder",
+      "tags": ["spawn", "island", "demo"],
+      "notes": "A deterministic authored spawn anchor rendered through the landmark inspection layer."
+    }
+  ],
+  "protectedRegions": [
+    {
+      "id": "core:wayfinder-beacon-reserve",
+      "x": 8,
+      "y": 5,
+      "width": 7,
+      "height": 7,
+      "shape": "ellipse",
+      "reason": "Keep procedural settlements and transport paths away from the beacon reserve.",
+      "blocks": ["settlements", "roads", "rivers"]
+    }
+  ],
+  "modifiers": [
+    {
+      "id": "core:wayfinder-harbor-bias",
+      "kind": "settlement-bias",
+      "x": 2,
+      "y": 9,
+      "width": 6,
+      "height": 5,
+      "shape": "ellipse",
+      "strength": 0.35,
+      "parameters": { "role": "harbor" },
+      "tags": ["settlement", "coastal"]
+    }
   ]
 }

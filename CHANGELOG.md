@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add deterministic runtime authored entities, protected overlay regions, and
+  config-driven settlement bias.
+
 - Added deterministic smoothed mask contours for layered shorelines, seam refresh, and an
   adaptive sub-cell discovery fog with a feathered active-vision boundary.
 - Fixed minimap clock/control overlap and made the complete overlapping control hit area

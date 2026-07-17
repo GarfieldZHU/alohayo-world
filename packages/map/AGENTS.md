@@ -15,6 +15,11 @@ This package owns deterministic geography and worker-safe data.
   two contracts together.
 - Content-pack overlay resolution must stay deterministic and should arrive in map code
   as an ordered, validated input, not as ad hoc directory iteration.
+- Runtime authored overlays are resolved by `authored-overlays.ts`. Preserve area-order
+  precedence, world-coordinate provenance, and bounds filtering. Protected regions
+  block later authored layers and procedural layers, never content from their own area.
+- `settlement-bias` is the first registered generator modifier. Add new modifier
+  consumers explicitly, keep unknown kinds inert, and test overlap/clamping behavior.
 - When new overlay families are added, document whether they are additive, overriding,
   or conflict-failing before implementing merge code.
 - Chunk-local `region` labels are an exploration/runtime aid today, not a substitute for

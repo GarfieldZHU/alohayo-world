@@ -279,7 +279,16 @@ for (const area of mapAreas) {
       !region.blocks.length ||
       region.blocks.some(
         (block) =>
-          !['terrainPatches', 'cells', 'landmarks', 'entities', 'modifiers'].includes(block)
+          ![
+            'terrainPatches',
+            'cells',
+            'landmarks',
+            'entities',
+            'modifiers',
+            'settlements',
+            'roads',
+            'rivers',
+          ].includes(block)
       ) ||
       !isValidAreaRect(region, area)
     ) {

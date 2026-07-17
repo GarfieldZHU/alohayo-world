@@ -465,7 +465,16 @@ export interface MapProtectedRegionDefinition {
   height: number
   shape: 'rectangle' | 'ellipse'
   reason: string
-  blocks: Array<'terrainPatches' | 'cells' | 'landmarks' | 'entities' | 'modifiers'>
+  blocks: Array<
+    | 'terrainPatches'
+    | 'cells'
+    | 'landmarks'
+    | 'entities'
+    | 'modifiers'
+    | 'settlements'
+    | 'roads'
+    | 'rivers'
+  >
 }
 
 export interface MapGeneratorModifierDefinition {
