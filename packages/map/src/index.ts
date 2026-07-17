@@ -5,7 +5,10 @@ import type {
   WorldGeomorphologyDefinition,
   WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
+  WorldWorkerCapabilities,
+  WorldWorkerWasmBatch,
 } from '@alohayo/config'
+export type { WorldWorkerCapabilities, WorldWorkerWasmBatch } from '@alohayo/config'
 import { buildHydrologyRaster, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
 import {
   modifierStrengthAt,
@@ -237,20 +240,9 @@ export interface GenerateChunkRequest {
   capabilities?: WorldWorkerCapabilities
 }
 
-export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints'
-
-export interface WorldWorkerCapabilities {
-  protocolVersion: 1
-  wasm: {
-    abiVersion: 1
-    enabled: boolean
-    batches: WorldWorkerWasmBatch[]
-  }
-}
-
 export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   protocolVersion: 1,
-  wasm: { abiVersion: 1, enabled: false, batches: [] },
+  wasm: { abiVersion: 1, enabled: true, batches: ['chunk-base-layers'] },
 }
 
 export interface WorldWorkerDiagnostics {
@@ -258,6 +250,9 @@ export interface WorldWorkerDiagnostics {
   implementation: 'typescript' | 'wasm' | 'mixed'
   batches: Record<WorldWorkerWasmBatch, 'typescript' | 'wasm'>
   fallbacks: Array<{ batch: WorldWorkerWasmBatch; reason: string }>
+  timingsMs: Record<WorldWorkerWasmBatch, number>
+  wasmStartupMs: number
+  transferBytes: number
 }
 
 export interface GenerateWorldResponse {

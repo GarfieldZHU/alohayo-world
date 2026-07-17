@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Promote deterministic chunk base-layer generation to the Rust/Wasm worker path after
+  parity, startup, transfer, fallback, and browser performance gates passed.
+
+## Unreleased
+
 - Add config-driven erosion, sediment, deposition, and floodplain metadata to generated
   worlds and streamed chunks.
 - Add a localized local save manager with named slots, recovery feedback, import/export,

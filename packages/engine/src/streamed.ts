@@ -141,7 +141,7 @@ export async function createGame(
   app.canvas.setAttribute('aria-label', 'Alohayo World map')
 
   const worker = new WorldWorker()
-  const rpc = createWorkerRpc(worker)
+  const rpc = createWorkerRpc(worker, { capabilities: options.workerCapabilities })
   const viewport = new Container()
   const chunkLayer = new Container()
   const devLayer = new Graphics()
@@ -1686,7 +1686,10 @@ export async function createGame(
         lastChunkGenerationMs = chunk.generationMs
         if (chunk.workerDiagnostics) {
           app.canvas.dataset.workerImplementation = chunk.workerDiagnostics.implementation
+          app.canvas.dataset.workerBaseLayers = chunk.workerDiagnostics.batches['chunk-base-layers']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
+          app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)
+          app.canvas.dataset.workerWasmStartupMs = chunk.workerDiagnostics.wasmStartupMs.toFixed(3)
         }
         performanceTracker.markChunkGeneration(chunk.generationMs)
         if (!explorerMotion || chunkIntersectsViewport(chunk)) renderChunk(chunk)

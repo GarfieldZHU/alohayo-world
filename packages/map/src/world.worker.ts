@@ -42,6 +42,7 @@ type WasmWorldCoreModule = {
 
 let wasmRenderHintsBaseUrl: string | null = null
 let wasmRenderHintsPromise: Promise<WasmWorldCoreModule | null> | null = null
+let wasmStartupMs = 0
 
 async function settleWithin<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -79,6 +80,7 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
   if (!normalized) return null
   if (wasmRenderHintsPromise && wasmRenderHintsBaseUrl === normalized) return wasmRenderHintsPromise
   wasmRenderHintsBaseUrl = normalized
+  const started = performance.now()
   wasmRenderHintsPromise = settleWithin(
     (async () => {
       try {
@@ -94,6 +96,9 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
     })(),
     3_000
   )
+  void wasmRenderHintsPromise.then(() => {
+    wasmStartupMs = performance.now() - started
+  })
   return wasmRenderHintsPromise
 }
 
@@ -114,13 +119,19 @@ async function buildChunkBaseLayers(
   layers?: ChunkBaseLayers
   implementation: 'typescript' | 'wasm'
   fallbackReason?: string
+  elapsedMs: number
 }> {
+  const started = performance.now()
   if (!wasmBatchEnabled(request.capabilities, 'chunk-base-layers')) {
-    return { implementation: 'typescript' }
+    return { implementation: 'typescript', elapsedMs: performance.now() - started }
   }
   const module = await loadWasmRenderHintsModule(request.wasmBaseUrl)
   if (!module?.generate_chunk_base_layers) {
-    return { implementation: 'typescript', fallbackReason: 'wasm-module-unavailable' }
+    return {
+      implementation: 'typescript',
+      fallbackReason: 'wasm-module-unavailable',
+      elapsedMs: performance.now() - started,
+    }
   }
   try {
     const layers = module.generate_chunk_base_layers(
@@ -130,10 +141,18 @@ async function buildChunkBaseLayers(
       request.chunkY * request.chunkSize
     )
     return validBaseLayers(layers, request.chunkSize * request.chunkSize)
-      ? { layers, implementation: 'wasm' }
-      : { implementation: 'typescript', fallbackReason: 'invalid-wasm-output' }
+      ? { layers, implementation: 'wasm', elapsedMs: performance.now() - started }
+      : {
+          implementation: 'typescript',
+          fallbackReason: 'invalid-wasm-output',
+          elapsedMs: performance.now() - started,
+        }
   } catch {
-    return { implementation: 'typescript', fallbackReason: 'wasm-execution-failed' }
+    return {
+      implementation: 'typescript',
+      fallbackReason: 'wasm-execution-failed',
+      elapsedMs: performance.now() - started,
+    }
   }
 }
 
@@ -142,6 +161,7 @@ async function buildChunkRenderHints(
   wasmBaseUrl: string | undefined,
   capabilities: WorldWorkerCapabilities | undefined
 ) {
+  const started = performance.now()
   if (!wasmBatchEnabled(capabilities, 'render-hints')) {
     return {
       hints: generateChunkRenderHints({
@@ -152,6 +172,7 @@ async function buildChunkRenderHints(
         originY: chunk.originY,
       }),
       implementation: 'typescript' as const,
+      elapsedMs: performance.now() - started,
     }
   }
   const module = await loadWasmRenderHintsModule(wasmBaseUrl)
@@ -193,6 +214,7 @@ async function buildChunkRenderHints(
             (wasmHints as ChunkRenderHints & { detail_offset_y?: Uint8Array }).detail_offset_y!,
         } satisfies ChunkRenderHints,
         implementation: 'wasm' as const,
+        elapsedMs: performance.now() - started,
       }
     } catch {
       // Keep the deterministic TypeScript fallback authoritative when Wasm is unavailable
@@ -209,6 +231,7 @@ async function buildChunkRenderHints(
     }),
     implementation: 'typescript' as const,
     fallbackReason: 'wasm-module-unavailable',
+    elapsedMs: performance.now() - started,
   }
 }
 
@@ -284,6 +307,35 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.capabilities
     )
     chunk.renderHints = renderHints.hints
+    const transferables = [
+      chunk.elevation.buffer,
+      chunk.moisture.buffer,
+      chunk.temperature.buffer,
+      chunk.biomes.buffer,
+      chunk.slope.buffer,
+      chunk.flowDirection.buffer,
+      chunk.flowAccumulation.buffer,
+      chunk.watershed.buffer,
+      chunk.depression.buffer,
+      chunk.erosionPotential.buffer,
+      chunk.sedimentLoad.buffer,
+      chunk.deposition.buffer,
+      chunk.floodplain.buffer,
+      chunk.renderHints.noise.buffer,
+      chunk.renderHints.eastBoundaryMask.buffer,
+      chunk.renderHints.southBoundaryMask.buffer,
+      chunk.renderHints.regionalDetailMask.buffer,
+      chunk.renderHints.closeDetailKind.buffer,
+      chunk.renderHints.detailOffsetX.buffer,
+      chunk.renderHints.detailOffsetY.buffer,
+      chunk.topology.componentIds.buffer,
+      chunk.topology.edges.north.buffer,
+      chunk.topology.edges.east.buffer,
+      chunk.topology.edges.south.buffer,
+      chunk.topology.edges.west.buffer,
+      chunk.authoredArea.buffer,
+      chunk.region.buffer,
+    ]
     const diagnostics: WorldWorkerDiagnostics = {
       protocolVersion: 1,
       implementation:
@@ -302,39 +354,17 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
           ? [{ batch: 'render-hints' as const, reason: renderHints.fallbackReason }]
           : []),
       ],
+      timingsMs: {
+        'chunk-base-layers': baseLayers.elapsedMs,
+        'render-hints': renderHints.elapsedMs,
+      },
+      wasmStartupMs,
+      transferBytes: transferables.reduce((sum, buffer) => sum + buffer.byteLength, 0),
     }
     workerScope.postMessage(
       { type: 'generated-chunk', id: event.data.id, chunk, diagnostics },
       {
-        transfer: [
-          chunk.elevation.buffer,
-          chunk.moisture.buffer,
-          chunk.temperature.buffer,
-          chunk.biomes.buffer,
-          chunk.slope.buffer,
-          chunk.flowDirection.buffer,
-          chunk.flowAccumulation.buffer,
-          chunk.watershed.buffer,
-          chunk.depression.buffer,
-          chunk.erosionPotential.buffer,
-          chunk.sedimentLoad.buffer,
-          chunk.deposition.buffer,
-          chunk.floodplain.buffer,
-          chunk.renderHints.noise.buffer,
-          chunk.renderHints.eastBoundaryMask.buffer,
-          chunk.renderHints.southBoundaryMask.buffer,
-          chunk.renderHints.regionalDetailMask.buffer,
-          chunk.renderHints.closeDetailKind.buffer,
-          chunk.renderHints.detailOffsetX.buffer,
-          chunk.renderHints.detailOffsetY.buffer,
-          chunk.topology.componentIds.buffer,
-          chunk.topology.edges.north.buffer,
-          chunk.topology.edges.east.buffer,
-          chunk.topology.edges.south.buffer,
-          chunk.topology.edges.west.buffer,
-          chunk.authoredArea.buffer,
-          chunk.region.buffer,
-        ],
+        transfer: transferables,
       }
     )
   } catch (error) {

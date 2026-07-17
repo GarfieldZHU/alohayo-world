@@ -29,10 +29,11 @@ This package owns deterministic geography and worker-safe data.
 - Worker requests must carry the versioned capability contract. TypeScript is the default;
   never load a Wasm batch merely because an asset URL exists. Worker failures must return
   structured request-scoped errors instead of leaving callers pending.
-- The first Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
+- The first stable Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
   temperature from one coarse worker call. Preserve typed-array transfer semantics and
   keep TypeScript topology, hydrology, biome classification, overlays, and fallback as
-  the reference until issue `#35` passes the full benchmark and browser promotion gates.
+  the reference fallback. Issue `#35` passed the 16/64/128 parity, benchmark, transfer,
+  startup, and browser gates; do not expand the default batch list without repeating them.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.

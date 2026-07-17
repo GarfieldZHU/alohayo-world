@@ -36,6 +36,12 @@ const saveImportData = document.querySelector<HTMLTextAreaElement>('#save-import
 const saveImport = document.querySelector<HTMLButtonElement>('#save-import')!
 const saveStatus = document.querySelector<HTMLElement>('#save-status')!
 const localeStorageKey = 'alohayo-world:locale'
+declare global {
+  interface Window {
+    __ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__?: import('@alohayo/config').WorldWorkerCapabilities
+    __ALOHAYO_WORLD_E2E_ASSET_BASE_URL__?: string
+  }
+}
 let handle: GameHandle | null = null
 let launcherState: 'idle' | 'loading' | 'running' | 'error' = 'idle'
 const sizePresets = [
@@ -206,8 +212,15 @@ const launch = async () => {
     const preset = sizePresets[sizeIndex]!
     handle = await mountGame({
       container,
-      assetBaseUrl: new URL('./embed/', window.location.href).toString(),
+      assetBaseUrl:
+        import.meta.env.MODE === 'test' && window.__ALOHAYO_WORLD_E2E_ASSET_BASE_URL__
+          ? window.__ALOHAYO_WORLD_E2E_ASSET_BASE_URL__
+          : new URL('./embed/', window.location.href).toString(),
       locale,
+      workerCapabilities:
+        import.meta.env.MODE === 'test'
+          ? window.__ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__
+          : undefined,
       initialWorld: {
         seed: seedInput.value.trim() || 'alohayo',
         width: preset.width,

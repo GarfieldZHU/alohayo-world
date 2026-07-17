@@ -36,8 +36,8 @@ Each batch follows this state machine:
 No browser query string is a production rollout mechanism. The engine must receive an
 explicit local developer capability and a versioned worker request field.
 
-The active protocol is `protocolVersion: 1`. Its production default disables Wasm and
-names no batches. A batch may load Wasm only when `enabled` is true, ABI version 1 is
+The active protocol is `protocolVersion: 1`. The production default enables only the
+promoted `chunk-base-layers` batch. A batch may load Wasm only when `enabled` is true, ABI version 1 is
 present, and that batch appears in the request list. Responses report per-batch
 implementation and fallback reasons; request failures are structured and the engine
 rejects stalled requests after 15 seconds.
@@ -74,7 +74,7 @@ structured fallback reason. Renderer objects and JSON content are never part of 
 canvas diagnostics and no embed API change. The default/fallback browser path is covered
 under #33; Wasm-enabled browser parity and promotion remain gated by #35.
 
-### M1: Chunk base layers (boundary complete; promotion tracked in #35)
+### M1: Chunk base layers (stable)
 
 - Inputs: seed, origin, chunk size.
 - Outputs: `elevation`, `moisture`, `temperature` `Uint8Array`s.
@@ -84,8 +84,12 @@ under #33; Wasm-enabled browser parity and promotion remain gated by #35.
   equality. Issue `#35` owns the larger 16/64/128 matrix, worker/browser parity, transfer
   metrics, and promotion benchmark.
 
-**Promotion gate (#35):** shadow benchmarks show a meaningful improvement and browser
-worker E2E passes both Wasm-enabled and forced-fallback runs.
+**Promotion result (#35):** the 16/64/128 byte-parity matrix passes across all coordinate
+quadrants. A 60-sample warm benchmark on the release toolchain measured a 1.595 ms
+TypeScript median and 0.903 ms Wasm median (43.4% lower), with 1.706/0.966 ms p95,
+0% transfer growth, and 0.981 ms module startup. Browser E2E covers both the stable Wasm
+path and an explicit forced-TypeScript capability, so this batch is default-on while the
+reference fallback remains supported.
 
 ### M2: Render hints
 

@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 test('loads game resources only after start', async ({ page }) => {
   const gameRequests: string[] = []
   page.on('request', (request) => {
-    if (/pixi|world\.worker|bootstrap/.test(request.url())) gameRequests.push(request.url())
+    if (/pixi|world_core|embed\/bootstrap|assets\/(embed|engine|map)/.test(request.url()))
+      gameRequests.push(request.url())
   })
   await page.goto('/')
   await expect(page.getByRole('button', { name: 'English' })).toBeVisible()
@@ -23,7 +24,9 @@ test('loads game resources only after start', async ({ page }) => {
   const initialRenderedChunks = Number(await canvas.getAttribute('data-initial-rendered-chunks'))
   expect(initialViewportChunks).toBeGreaterThan(0)
   expect(initialRenderedChunks).toBeGreaterThanOrEqual(initialViewportChunks)
-  await expect(canvas).toHaveAttribute('data-worker-implementation', 'typescript')
+  await expect(canvas).toHaveAttribute('data-worker-base-layers', 'wasm')
+  await expect(canvas).toHaveAttribute('data-worker-fallbacks', '0')
+  await expect(canvas).toHaveAttribute('data-worker-transfer-bytes', /[1-9][0-9]*/)
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
   await expect(canvas).toHaveAttribute('data-shoreline-renderer', 'smoothed-contours')
   await expect(canvas).toHaveAttribute('data-discovery-fog-renderer', 'adaptive-subcell')
@@ -34,6 +37,35 @@ test('loads game resources only after start', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
   expect(gameRequests.length).toBeGreaterThan(0)
   await expect(canvas).toBeVisible()
+})
+
+test('keeps the explicit TypeScript worker fallback browser-safe', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__ = {
+      protocolVersion: 1,
+      wasm: { abiVersion: 1, enabled: false, batches: [] },
+    }
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(canvas).toHaveAttribute('data-worker-base-layers', 'typescript')
+  await expect(canvas).toHaveAttribute('data-worker-fallbacks', '0')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
+})
+
+test('falls back when the promoted Wasm artifact is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__ALOHAYO_WORLD_E2E_ASSET_BASE_URL__ = 'http://127.0.0.1:4173/missing-wasm-artifact/'
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(canvas).toHaveAttribute('data-worker-base-layers', 'typescript')
+  await expect(canvas).toHaveAttribute('data-worker-fallbacks', '1')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
 })
 
 test('keeps the minimap collapse control interactive and clear of the clock', async ({ page }) => {

@@ -8,6 +8,7 @@ import {
   type GeneratedChunk,
   type WorldWorkerRequest,
   type WorldWorkerResponse,
+  type WorldWorkerCapabilities,
 } from '@alohayo/map'
 import type { RpcPending, UiTheme } from './types'
 
@@ -18,7 +19,10 @@ export const REGION_NAME: Record<number, string> = {
   3: 'island',
 }
 
-export function createWorkerRpc(worker: Worker, options: { timeoutMs?: number } = {}) {
+export function createWorkerRpc(
+  worker: Worker,
+  options: { timeoutMs?: number; capabilities?: WorldWorkerCapabilities } = {}
+) {
   let nextId = 1
   const pending = new Map<string, RpcPending>()
   const timeoutMs = options.timeoutMs ?? 15_000
@@ -67,7 +71,7 @@ export function createWorkerRpc(worker: Worker, options: { timeoutMs?: number } 
         worker.postMessage({
           type: 'generate-chunk',
           id,
-          capabilities: DEFAULT_WORLD_WORKER_CAPABILITIES,
+          capabilities: options.capabilities ?? DEFAULT_WORLD_WORKER_CAPABILITIES,
           ...payload,
         })
       })

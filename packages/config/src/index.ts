@@ -753,12 +753,24 @@ export interface WorldManifest {
   characters?: CharacterContentDefinition
 }
 
+export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints'
+
+export interface WorldWorkerCapabilities {
+  protocolVersion: 1
+  wasm: {
+    abiVersion: 1
+    enabled: boolean
+    batches: WorldWorkerWasmBatch[]
+  }
+}
+
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
   devMode?: boolean
   locale?: LocaleCode
   theme?: 'light' | 'dark'
+  workerCapabilities?: WorldWorkerCapabilities
   initialWorld?: {
     seed?: string
     width?: number

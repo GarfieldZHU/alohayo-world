@@ -110,6 +110,7 @@ export type {
   TerrainRulePackDefinition,
   WorldDefinition,
   WorldManifest,
+  WorldWorkerCapabilities,
 } from '@alohayo/config'
 
 export {

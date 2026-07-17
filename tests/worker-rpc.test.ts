@@ -23,7 +23,7 @@ const request = {
 }
 
 describe('world worker RPC', () => {
-  it('posts the versioned TypeScript-first capability contract', () => {
+  it('posts the versioned stable Wasm capability contract', () => {
     const worker = new FakeWorker()
     const rpc = createWorkerRpc(worker as unknown as Worker)
 
@@ -36,6 +36,21 @@ describe('world worker RPC', () => {
         capabilities: DEFAULT_WORLD_WORKER_CAPABILITIES,
       },
     ])
+    rpc.rejectAll(new Error('test cleanup'))
+    return rejected
+  })
+
+  it('allows callers to force the TypeScript fallback contract', () => {
+    const worker = new FakeWorker()
+    const capabilities = {
+      protocolVersion: 1 as const,
+      wasm: { abiVersion: 1 as const, enabled: false, batches: [] },
+    }
+    const rpc = createWorkerRpc(worker as unknown as Worker, { capabilities })
+    const result = rpc.requestChunk(request)
+    const rejected = expect(result).rejects.toThrow('test cleanup')
+
+    expect(worker.sent).toMatchObject([{ capabilities }])
     rpc.rejectAll(new Error('test cleanup'))
     return rejected
   })

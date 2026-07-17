@@ -9,7 +9,7 @@ export default defineConfig({
     launchOptions: executablePath ? { executablePath } : undefined,
   },
   webServer: {
-    command: 'yarn dev --host 127.0.0.1 --port 4173',
+    command: 'REQUIRE_WASM=1 yarn build:e2e && yarn preview --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: true,
   },

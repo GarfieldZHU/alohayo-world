@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "dev": "vite --config apps/game/vite.config.ts",
+    "preview": "vite preview --config apps/game/vite.config.ts",
     "build": "vite build --config apps/game/vite.config.ts && yarn build:wasm && node scripts/package-release.mjs",
+    "build:e2e": "vite build --mode test --config apps/game/vite.config.ts && yarn build:wasm",
     "build:wasm": "node scripts/build-wasm.mjs",
     "verify:wasm": "REQUIRE_WASM=1 yarn build:wasm",
     "lint": "eslint .",

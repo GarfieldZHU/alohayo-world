@@ -12,7 +12,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.87.0
+          targets: wasm32-unknown-unknown
       - run: corepack enable
       - run: yarn install --immutable
+      - run: cargo install wasm-pack --version 0.13.1 --locked
       - run: yarn playwright install --with-deps chromium
       - run: yarn test:e2e
