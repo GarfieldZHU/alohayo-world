@@ -1,11 +1,13 @@
 import './style.css'
 import {
+  formatI18n,
   getI18nCatalog,
   LANGUAGE_OPTIONS,
   normalizeLocale,
   translateContentName,
   type GameHandle,
   type LocaleCode,
+  type WorldSaveSummary,
 } from '@alohayo/config'
 
 const form = document.querySelector<HTMLFormElement>('#launcher')!
@@ -20,6 +22,19 @@ const heroDescription = document.querySelector<HTMLElement>('#hero-description')
 const seedLabel = document.querySelector<HTMLElement>('#seed-label')!
 const placeholder = document.querySelector<HTMLElement>('#placeholder')!
 const footerCopy = document.querySelector<HTMLElement>('#footer-copy')!
+const saveTitle = document.querySelector<HTMLElement>('#save-title')!
+const saveDescription = document.querySelector<HTMLElement>('#save-description')!
+const saveSlots = document.querySelector<HTMLSelectElement>('#save-slots')!
+const saveName = document.querySelector<HTMLInputElement>('#save-name')!
+const saveCreate = document.querySelector<HTMLButtonElement>('#save-create')!
+const saveLoad = document.querySelector<HTMLButtonElement>('#save-load')!
+const saveRename = document.querySelector<HTMLButtonElement>('#save-rename')!
+const saveDuplicate = document.querySelector<HTMLButtonElement>('#save-duplicate')!
+const saveDelete = document.querySelector<HTMLButtonElement>('#save-delete')!
+const saveExport = document.querySelector<HTMLButtonElement>('#save-export')!
+const saveImportData = document.querySelector<HTMLTextAreaElement>('#save-import-data')!
+const saveImport = document.querySelector<HTMLButtonElement>('#save-import')!
+const saveStatus = document.querySelector<HTMLElement>('#save-status')!
 const localeStorageKey = 'alohayo-world:locale'
 let handle: GameHandle | null = null
 let launcherState: 'idle' | 'loading' | 'running' | 'error' = 'idle'
@@ -58,6 +73,8 @@ seedInput.value = window.localStorage.getItem('alohayo-world:last-seed') || 'alo
 
 const catalog = () => getI18nCatalog(locale)
 const uiText = (key: string) => catalog().ui[key] ?? key
+const formatUiText = (key: string, values: Record<string, string | number>) =>
+  formatI18n(uiText(key), values)
 const languageButtons = new Map<LocaleCode, HTMLButtonElement>(
   LANGUAGE_OPTIONS.map((option) => [
     option.code,
@@ -92,6 +109,18 @@ const updateLauncherCopy = () => {
   seedLabel.textContent = uiText('seedLabel')
   placeholder.textContent = uiText('standalonePlaceholder')
   footerCopy.textContent = uiText('footerControlsStandalone')
+  saveTitle.textContent = uiText('saveTitle')
+  saveDescription.textContent = uiText('saveDescription')
+  saveSlots.ariaLabel = uiText('saveSlots')
+  saveName.placeholder = uiText('saveName')
+  saveCreate.textContent = uiText('saveCreate')
+  saveLoad.textContent = uiText('saveLoad')
+  saveRename.textContent = uiText('saveRename')
+  saveDuplicate.textContent = uiText('saveDuplicate')
+  saveDelete.textContent = uiText('saveDelete')
+  saveExport.textContent = uiText('saveExport')
+  saveImport.textContent = uiText('saveImport')
+  saveImportData.placeholder = uiText('saveImportPlaceholder')
   submitButton.textContent =
     launcherState === 'loading'
       ? uiText('surveying')
@@ -102,6 +131,69 @@ const updateLauncherCopy = () => {
           : uiText('enterWorld')
   updateLanguageButtons()
   updateSizeButton()
+}
+
+const selectedSave = () => saveSlots.options[saveSlots.selectedIndex]
+const requestedSlot = () => {
+  const label = saveName.value.trim() || `Manual ${new Date().toLocaleString(locale)}`
+  const slotId = label
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+  return { label, slotId: slotId || `manual-${Date.now()}` }
+}
+
+const setSaveControlsDisabled = (disabled: boolean) => {
+  for (const control of [
+    saveCreate,
+    saveLoad,
+    saveRename,
+    saveDuplicate,
+    saveDelete,
+    saveExport,
+    saveImport,
+  ]) {
+    control.disabled = disabled
+  }
+}
+
+const renderSaveOptions = (summaries: WorldSaveSummary[]) => {
+  const previous = saveSlots.value
+  saveSlots.replaceChildren()
+  for (const summary of summaries) {
+    const option = document.createElement('option')
+    option.value = summary.slotId
+    option.dataset.label = summary.label
+    option.textContent = `${summary.label} · ${summary.kind} · ${summary.seed} · ${summary.discoveredCells} cells`
+    saveSlots.appendChild(option)
+  }
+  if (summaries.some((summary) => summary.slotId === previous)) saveSlots.value = previous
+  saveStatus.textContent = summaries.length
+    ? formatUiText('saveReady', { count: summaries.length })
+    : uiText('saveEmpty')
+}
+
+const refreshSaves = async () => {
+  if (!handle?.listSaves) {
+    renderSaveOptions([])
+    return
+  }
+  renderSaveOptions(await handle.listSaves())
+}
+
+const runSaveAction = async (action: () => Promise<void>) => {
+  setSaveControlsDisabled(true)
+  try {
+    await action()
+    await refreshSaves()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    saveStatus.textContent = formatUiText('saveError', { message })
+    saveStatus.dataset.state = 'error'
+  } finally {
+    setSaveControlsDisabled(!handle)
+  }
 }
 
 const launch = async () => {
@@ -127,15 +219,85 @@ const launch = async () => {
     })
     launcherState = 'running'
     submitButton.textContent = uiText('resurvey')
+    await refreshSaves()
+    setSaveControlsDisabled(false)
   } catch (error) {
     container.textContent =
       error instanceof Error ? error.message : uiText('gameStartErrorStandalone')
     launcherState = 'error'
     submitButton.textContent = uiText('retry')
+    setSaveControlsDisabled(true)
   } finally {
     submitButton.disabled = false
   }
 }
+
+saveCreate.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const { slotId, label } = requestedSlot()
+    const summary = await handle?.save?.(slotId, label)
+    if (summary) saveStatus.textContent = formatUiText('saveSuccess', { label: summary.label })
+  })
+)
+
+saveLoad.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    if (!option) return
+    const summary = await handle?.loadSave?.(option.value)
+    if (summary) saveStatus.textContent = formatUiText('saveLoaded', { label: summary.label })
+  })
+)
+
+saveRename.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    if (!option) return
+    const { slotId, label } = requestedSlot()
+    await handle?.renameSave?.(option.value, slotId, label)
+  })
+)
+
+saveDuplicate.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    if (!option) return
+    const { slotId, label } = requestedSlot()
+    await handle?.duplicateSave?.(option.value, slotId, label)
+  })
+)
+
+saveDelete.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    if (!option) return
+    await handle?.clearSave?.(option.value)
+    saveStatus.textContent = uiText('saveDeleted')
+  })
+)
+
+saveExport.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    if (!option) return
+    const serialized = await handle?.exportSave?.(option.value)
+    if (!serialized) return
+    const url = URL.createObjectURL(new Blob([serialized], { type: 'application/json' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${option.value}.alohayo-save.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  })
+)
+
+saveImport.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const { slotId, label } = requestedSlot()
+    const summary = await handle?.importSave?.(saveImportData.value, slotId, label)
+    if (summary) saveStatus.textContent = formatUiText('saveImported', { label: summary.label })
+  })
+)
 
 sizeButton.addEventListener('click', async () => {
   sizeIndex = Math.min(sizeIndex + 1, sizePresets.length - 1)
@@ -161,3 +323,4 @@ for (const [code, button] of languageButtons) {
 }
 
 updateLauncherCopy()
+setSaveControlsDisabled(true)

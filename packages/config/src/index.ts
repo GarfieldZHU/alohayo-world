@@ -167,6 +167,8 @@ export type WorldSaveErrorCode =
 
 export interface WorldSaveSummary {
   slotId: string
+  label: string
+  kind: 'autosave' | 'manual' | 'imported'
   savedAt: string
   seed: string
   discoveredChunks: number
@@ -762,10 +764,14 @@ export interface GameHandle {
   setDevMode?(enabled: boolean): void
   setLocale?(locale: LocaleCode): void
   setTheme?(theme: 'light' | 'dark'): void
-  save?(): Promise<WorldSaveSummary>
-  exportSave?(): Promise<string>
-  importSave?(serialized: string): Promise<WorldSaveSummary>
-  clearSave?(): Promise<void>
+  listSaves?(): Promise<WorldSaveSummary[]>
+  save?(slotId?: string, label?: string): Promise<WorldSaveSummary>
+  loadSave?(slotId: string): Promise<WorldSaveSummary>
+  renameSave?(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
+  duplicateSave?(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
+  exportSave?(slotId?: string): Promise<string>
+  importSave?(serialized: string, slotId?: string, label?: string): Promise<WorldSaveSummary>
+  clearSave?(slotId?: string): Promise<void>
   destroy(): Promise<void>
 }
 

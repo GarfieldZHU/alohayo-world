@@ -26,6 +26,9 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
   intersecting the initial viewport has rendered. Never expose chunk-by-chunk startup
   paint to the host page.
 - Verify browser-facing changes with E2E tests.
+- Saves use one versioned snapshot contract for autosave, manual slots, and imports.
+  Preserve typed errors, deterministic summary ordering, world/content compatibility
+  gates, and explicit slot kinds; never silently partially restore an incompatible save.
 - Every worker request needs a bounded timeout plus `error` and `messageerror` cleanup.
   Keep worker implementation/fallback diagnostics on stable canvas data attributes so
   browser tests can distinguish TypeScript fallback from an enabled Wasm batch.

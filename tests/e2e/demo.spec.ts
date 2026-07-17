@@ -56,6 +56,29 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   await expect(page.getByRole('button', { name: 'Hide' })).toBeVisible()
 })
 
+test('manages named local saves and reports bad imports', async ({ page }) => {
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+
+  await page.getByPlaceholder('Save name').fill('Bridge approach')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByLabel('Save slots')).toContainText('Bridge approach')
+
+  await page.getByPlaceholder('Save name').fill('Bridge copy')
+  await page.getByRole('button', { name: 'Duplicate' }).click()
+  await expect(page.getByLabel('Save slots')).toContainText('Bridge copy')
+
+  await page.getByLabel('Save slots').selectOption('Bridge-copy')
+  await page.getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByLabel('Save slots')).not.toContainText('Bridge copy')
+
+  await page.getByPlaceholder('Paste exported save JSON').fill('{bad json')
+  await page.getByRole('button', { name: 'Import' }).click()
+  await expect(page.getByRole('status')).toContainText('Save recovery:')
+})
+
 const readPerformanceMetrics = (page: Page) =>
   page.evaluate(() => {
     return (window as Window & { __ALOHAYO_WORLD_PERF__?: Record<string, number | null> })

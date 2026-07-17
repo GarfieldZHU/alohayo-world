@@ -68,8 +68,13 @@ See `MODULE_CATALOG.md` and `modules/` for the planned service boundaries.
 ## Persistence
 
 `localStorage` still mirrors lightweight UI preferences, but IndexedDB is now the
-authoritative home for autosave snapshots in v0.2. Saves include schema version, engine
+authoritative home for autosave, manual, and imported snapshots in v0.2. Saves include schema version, engine
 version, content-pack resolution metadata, world identity, explorer state, and
 discovery chunks. Import/export and migration checks operate on the same snapshot
 contract, while incompatible content or unsupported schema versions fail explicitly
 instead of partially restoring stale state.
+
+The standalone save inspector lists summaries without decoding world buffers, and all
+rename, duplicate, delete, load, export, and import operations reuse the same validated
+snapshot. Runtime loads require the active world identity and content resolution hash to
+match; changing seeds remains an explicit remount rather than an unsafe partial restore.

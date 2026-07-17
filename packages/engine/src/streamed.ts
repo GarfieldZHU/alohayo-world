@@ -92,6 +92,7 @@ import {
   createWorldSaveStore,
   decodeDiscoveredChunk,
   encodeDiscoveredChunk,
+  summarizeSave,
   WORLD_SAVE_ENGINE_VERSION,
   WorldSaveError,
 } from './save-store'
@@ -416,8 +417,14 @@ export async function createGame(
     }
   }
 
-  const summarizeImportedSnapshot = (snapshot: WorldSaveSnapshot): WorldSaveSummary => ({
-    slotId: 'autosave',
+  const summarizeImportedSnapshot = (
+    snapshot: WorldSaveSnapshot,
+    slotId: string,
+    label: string
+  ): WorldSaveSummary => ({
+    slotId,
+    label,
+    kind: 'imported',
     savedAt: snapshot.savedAt,
     seed: snapshot.world.seed,
     discoveredChunks: snapshot.discovery.discoveredChunkKeys.length,
@@ -425,14 +432,20 @@ export async function createGame(
     resolutionHash: snapshot.contentPacks.resolutionHash,
   })
 
-  const saveNow = async (): Promise<WorldSaveSummary> => {
+  const saveNow = async (
+    slotId = 'autosave',
+    label = slotId === 'autosave' ? 'Autosave' : slotId
+  ): Promise<WorldSaveSummary> => {
     const snapshot = buildSaveSnapshot()
     if (!snapshot) {
       throw new WorldSaveError('unavailable', 'save snapshot is not available for this runtime')
     }
-    const result = await saveStore.save(snapshot)
-    saveDirty = false
-    if (autosaveTimer !== null) {
+    const result = await saveStore.save(snapshot, slotId, {
+      label,
+      kind: slotId === 'autosave' ? 'autosave' : 'manual',
+    })
+    if (slotId === 'autosave') saveDirty = false
+    if (slotId === 'autosave' && autosaveTimer !== null) {
       window.clearTimeout(autosaveTimer)
       autosaveTimer = null
     }
@@ -2081,6 +2094,7 @@ export async function createGame(
 
   applyThemeToContainer()
   let restoredSnapshot: WorldSaveSnapshot | null = null
+  let restoreWarning: WorldSaveError | null = null
   if (contentPackSaveMetadata) {
     try {
       const snapshot = await saveStore.load()
@@ -2093,10 +2107,16 @@ export async function createGame(
         applySavedPreferences(snapshot)
         window.localStorage.setItem('alohayo-world:locale', locale)
       }
-    } catch {
+    } catch (error) {
       restoredSnapshot = null
+      restoreWarning =
+        error instanceof WorldSaveError
+          ? error
+          : new WorldSaveError('corrupt', 'autosave restore failed', error)
+      app.canvas.dataset.saveRecovery = restoreWarning.code
     }
   }
+  if (!restoreWarning) app.canvas.dataset.saveRecovery = 'ready'
   explorer = generateCharacter(content.characters, 'core:explorer', worldSeed)
   const initialChunkCenter = restoredSnapshot
     ? {
@@ -2533,25 +2553,40 @@ export async function createGame(
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
     },
-    async save() {
-      return saveNow()
+    async listSaves() {
+      return saveStore.list()
     },
-    async exportSave() {
-      const snapshot = buildSaveSnapshot()
+    async save(slotId, label) {
+      return saveNow(slotId, label)
+    },
+    async loadSave(slotId) {
+      const snapshot = await saveStore.load(slotId)
+      if (!snapshot) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+      await restoreSnapshot(snapshot)
+      return summarizeSave(slotId, snapshot)
+    },
+    async renameSave(slotId, nextSlotId, label) {
+      return saveStore.rename(slotId, nextSlotId, label)
+    },
+    async duplicateSave(slotId, nextSlotId, label) {
+      return saveStore.duplicate(slotId, nextSlotId, label)
+    },
+    async exportSave(slotId) {
+      const snapshot = slotId ? await saveStore.load(slotId) : buildSaveSnapshot()
       if (!snapshot) {
         throw new WorldSaveError('unavailable', 'save snapshot is not available for export')
       }
       return saveStore.exportSnapshot(snapshot)
     },
-    async importSave(serialized) {
+    async importSave(serialized, slotId = `import-${Date.now()}`, label = 'Imported save') {
       const snapshot = await saveStore.importSnapshot(serialized)
       await restoreSnapshot(snapshot)
-      const summary = summarizeImportedSnapshot(snapshot)
-      await saveStore.save(snapshot)
+      const summary = summarizeImportedSnapshot(snapshot, slotId, label)
+      await saveStore.save(snapshot, slotId, { label, kind: 'imported' })
       return summary
     },
-    async clearSave() {
-      await saveStore.clear()
+    async clearSave(slotId) {
+      await saveStore.clear(slotId)
     },
     async destroy() {
       if (destroyed) return

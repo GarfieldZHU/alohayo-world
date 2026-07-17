@@ -56,7 +56,7 @@
   layers are now a coarse worker batch with TypeScript fallback and parity fixtures;
   topology/hydrology/biome authority remains staged under issue `#30`.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
-      restoration.
+      restoration, including named-slot management and visible recovery states.
 - [x] Content-pack dependency loading, authored overlay provenance, and schema
       migration planning. See `docs/CONTENT_PACKS.md` and issue `#7`.
 - [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test

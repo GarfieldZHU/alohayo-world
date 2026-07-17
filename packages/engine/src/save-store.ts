@@ -14,12 +14,26 @@ const WORLD_SAVE_AUTOSAVE_SLOT = 'autosave'
 
 interface PersistedWorldSaveRecord {
   slotId: string
+  label: string
+  kind: 'autosave' | 'manual' | 'imported'
   snapshot: WorldSaveSnapshot
 }
 
+export interface WorldSaveMetadata {
+  label?: string
+  kind?: 'autosave' | 'manual' | 'imported'
+}
+
 export interface WorldSaveStore {
+  list(): Promise<WorldSaveSummary[]>
   load(slotId?: string): Promise<WorldSaveSnapshot | null>
-  save(snapshot: WorldSaveSnapshot, slotId?: string): Promise<WorldSaveSummary>
+  save(
+    snapshot: WorldSaveSnapshot,
+    slotId?: string,
+    metadata?: WorldSaveMetadata
+  ): Promise<WorldSaveSummary>
+  rename(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
+  duplicate(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
   clear(slotId?: string): Promise<void>
   exportSnapshot(snapshot: WorldSaveSnapshot): string
   importSnapshot(serialized: string): Promise<WorldSaveSnapshot>
@@ -40,20 +54,54 @@ export function createWorldSaveStore(
   indexedDb: IDBFactory | undefined = globalThis.indexedDB
 ): WorldSaveStore {
   return {
+    async list() {
+      const db = await openSaveDatabase(indexedDb)
+      const records = await runListRequest(db)
+      return records
+        .map((record) => summarizeRecord(normalizeRecord(record)))
+        .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
+    },
     async load(slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
       const db = await openSaveDatabase(indexedDb)
       const record = await runReadonlyRequest<PersistedWorldSaveRecord | undefined>(db, slotId)
       if (!record) return null
       return validateWorldSaveSnapshot(record.snapshot)
     },
-    async save(snapshot, slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
+    async save(snapshot, slotId = WORLD_SAVE_AUTOSAVE_SLOT, metadata = {}) {
       const db = await openSaveDatabase(indexedDb)
       const normalized = validateWorldSaveSnapshot(snapshot)
-      await runWriteRequest(db, {
+      const record: PersistedWorldSaveRecord = {
         slotId,
+        label: metadata.label?.trim() || defaultSlotLabel(slotId),
+        kind: metadata.kind ?? (slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
         snapshot: normalized,
-      })
-      return summarizeSave(slotId, normalized)
+      }
+      await runWriteRequest(db, record)
+      return summarizeRecord(record)
+    },
+    async rename(slotId, nextSlotId, label) {
+      const record = await requireRecord(await readRecord(indexedDb, slotId), slotId)
+      const renamed = {
+        ...record,
+        slotId: normalizeSlotId(nextSlotId),
+        label: label?.trim() || record.label,
+      }
+      const db = await openSaveDatabase(indexedDb)
+      await runWriteRequest(db, renamed)
+      if (renamed.slotId !== slotId) await runDeleteRequest(db, slotId)
+      return summarizeRecord(renamed)
+    },
+    async duplicate(slotId, nextSlotId, label) {
+      const record = await requireRecord(await readRecord(indexedDb, slotId), slotId)
+      const duplicate = {
+        ...record,
+        slotId: normalizeSlotId(nextSlotId),
+        label: label?.trim() || `${record.label} copy`,
+        kind: 'manual' as const,
+      }
+      const db = await openSaveDatabase(indexedDb)
+      await runWriteRequest(db, duplicate)
+      return summarizeRecord(duplicate)
     },
     async clear(slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
       const db = await openSaveDatabase(indexedDb)
@@ -96,15 +144,61 @@ export function decodeDiscoveredChunk(serialized: string): Uint8Array {
   return buffer
 }
 
-export function summarizeSave(slotId: string, snapshot: WorldSaveSnapshot): WorldSaveSummary {
+export function summarizeSave(
+  slotId: string,
+  snapshot: WorldSaveSnapshot,
+  metadata: WorldSaveMetadata = {}
+): WorldSaveSummary {
   return {
     slotId,
+    label: metadata.label?.trim() || defaultSlotLabel(slotId),
+    kind: metadata.kind ?? (slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
     savedAt: snapshot.savedAt,
     seed: snapshot.world.seed,
     discoveredChunks: snapshot.discovery.discoveredChunkKeys.length,
     discoveredCells: snapshot.discovery.discoveredCells,
     resolutionHash: snapshot.contentPacks.resolutionHash,
   }
+}
+
+function summarizeRecord(record: PersistedWorldSaveRecord): WorldSaveSummary {
+  return summarizeSave(record.slotId, record.snapshot, record)
+}
+
+function defaultSlotLabel(slotId: string) {
+  return slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'Autosave' : slotId
+}
+
+function normalizeSlotId(slotId: string) {
+  const normalized = slotId
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!normalized) throw new WorldSaveError('invalid-import', 'save slot id is empty')
+  return normalized.slice(0, 64)
+}
+
+function normalizeRecord(record: PersistedWorldSaveRecord): PersistedWorldSaveRecord {
+  return {
+    ...record,
+    label: record.label?.trim() || defaultSlotLabel(record.slotId),
+    kind: record.kind ?? (record.slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
+    snapshot: validateWorldSaveSnapshot(record.snapshot),
+  }
+}
+
+async function requireRecord(
+  record: PersistedWorldSaveRecord | null,
+  slotId: string
+): Promise<PersistedWorldSaveRecord> {
+  if (!record) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+  return normalizeRecord(record)
+}
+
+async function readRecord(indexedDb: IDBFactory | undefined, slotId: string) {
+  const db = await openSaveDatabase(indexedDb)
+  const record = await runReadonlyRequest<PersistedWorldSaveRecord | undefined>(db, slotId)
+  return record ? normalizeRecord(record) : null
 }
 
 export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot {
@@ -225,6 +319,16 @@ function runReadonlyRequest<T>(db: IDBDatabase, slotId: string): Promise<T | und
     request.onerror = () =>
       reject(new WorldSaveError('unavailable', 'failed to read save record', request.error))
     request.onsuccess = () => resolve(request.result as T | undefined)
+  })
+}
+
+function runListRequest(db: IDBDatabase): Promise<PersistedWorldSaveRecord[]> {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(WORLD_SAVE_STORE, 'readonly')
+    const request = transaction.objectStore(WORLD_SAVE_STORE).getAll()
+    request.onerror = () =>
+      reject(new WorldSaveError('unavailable', 'failed to list save records', request.error))
+    request.onsuccess = () => resolve(request.result as PersistedWorldSaveRecord[])
   })
 }
 

@@ -45,6 +45,15 @@ class FakeObjectStore {
     return request
   }
 
+  getAll() {
+    const request = new FakeRequest<unknown[]>()
+    queueMicrotask(() => {
+      request.result = Array.from(this.records.values())
+      request.onsuccess?.()
+    })
+    return request
+  }
+
   put(value: { slotId: string }) {
     queueMicrotask(() => {
       if (this.transaction.failWith) {
@@ -201,6 +210,33 @@ describe('world save store', () => {
     const imported = await store.importSnapshot(serialized)
 
     expect(imported).toEqual(sampleSnapshot)
+  })
+
+  it('lists, renames, duplicates, and deletes named save slots', async () => {
+    const store = createWorldSaveStore(new FakeIndexedDbFactory() as unknown as IDBFactory)
+    await store.save(sampleSnapshot, 'manual-one', { label: 'Before the bridge' })
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-06T00:00:00.000Z' }, 'import-one', {
+      label: 'Imported journey',
+      kind: 'imported',
+    })
+
+    expect(await store.list()).toEqual([
+      expect.objectContaining({ slotId: 'import-one', kind: 'imported' }),
+      expect.objectContaining({ slotId: 'manual-one', label: 'Before the bridge' }),
+    ])
+
+    await expect(store.rename('manual-one', 'renamed-slot', 'New name')).resolves.toMatchObject({
+      slotId: 'renamed-slot',
+      label: 'New name',
+    })
+    await expect(store.load('manual-one')).resolves.toBeNull()
+
+    await expect(store.duplicate('renamed-slot', 'copy-slot')).resolves.toMatchObject({
+      slotId: 'copy-slot',
+      kind: 'manual',
+    })
+    await store.clear('copy-slot')
+    await expect(store.load('copy-slot')).resolves.toBeNull()
   })
 
   it('decodes discovery chunks from base64 payloads', () => {

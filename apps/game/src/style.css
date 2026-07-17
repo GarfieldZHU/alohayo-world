@@ -38,6 +38,48 @@ footer {
 #launcher {
   margin: 34px 0 20px;
 }
+.save-manager {
+  margin: 0 0 20px;
+  padding: 14px;
+  border: 1px solid #315263;
+  border-radius: 12px;
+  background: rgb(12 30 43 / 78%);
+}
+.save-manager summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+.save-description,
+.save-status {
+  color: #9bb2bf;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+.save-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.7fr);
+  gap: 8px;
+}
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.save-actions button,
+#save-import {
+  padding: 8px 11px;
+}
+#save-import-data {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #315263;
+  border-radius: 8px;
+  padding: 10px;
+  color: inherit;
+  background: #071723;
+  font-family: ui-monospace, monospace;
+}
 #launcher label {
   display: block;
   margin-bottom: 8px;
@@ -112,6 +154,9 @@ footer {
 @media (max-width: 640px) {
   .launch-row {
     flex-direction: column;
+  }
+  .save-grid {
+    grid-template-columns: 1fr;
   }
   #game {
     min-height: 480px;

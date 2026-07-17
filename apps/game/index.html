@@ -30,6 +30,27 @@
           <button id="submit-button" type="submit">Enter the world</button>
         </div>
       </form>
+      <details id="save-manager" class="save-manager">
+        <summary id="save-title">Local saves</summary>
+        <p id="save-description" class="save-description">
+          Manage local snapshots stored only in this browser.
+        </p>
+        <div class="save-grid">
+          <select id="save-slots" aria-label="Save slots"></select>
+          <input id="save-name" maxlength="64" placeholder="Save name" />
+        </div>
+        <div class="save-actions">
+          <button id="save-create" type="button">Save</button>
+          <button id="save-load" type="button" class="secondary">Load</button>
+          <button id="save-rename" type="button" class="secondary">Rename</button>
+          <button id="save-duplicate" type="button" class="secondary">Duplicate</button>
+          <button id="save-delete" type="button" class="secondary">Delete</button>
+          <button id="save-export" type="button" class="secondary">Export</button>
+        </div>
+        <textarea id="save-import-data" rows="3" placeholder="Paste exported save JSON"></textarea>
+        <button id="save-import" type="button" class="secondary">Import</button>
+        <p id="save-status" class="save-status" role="status"></p>
+      </details>
       <section id="game" aria-live="polite">
         <div id="placeholder" class="placeholder">
           The renderer, worker, and world data load on demand.
