@@ -1,0 +1,82 @@
+[
+  {
+    "id": "role:wayfinder",
+    "nameKey": "content.characterRules.roles.wayfinder.name",
+    "descriptionKey": "content.characterRules.roles.wayfinder.description",
+    "tags": ["role:explorer"],
+    "abilityPriorities": ["core:perception", "core:endurance", "core:agility"],
+    "proficiencyTags": ["skill:navigation", "skill:campcraft"],
+    "terrainAffinityIds": ["core:grassland", "core:forest", "core:highland"],
+    "startingItemTags": ["tool:map", "tool:camp"]
+  },
+  {
+    "id": "role:river-warden",
+    "nameKey": "content.characterRules.roles.riverWarden.name",
+    "descriptionKey": "content.characterRules.roles.riverWarden.description",
+    "tags": ["role:warden"],
+    "abilityPriorities": ["core:perception", "core:endurance", "core:intelligence"],
+    "proficiencyTags": ["knowledge:river", "traversal:boat", "tool:rope"],
+    "terrainAffinityIds": ["core:wetland", "core:marsh", "core:lake"],
+    "startingItemTags": ["tool:rope", "tool:boat"]
+  },
+  {
+    "id": "role:pass-sentinel",
+    "nameKey": "content.characterRules.roles.passSentinel.name",
+    "descriptionKey": "content.characterRules.roles.passSentinel.description",
+    "tags": ["role:sentinel"],
+    "abilityPriorities": ["core:endurance", "core:strength", "core:perception"],
+    "proficiencyTags": ["weapon:polearm", "knowledge:pass"],
+    "terrainAffinityIds": ["core:mountain", "core:highland", "core:plateau"],
+    "startingItemTags": ["weapon:polearm", "protection:cold"]
+  },
+  {
+    "id": "role:archive-scholar",
+    "nameKey": "content.characterRules.roles.archiveScholar.name",
+    "descriptionKey": "content.characterRules.roles.archiveScholar.description",
+    "tags": ["role:scholar"],
+    "abilityPriorities": ["core:intelligence", "core:perception", "core:willpower"],
+    "proficiencyTags": ["knowledge:documents", "skill:languages"],
+    "terrainAffinityIds": ["core:lowland", "core:basin"],
+    "startingItemTags": ["tool:writing", "item:document"]
+  },
+  {
+    "id": "role:field-physician",
+    "nameKey": "content.characterRules.roles.fieldPhysician.name",
+    "descriptionKey": "content.characterRules.roles.fieldPhysician.description",
+    "tags": ["role:healer"],
+    "abilityPriorities": ["core:intelligence", "core:perception", "core:willpower"],
+    "proficiencyTags": ["skill:medicine", "knowledge:plants"],
+    "terrainAffinityIds": ["core:forest", "core:wetland", "core:grassland"],
+    "startingItemTags": ["item:remedy", "tool:medicine"]
+  },
+  {
+    "id": "role:craft-artisan",
+    "nameKey": "content.characterRules.roles.craftArtisan.name",
+    "descriptionKey": "content.characterRules.roles.craftArtisan.description",
+    "tags": ["role:artisan"],
+    "abilityPriorities": ["core:intelligence", "core:strength", "core:agility"],
+    "proficiencyTags": ["skill:repair", "knowledge:materials"],
+    "terrainAffinityIds": ["core:bare-rock", "core:forest", "core:lowland"],
+    "startingItemTags": ["tool:repair", "item:material"]
+  },
+  {
+    "id": "role:caravan-courier",
+    "nameKey": "content.characterRules.roles.caravanCourier.name",
+    "descriptionKey": "content.characterRules.roles.caravanCourier.description",
+    "tags": ["role:courier"],
+    "abilityPriorities": ["core:endurance", "core:charisma", "core:perception"],
+    "proficiencyTags": ["skill:logistics", "skill:negotiation"],
+    "terrainAffinityIds": ["core:desert", "core:grassland", "core:plateau"],
+    "startingItemTags": ["item:provision", "tool:route-record"]
+  },
+  {
+    "id": "role:ritual-adept",
+    "nameKey": "content.characterRules.roles.ritualAdept.name",
+    "descriptionKey": "content.characterRules.roles.ritualAdept.description",
+    "tags": ["role:ritualist"],
+    "abilityPriorities": ["core:willpower", "core:intelligence", "core:charisma"],
+    "proficiencyTags": ["skill:ritual", "knowledge:sites"],
+    "terrainAffinityIds": ["core:mountain", "core:canyon", "core:volcano"],
+    "startingItemTags": ["item:ritual", "item:document"]
+  }
+]

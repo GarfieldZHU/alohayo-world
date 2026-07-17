@@ -622,6 +622,96 @@ export interface CharacterContentDefinition {
   archetypes: CharacterArchetypeDefinition[]
 }
 
+export type CharacterRuleRounding = 'floor' | 'round' | 'ceil'
+
+export interface DerivedResourceDefinition {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  base: number
+  minimum: number
+  rounding: CharacterRuleRounding
+  abilityWeights: Record<string, number>
+}
+
+export interface CharacterBackgroundRoleDefinition {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  tags: string[]
+  abilityPriorities: string[]
+  proficiencyTags: string[]
+  terrainAffinityIds: string[]
+  startingItemTags: string[]
+}
+
+export interface WeaponFamilyDefinition {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  tags: string[]
+  requirements: Record<string, number>
+  scaling: Record<string, number>
+  grip: 'one-hand' | 'two-hand' | 'versatile' | 'ranged'
+  weight: number
+  reach: number
+  staminaCost: number
+  damageTags: string[]
+  proficiencyTags: string[]
+}
+
+export interface ArmorProfileDefinition {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  tags: string[]
+  weight: number
+  poise: number
+  protection: Record<string, number>
+  environmentalResistance: Record<string, number>
+  noise: number
+  flexibility: number
+}
+
+export interface CharacterItemCategoryDefinition {
+  id: string
+  nameKey: string
+  descriptionKey: string
+  tags: string[]
+  stackable: boolean
+  consumable: boolean
+}
+
+export interface CharacterTerrainInteractionDefinition {
+  id: string
+  terrainIds: string[]
+  surfaceEffectIds?: string[]
+  priority: number
+  movementMultiplier: number
+  staminaMultiplier: number
+  controlModifier: number
+  exposurePerMinute: number
+  requiredAnyTags?: string[]
+  mitigationTags?: string[]
+  mitigatingRoleIds?: string[]
+  mitigatedMovementMultiplier?: number
+  mitigatedStaminaMultiplier?: number
+  mitigatedControlModifier?: number
+  mitigatedExposurePerMinute?: number
+}
+
+export interface CharacterRulesPackDefinition {
+  schemaVersion: 1
+  id: string
+  version: string
+  resources: DerivedResourceDefinition[]
+  roles: CharacterBackgroundRoleDefinition[]
+  weaponFamilies: WeaponFamilyDefinition[]
+  armorProfiles: ArmorProfileDefinition[]
+  itemCategories: CharacterItemCategoryDefinition[]
+  terrainInteractions: CharacterTerrainInteractionDefinition[]
+}
+
 export interface EntityDefinition {
   id: string
   name: string

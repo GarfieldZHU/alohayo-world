@@ -1,0 +1,58 @@
+[
+  {
+    "id": "item:remedy",
+    "nameKey": "content.characterRules.itemCategories.remedy.name",
+    "descriptionKey": "content.characterRules.itemCategories.remedy.description",
+    "tags": ["item:medical"],
+    "stackable": true,
+    "consumable": true
+  },
+  {
+    "id": "item:provision",
+    "nameKey": "content.characterRules.itemCategories.provision.name",
+    "descriptionKey": "content.characterRules.itemCategories.provision.description",
+    "tags": ["item:survival"],
+    "stackable": true,
+    "consumable": true
+  },
+  {
+    "id": "item:tool",
+    "nameKey": "content.characterRules.itemCategories.tool.name",
+    "descriptionKey": "content.characterRules.itemCategories.tool.description",
+    "tags": ["item:capability"],
+    "stackable": false,
+    "consumable": false
+  },
+  {
+    "id": "item:ammunition",
+    "nameKey": "content.characterRules.itemCategories.ammunition.name",
+    "descriptionKey": "content.characterRules.itemCategories.ammunition.description",
+    "tags": ["item:combat"],
+    "stackable": true,
+    "consumable": true
+  },
+  {
+    "id": "item:ritual",
+    "nameKey": "content.characterRules.itemCategories.ritual.name",
+    "descriptionKey": "content.characterRules.itemCategories.ritual.description",
+    "tags": ["item:focus"],
+    "stackable": false,
+    "consumable": false
+  },
+  {
+    "id": "item:document",
+    "nameKey": "content.characterRules.itemCategories.document.name",
+    "descriptionKey": "content.characterRules.itemCategories.document.description",
+    "tags": ["item:knowledge"],
+    "stackable": false,
+    "consumable": false
+  },
+  {
+    "id": "item:material",
+    "nameKey": "content.characterRules.itemCategories.material.name",
+    "descriptionKey": "content.characterRules.itemCategories.material.description",
+    "tags": ["item:craft"],
+    "stackable": true,
+    "consumable": false
+  }
+]

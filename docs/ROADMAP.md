@@ -83,3 +83,13 @@ The next gameplay track is a standalone character-domain expansion: derived reso
 roles/backgrounds, inventory item instances, weapon/armor rules, terrain interactions,
 and an optional combat adapter. It must remain reversible as one package/content-pack
 delta and must not move gameplay authority into PixiJS.
+
+### Character Domain (`#39`)
+
+- [x] Wiki and repository blueprint for setting, abilities, roles, equipment, items, and
+      terrain interactions.
+- [x] Optional config-first rules package with derived resources and neutral rollback.
+- [x] First original role, weapon-family, armor-profile, item-category, and traversal pack.
+- [ ] Inventory instances, load calculation, durability, transactions, and save migration.
+- [ ] Action economy, requirement/scaling consumers, poise, conditions, and combat adapter.
+- [ ] Role/faction progression, teachers, NPC parity, and authored spawn integration.

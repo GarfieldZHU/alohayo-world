@@ -1,6 +1,7 @@
 # Character Module
 
-**Status:** configurable generation and streamed exploration foundation active.
+**Status:** configurable generation and streamed exploration foundation active; optional
+rules delta tracked in `#39`.
 
 ## Owns
 
@@ -29,9 +30,23 @@ does not fork.
 
 ## Next Vertical Slice
 
-Spawn definitions from authored map landmarks, layered sprite assembly, stamina,
-context-sensitive targets, NPC steering/pathfinding, inventory item instances, weapon
-switching input, richer discovery perks, inspection panel, and local save round trips.
+The reversible first slice is `@alohayo/character-rules`: data-defined derived resources,
+background roles, weapon/armor/item families, and terrain traversal queries. It does not
+change rendering, saves, or the existing generator. See
+`../CHARACTER_SYSTEM_BLUEPRINT.md` and `../wiki/Character-System.md`.
+
+After that: spawn definitions from authored landmarks, layered sprite assembly, mutable
+stamina/focus state, context-sensitive targets, NPC steering/pathfinding, inventory item
+instances, weapon switching input, richer discovery perks, inspection UI, and save
+migrations.
+
+## Ownership Boundary
+
+- `@alohayo/character`: generated identity, appearance, loadout selection, and motion.
+- `@alohayo/character-rules`: optional pure calculations and catalog validation.
+- map/terrain: geographic facts and base material behavior.
+- engine: input and presentation only; never the source of character statistics.
+- future inventory/combat: authoritative mutable item and encounter state.
 
 ## Dependencies and Tests
 

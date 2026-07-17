@@ -5,6 +5,14 @@ __metadata:
   version: 10
   cacheKey: 10c0
 
+"@alohayo/character-rules@workspace:packages/character-rules":
+  version: 0.0.0-use.local
+  resolution: "@alohayo/character-rules@workspace:packages/character-rules"
+  dependencies:
+    "@alohayo/config": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@alohayo/character@workspace:*, @alohayo/character@workspace:packages/character":
   version: 0.0.0-use.local
   resolution: "@alohayo/character@workspace:packages/character"

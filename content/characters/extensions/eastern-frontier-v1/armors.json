@@ -1,0 +1,50 @@
+[
+  {
+    "id": "armor:travel-cloth",
+    "nameKey": "content.characterRules.armors.travelCloth.name",
+    "descriptionKey": "content.characterRules.armors.travelCloth.description",
+    "tags": ["armor:light", "climate:breathable"],
+    "weight": 4,
+    "poise": 1,
+    "protection": { "cut": 0.08, "blunt": 0.04 },
+    "environmentalResistance": { "heat": 0.2, "cold": 0.1 },
+    "noise": 0.1,
+    "flexibility": 0.95
+  },
+  {
+    "id": "armor:lacquered-scale",
+    "nameKey": "content.characterRules.armors.lacqueredScale.name",
+    "descriptionKey": "content.characterRules.armors.lacqueredScale.description",
+    "tags": ["armor:medium", "material:lacquered-leather"],
+    "weight": 12,
+    "poise": 5,
+    "protection": { "cut": 0.35, "blunt": 0.18, "pierce": 0.22 },
+    "environmentalResistance": { "rain": 0.35, "cold": 0.15 },
+    "noise": 0.35,
+    "flexibility": 0.7
+  },
+  {
+    "id": "armor:iron-lamellar",
+    "nameKey": "content.characterRules.armors.ironLamellar.name",
+    "descriptionKey": "content.characterRules.armors.ironLamellar.description",
+    "tags": ["armor:heavy", "material:iron-lamellar"],
+    "weight": 22,
+    "poise": 10,
+    "protection": { "cut": 0.55, "blunt": 0.38, "pierce": 0.42 },
+    "environmentalResistance": { "cold": 0.2, "heat": -0.15 },
+    "noise": 0.7,
+    "flexibility": 0.45
+  },
+  {
+    "id": "armor:ceremonial-heavy",
+    "nameKey": "content.characterRules.armors.ceremonialHeavy.name",
+    "descriptionKey": "content.characterRules.armors.ceremonialHeavy.description",
+    "tags": ["armor:heavy", "social:ceremonial"],
+    "weight": 26,
+    "poise": 12,
+    "protection": { "cut": 0.58, "blunt": 0.4, "pierce": 0.45 },
+    "environmentalResistance": { "fear": 0.2, "heat": -0.25 },
+    "noise": 0.8,
+    "flexibility": 0.35
+  }
+]

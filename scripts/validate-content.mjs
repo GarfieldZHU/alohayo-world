@@ -46,6 +46,28 @@ const equipmentPools = JSON.parse(
 const archetypes = JSON.parse(
   readFileSync(new URL('../content/characters/core/archetypes.json', import.meta.url))
 )
+const characterRulesRoot = new URL(
+  '../content/characters/extensions/eastern-frontier-v1/',
+  import.meta.url
+)
+const characterRulesIndex = JSON.parse(readFileSync(new URL('index.json', characterRulesRoot)))
+const characterRules = {
+  ...characterRulesIndex,
+  resources: JSON.parse(readFileSync(new URL(characterRulesIndex.resources, characterRulesRoot))),
+  roles: JSON.parse(readFileSync(new URL(characterRulesIndex.roles, characterRulesRoot))),
+  weaponFamilies: JSON.parse(
+    readFileSync(new URL(characterRulesIndex.weaponFamilies, characterRulesRoot))
+  ),
+  armorProfiles: JSON.parse(
+    readFileSync(new URL(characterRulesIndex.armorProfiles, characterRulesRoot))
+  ),
+  itemCategories: JSON.parse(
+    readFileSync(new URL(characterRulesIndex.itemCategories, characterRulesRoot))
+  ),
+  terrainInteractions: JSON.parse(
+    readFileSync(new URL(characterRulesIndex.terrainInteractions, characterRulesRoot))
+  ),
+}
 const errors = []
 
 const orderedPackIds = validateContentPackDependencies(allManifestEntries, errors)
@@ -392,14 +414,94 @@ for (const role of ['player', 'npc', 'enemy']) {
   if (!roles.has(role)) errors.push(`missing ${role} character archetype`)
 }
 
+validateCharacterRulesPack(
+  characterRules,
+  abilityIds,
+  terrainIds,
+  [englishCatalog, chineseCatalog],
+  errors
+)
+
 if (errors.length) {
   console.error(errors.join('\n'))
   process.exit(1)
 }
 const resolutionSignature = hashResolutionSignature(allManifestEntries, resolvedPackAreas)
 console.log(
-  `validated ${allManifestEntries.length} content packs, ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${resolvedPackAreas.length} resolved map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, and ${archetypes.length} archetypes; pack order: ${orderedPackIds.join(' > ')}; resolution hash: ${resolutionSignature}`
+  `validated ${allManifestEntries.length} content packs, ${biomes.length} terrains, ${terrainRules.rules.length} terrain rules, ${resolvedPackAreas.length} resolved map areas, ${abilities.length} abilities, ${actions.length} actions, ${slots.length} slots, ${items.length} items, ${archetypes.length} archetypes, and ${characterRules.roles.length} background roles; pack order: ${orderedPackIds.join(' > ')}; resolution hash: ${resolutionSignature}`
 )
+
+function validateCharacterRulesPack(pack, abilityIds, terrainIds, catalogs, errors) {
+  if (pack.schemaVersion !== 1 || !pack.id || !pack.version) {
+    errors.push('invalid character rules pack identity')
+    return
+  }
+  const collections = [
+    pack.resources,
+    pack.roles,
+    pack.weaponFamilies,
+    pack.armorProfiles,
+    pack.itemCategories,
+    pack.terrainInteractions,
+  ]
+  for (const collection of collections) {
+    if (!Array.isArray(collection)) {
+      errors.push('character rules collection is not an array')
+      continue
+    }
+    if (new Set(collection.map((entry) => entry.id)).size !== collection.length) {
+      errors.push('duplicate id in character rules collection')
+    }
+  }
+  const backgroundRoleIds = new Set(pack.roles.map((role) => role.id))
+  for (const entry of [
+    ...pack.resources,
+    ...pack.roles,
+    ...pack.weaponFamilies,
+    ...pack.armorProfiles,
+    ...pack.itemCategories,
+  ]) {
+    for (const key of [entry.nameKey, entry.descriptionKey]) {
+      if (catalogs.some((catalog) => !resolveCatalogKey(catalog, key))) {
+        errors.push(`missing character localization ${key}`)
+      }
+    }
+  }
+  for (const resource of pack.resources) {
+    for (const abilityId of Object.keys(resource.abilityWeights ?? {})) {
+      if (!abilityIds.has(abilityId)) errors.push(`unknown ability ${abilityId} in ${resource.id}`)
+    }
+  }
+  for (const role of pack.roles) {
+    for (const abilityId of role.abilityPriorities ?? []) {
+      if (!abilityIds.has(abilityId)) errors.push(`unknown ability ${abilityId} in ${role.id}`)
+    }
+    for (const terrainId of role.terrainAffinityIds ?? []) {
+      if (!terrainIds.has(terrainId)) errors.push(`unknown terrain ${terrainId} in ${role.id}`)
+    }
+  }
+  for (const weapon of pack.weaponFamilies) {
+    for (const abilityId of [
+      ...Object.keys(weapon.requirements ?? {}),
+      ...Object.keys(weapon.scaling ?? {}),
+    ]) {
+      if (!abilityIds.has(abilityId)) errors.push(`unknown ability ${abilityId} in ${weapon.id}`)
+    }
+  }
+  for (const rule of pack.terrainInteractions) {
+    for (const terrainId of rule.terrainIds ?? []) {
+      if (!terrainIds.has(terrainId)) errors.push(`unknown terrain ${terrainId} in ${rule.id}`)
+    }
+    for (const roleId of rule.mitigatingRoleIds ?? []) {
+      if (!backgroundRoleIds.has(roleId))
+        errors.push(`unknown background role ${roleId} in ${rule.id}`)
+    }
+  }
+}
+
+function resolveCatalogKey(catalog, key) {
+  return key?.split('.').reduce((value, part) => value?.[part], catalog)
+}
 
 function collectManifestEntries(rootUrl) {
   return walkDirectory(rootUrl)

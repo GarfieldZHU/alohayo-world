@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "eastern-frontier-v1",
+  "version": "0.1.0",
+  "resources": "resources.json",
+  "roles": "roles.json",
+  "weaponFamilies": "weapons.json",
+  "armorProfiles": "armors.json",
+  "itemCategories": "item-categories.json",
+  "terrainInteractions": "terrain-interactions.json"
+}

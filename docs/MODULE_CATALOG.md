@@ -31,7 +31,7 @@ scripts.
 | Water       | foundation | flow-following rivers and shared render helpers      | #20, #29, #34, #38          |
 | Visibility  | active     | discovery memory and continuous sampled frontier     | skill/action consumers      |
 | Roads       | foundation | tiered curved roads and weather-aware travel         | #32                         |
-| Characters  | foundation | generated explorer, abilities, appearance, equipment | role/inventory/combat delta |
+| Characters  | foundation | generated explorer, abilities, appearance, equipment | #39 rules delta             |
 | DayNight    | active     | wrapped solar clock, phases, moonlight, dev override | seasons and schedules       |
 | Weather     | foundation | reversible terrain/road surface conditions           | #31                         |
 | Settlements | planned    | suitability and building-growth contract             | first settlement slice      |

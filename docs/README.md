@@ -24,6 +24,8 @@ blindly.
 - `TERRAIN_RULES.md`: terrain material rules, i18n contract, surface effects, physics,
   transformations, and dev showcase.
 - `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.
+- `CHARACTER_SYSTEM_BLUEPRINT.md`: modular abilities, roles, equipment, progression,
+  terrain interaction, research boundaries, and staged implementation.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
 - `CONTENT_PACKS.md`: dependency-safe pack loading, authored overlays, conflicts, and
@@ -49,6 +51,12 @@ dependencies, first vertical slice, tests, and deferred work.
 - `modules/FLIGHT.md`
 - `modules/VEHICLES.md`
 - `modules/CREATURES.md`
+
+## Wiki Mirror
+
+`wiki/` is the reviewed source mirrored to the GitHub Wiki. Start at `wiki/Home.md`.
+Keep executable contracts in config/code docs and use the Wiki for approachable system
+introductions, cross-links, and setting context.
 
 ## Decisions
 

@@ -7,7 +7,7 @@
   },
   "ui": {
     "gameTitle": "Alohayo World",
-    "eyebrow": "Alohayo World / v0.1.1",
+    "eyebrow": "Alohayo World / v0.1.2",
     "heroTitle": "一枚小小种子，展开一整个鲜活世界。",
     "heroDescription": "生成一张地理世界图谱，探索不同生态地貌，并查看每个地格背后的气候数据。世界会按区块持续流式生成，偏好仅保存在本地，而且在你真正进入之前不会加载引擎或地图资源。游戏模式会让镜头跟随主角；开发模式则解锁调试控制。",
     "standaloneDescription": "流式生成一个无限延展的本地世界。没有任何数据会离开你的浏览器。",
@@ -221,6 +221,75 @@
       "core:shore-raider": {
         "name": "岸袭者",
         "description": "一个敌对原型，用于证明敌人也共享完整角色系统。"
+      }
+    },
+    "characterRules": {
+      "resources": {
+        "vitality": { "name": "生命力", "description": "承受肉体伤害的基础容量。" },
+        "stamina": { "name": "耐力", "description": "移动与执行蓄力动作所需的容量。" },
+        "focus": { "name": "专注", "description": "施展技艺、研习与维持仪式的容量。" },
+        "poise": { "name": "韧性", "description": "未计算装备前抵抗动作中断的能力。" },
+        "load": { "name": "负重", "description": "舒适携带物资与装备的容量。" },
+        "resolve": { "name": "定力", "description": "抵抗恐惧、压力与动摇的容量。" }
+      },
+      "roles": {
+        "wayfinder": { "name": "寻路者", "description": "擅长观察、辨路与野外扎营的边疆向导。" },
+        "riverWarden": {
+          "name": "河川守望者",
+          "description": "熟悉渡口、舟船、洪水征兆与湿地路线的守护者。"
+        },
+        "passSentinel": { "name": "关隘卫士", "description": "习惯严寒、山坡与长兵器的山路守卫。" },
+        "archiveScholar": {
+          "name": "典籍学者",
+          "description": "研究档案、语言、遗迹与城镇记忆的学者。"
+        },
+        "fieldPhysician": {
+          "name": "行旅医者",
+          "description": "熟悉诊断、药物与地方植物的实务医者。"
+        },
+        "craftArtisan": {
+          "name": "工艺匠师",
+          "description": "像阅读地图一样理解材料的制造者与修缮者。"
+        },
+        "caravanCourier": {
+          "name": "商旅信使",
+          "description": "熟悉道路、补给调度与交涉的远行者。"
+        },
+        "ritualAdept": {
+          "name": "仪式修习者",
+          "description": "守护礼仪、场所并善于维持专注的修习者。"
+        }
+      },
+      "weapons": {
+        "jian": { "name": "剑", "description": "兼顾精准劈刺与灵活距离的双刃兵器。" },
+        "dao": { "name": "刀", "description": "偏重坚决劈砍的实用单刃兵器。" },
+        "qiang": { "name": "枪", "description": "以攻击距离和阵线控制见长的长兵器。" },
+        "gun": { "name": "棍", "description": "兼具控场、行旅与钝击技法的长棍。" },
+        "bow": { "name": "弓", "description": "受视野、拉力与箭矢影响的远程兵器。" },
+        "crossbow": { "name": "弩", "description": "使用弩矢、装填节奏明确的机械远程兵器。" },
+        "fieldTool": { "name": "野外工具", "description": "兼具工艺用途与高冲击防卫能力的斧锤。" },
+        "short": { "name": "短兵器", "description": "轻便、近距离、适合作为备用的兵器。" }
+      },
+      "armors": {
+        "travelCloth": { "name": "行旅布衣", "description": "适合长途移动、透气灵活的多层衣物。" },
+        "lacqueredScale": {
+          "name": "漆皮札甲",
+          "description": "兼顾防雨、防护与活动性的漆皮甲片。"
+        },
+        "ironLamellar": { "name": "铁札甲", "description": "以较大负重换取坚实防护的编缀铁甲片。" },
+        "ceremonialHeavy": {
+          "name": "重型仪仗甲",
+          "description": "兼具防护与威仪，但沉重闷热的展示性甲胄。"
+        }
+      },
+      "itemCategories": {
+        "remedy": { "name": "药物", "description": "用于应对伤病与环境暴露的制备药品。" },
+        "provision": { "name": "补给", "description": "便于携带的食物、饮水与旅途物资。" },
+        "tool": { "name": "工具", "description": "提供实用能力且可重复使用的器具。" },
+        "ammunition": { "name": "弹药", "description": "供远程兵器消耗的投射物。" },
+        "ritual": { "name": "仪式物件", "description": "用于聚神、记录或执行仪式的物件。" },
+        "document": { "name": "文书", "description": "地图、书信、契约、方术或历史记录。" },
+        "material": { "name": "材料", "description": "用于建造、修理或制作的原料。" }
       }
     },
     "landmarks": {

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "rules:vitality",
+    "nameKey": "content.characterRules.resources.vitality.name",
+    "descriptionKey": "content.characterRules.resources.vitality.description",
+    "base": 20,
+    "minimum": 1,
+    "rounding": "round",
+    "abilityWeights": { "core:endurance": 3, "core:strength": 0.5 }
+  },
+  {
+    "id": "rules:stamina",
+    "nameKey": "content.characterRules.resources.stamina.name",
+    "descriptionKey": "content.characterRules.resources.stamina.description",
+    "base": 30,
+    "minimum": 1,
+    "rounding": "round",
+    "abilityWeights": { "core:endurance": 2, "core:agility": 1 }
+  },
+  {
+    "id": "rules:focus",
+    "nameKey": "content.characterRules.resources.focus.name",
+    "descriptionKey": "content.characterRules.resources.focus.description",
+    "base": 10,
+    "minimum": 0,
+    "rounding": "round",
+    "abilityWeights": { "core:intelligence": 1.5, "core:willpower": 2 }
+  },
+  {
+    "id": "rules:poise",
+    "nameKey": "content.characterRules.resources.poise.name",
+    "descriptionKey": "content.characterRules.resources.poise.description",
+    "base": 0,
+    "minimum": 0,
+    "rounding": "floor",
+    "abilityWeights": { "core:strength": 0.5, "core:endurance": 0.5 }
+  },
+  {
+    "id": "rules:load",
+    "nameKey": "content.characterRules.resources.load.name",
+    "descriptionKey": "content.characterRules.resources.load.description",
+    "base": 10,
+    "minimum": 1,
+    "rounding": "floor",
+    "abilityWeights": { "core:strength": 2, "core:endurance": 1 }
+  },
+  {
+    "id": "rules:resolve",
+    "nameKey": "content.characterRules.resources.resolve.name",
+    "descriptionKey": "content.characterRules.resources.resolve.description",
+    "base": 5,
+    "minimum": 0,
+    "rounding": "round",
+    "abilityWeights": { "core:willpower": 2, "core:charisma": 0.5 }
+  }
+]

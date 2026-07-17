@@ -153,10 +153,15 @@ renderer.
 
 ### Add a character or ability
 
-1. Read `docs/config/CHARACTERS.md` and `packages/character/AGENTS.md`.
+1. Read `docs/CHARACTER_SYSTEM_BLUEPRINT.md`, `docs/config/CHARACTERS.md`, and the
+   nearest character package `AGENTS.md`.
 2. Extend the catalogs under `content/characters/`.
 3. Use the shared archetype model for players, NPCs, and enemies.
 4. Validate slot/item/pool references and deterministic generation.
+5. Put optional derived rules in `@alohayo/character-rules`; do not couple them to PixiJS,
+   DOM, workers, input, or persistence.
+6. Reference terrain by stable ID and capability tags, never translated names or colors.
+7. Add English and Simplified Chinese content keys before exposing any definition in UI.
 
 ### Change movement or actions
 

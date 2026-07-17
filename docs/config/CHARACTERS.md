@@ -16,6 +16,15 @@ content/characters/core/
   actions.json
   archetypes.json
   index.json
+
+content/characters/extensions/eastern-frontier-v1/
+  resources.json
+  roles.json
+  weapons.json
+  armors.json
+  item-categories.json
+  terrain-interactions.json
+  index.json
 ```
 
 ## Abilities
@@ -92,6 +101,24 @@ ownership. Unique runtime item instances and durability arrive with inventory.
 first is initially active. Input and combat systems will switch active slots without
 changing the equipment model.
 
+## Optional Character Rules Pack
+
+`eastern-frontier-v1` is consumed by `@alohayo/character-rules`, not by the renderer or
+the core generator. It defines weighted derived resources, occupational backgrounds,
+weapon families, armor profiles, item categories, and map-aware traversal rules.
+
+All visible definitions use `nameKey` and `descriptionKey`. Add both English and
+Simplified Chinese catalog entries before adding a definition. Formulas are declarative
+weighted sums; configuration cannot execute code.
+
+Terrain interactions reference stable terrain IDs, surface IDs, role IDs, and capability
+tags. They return movement, stamina, control, exposure, and blocked state. Roads, weather,
+inventory, and combat may consume that result later, but they must not be imported into
+the rules package.
+
+To remove the delta, omit the pack and registry. `evaluateTerrainTraversal` returns
+neutral values when no registry is supplied, and the current explorer remains unchanged.
+
 ## Movement and Actions
 
 Archetypes configure walk speed, run multiplier, interaction range, and allowed action
@@ -117,3 +144,7 @@ uses generated skin, hair, body proportions, height, and equipped clothing color
 walks, runs, collides with water, changes facing, follows terrain cost, and interacts
 through content-defined actions. Layered sprites, inventory instances, behavior AI,
 pathfinding, and combat remain next-stage systems.
+
+The optional rules pack is validated and unit tested but is not yet connected to live
+movement, HUD, saves, or combat. That explicit boundary prevents an early data experiment
+from silently changing player behavior.

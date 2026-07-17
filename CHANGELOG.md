@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- Planned the next config-first character, equipment, role, and world-lore expansion.
+- Added a checked-in GitHub Wiki blueprint for terrain, setting, characters, roles,
+  equipment, items, and map interactions.
+- Added an optional config-first character-rules package with derived resources,
+  background roles, equipment families, and terrain traversal queries.
+- Fixed the standalone launcher version label for the `v0.1.2` release.
 
 ## 0.1.2 - 2026-07-17
 
