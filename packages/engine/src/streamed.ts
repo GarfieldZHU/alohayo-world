@@ -1,5 +1,6 @@
 import {
   Application,
+  BlurFilter,
   Container,
   CullerPlugin,
   extensions,
@@ -1368,6 +1369,7 @@ export async function createGame(
       const fogCutout = new Graphics()
       fogCutout.blendMode = 'erase'
       fog.addChild(fogFill, fogCutout)
+      fog.filters = [new BlurFilter({ strength: Math.max(1.4, cellSize * 0.72), quality: 2 })]
       container.cullable = true
       container.cullArea = new Rectangle(
         0,

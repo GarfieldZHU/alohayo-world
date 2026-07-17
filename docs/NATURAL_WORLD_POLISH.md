@@ -26,7 +26,9 @@ The first contour slice now traces deterministic water-mask frontiers into smoot
 typed-array paths, renders layered shore/shelf/foam strokes, and refreshes loaded cardinal
 neighbors when a streamed seam gains context. Discovery fog now adaptively subdivides only
 cells crossed by the continuous visibility field, producing a gradual frontier without
-paying sub-cell draw cost across the whole retained world.
+paying sub-cell draw cost across the whole retained world. A bounded GPU blur on the fog
+container removes the final sub-cell raster pattern while leaving logical action checks on
+the unblurred continuous visibility sampler.
 
 This is a coherent continuous-shape baseline. Distance-field shoreline materials,
 GPU-backed fog masks, delta/estuary forms, and cross-chunk hydrology identities remain
