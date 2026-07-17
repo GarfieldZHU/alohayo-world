@@ -69,6 +69,7 @@ import {
   clamp,
   colorFromHex,
   computeGameCameraScale,
+  createChunkRequestQueue,
   createWorkerRpc,
   deriveChunkRadius,
   normalizeTheme,
@@ -95,6 +96,9 @@ export async function createGame(
   content: EngineContent
 ): Promise<GameHandle> {
   let theme: UiTheme = normalizeTheme(options.theme)
+  let locale: LocaleCode = normalizeLocale(
+    options.locale ?? window.localStorage.getItem('alohayo-world:locale')
+  )
   const palette = () => themePalette(theme)
   const app = new Application()
   await app.init({
@@ -103,7 +107,27 @@ export async function createGame(
     background: palette().containerBackground,
     preference: 'webgl',
   })
-  options.container.replaceChildren(app.canvas)
+  if (getComputedStyle(options.container).position === 'static') {
+    options.container.style.position = 'relative'
+  }
+  app.canvas.dataset.initialPresentation = 'loading'
+  app.canvas.style.visibility = 'hidden'
+  const initialLoading = document.createElement('div')
+  initialLoading.dataset.alohayoWorldInitialLoading = 'true'
+  initialLoading.textContent = getI18nCatalog(locale).ui.surveying!
+  Object.assign(initialLoading.style, {
+    position: 'absolute',
+    inset: '0',
+    display: 'grid',
+    placeItems: 'center',
+    color: palette().statusFill,
+    background: palette().containerBackground,
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+    fontSize: '13px',
+    letterSpacing: '0.04em',
+  } satisfies Partial<CSSStyleDeclaration>)
+  options.container.replaceChildren(app.canvas, initialLoading)
+  options.container.setAttribute('aria-busy', 'true')
   app.canvas.className = 'alohayo-world-canvas'
   app.canvas.setAttribute('aria-label', 'Alohayo World map')
 
@@ -118,9 +142,6 @@ export async function createGame(
   viewport.addChild(chunkLayer, devLayer, characterLayer)
   app.stage.addChild(viewport, overlay)
   overlay.addChild(minimapLayer)
-  if (getComputedStyle(options.container).position === 'static') {
-    options.container.style.position = 'relative'
-  }
   const visionFogElement = document.createElement('div')
   visionFogElement.dataset.alohayoWorldVisionFog = 'true'
   Object.assign(visionFogElement.style, {
@@ -190,6 +211,7 @@ export async function createGame(
   const riverMasks = new Map<string, Uint8Array>()
   const bridgeMasks = new Map<string, Uint8Array>()
   const pendingChunks = new Map<string, Promise<GeneratedChunk>>()
+  const chunkRequestQueue = createChunkRequestQueue(1)
   const discovery = new Map<string, Uint8Array>()
   const dirtyFog = new Set<string>()
   let discoveredCells = 0
@@ -208,9 +230,6 @@ export async function createGame(
     ? clamp(storedDevLightLevel, 0, 1)
     : clamp((content.world.dayNight?.fixedHour ?? 8.5) / 12, 0, 1)
   let devMode = Boolean(options.devMode)
-  let locale: LocaleCode = normalizeLocale(
-    options.locale ?? window.localStorage.getItem('alohayo-world:locale')
-  )
   let devFastMove = false
   let devFly = false
   let devBattleShadow = true
@@ -459,7 +478,7 @@ export async function createGame(
       minimapControls?.setCollapsed(minimapCollapsed)
       const targetChunkX = Math.floor(snapshot.explorer.x / chunkSize)
       const targetChunkY = Math.floor(snapshot.explorer.y / chunkSize)
-      await ensureChunkNeighborhood(targetChunkX, targetChunkY, activeChunkRadius)
+      await ensureChunkNeighborhood(targetChunkX, targetChunkY, 0)
       if (explorer) {
         explorer.activeWeaponSlot = snapshot.explorer.activeWeaponSlot
       }
@@ -1601,21 +1620,23 @@ export async function createGame(
     const pending = pendingChunks.get(key)
     if (pending) return pending
 
-    const request = rpc
-      .requestChunk({
-        seed: worldSeed,
-        chunkX,
-        chunkY,
-        chunkSize,
-        surveyWidth,
-        surveyHeight,
-        mapAreas,
-        terrainCodes,
-        biomeDefinitions: content.biomes,
-        riverSystem: content.world.rivers,
-        roadSystem: content.world.roads,
-        wasmBaseUrl: options.assetBaseUrl,
-      })
+    const request = chunkRequestQueue
+      .schedule(() =>
+        rpc.requestChunk({
+          seed: worldSeed,
+          chunkX,
+          chunkY,
+          chunkSize,
+          surveyWidth,
+          surveyHeight,
+          mapAreas,
+          terrainCodes,
+          biomeDefinitions: content.biomes,
+          riverSystem: content.world.rivers,
+          roadSystem: content.world.roads,
+          wasmBaseUrl: options.assetBaseUrl,
+        })
+      )
       .then((chunk) => {
         pendingChunks.delete(key)
         chunks.set(key, chunk)
@@ -1648,6 +1669,28 @@ export async function createGame(
       }
     }
     return Promise.all(requests)
+  }
+
+  const ensureInitialViewport = async () => {
+    const margin = 96
+    const worldLeft = (-viewport.x - margin) / scale / cellSize
+    const worldTop = (-viewport.y - margin) / scale / cellSize
+    const worldRight = (app.screen.width - viewport.x + margin) / scale / cellSize
+    const worldBottom = (app.screen.height - viewport.y + margin) / scale / cellSize
+    const minChunkX = Math.floor(worldLeft / chunkSize)
+    const minChunkY = Math.floor(worldTop / chunkSize)
+    const maxChunkX = Math.floor(worldRight / chunkSize)
+    const maxChunkY = Math.floor(worldBottom / chunkSize)
+    const requests: Promise<GeneratedChunk>[] = []
+    for (let chunkY = minChunkY; chunkY <= maxChunkY; chunkY += 1) {
+      for (let chunkX = minChunkX; chunkX <= maxChunkX; chunkX += 1) {
+        requests.push(ensureChunk(chunkX, chunkY))
+      }
+    }
+    await Promise.all(requests)
+    renderVisibleChunks()
+    app.canvas.dataset.initialViewportChunks = String(requests.length)
+    app.canvas.dataset.initialRenderedChunks = String(chunkViews.size)
   }
 
   const evictFarChunks = (centerChunkX: number, centerChunkY: number) => {
@@ -2026,7 +2069,7 @@ export async function createGame(
         y: Math.floor(restoredSnapshot.explorer.y / chunkSize),
       }
     : { x: 0, y: 0 }
-  // Mount as soon as the center is playable; the simulation loop streams the wider radius.
+  // Generate the center first, then atomically reveal every chunk intersecting the camera.
   await ensureChunkNeighborhood(initialChunkCenter.x, initialChunkCenter.y, 0)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
@@ -2070,10 +2113,12 @@ export async function createGame(
     app.screen.height / 2 - spawn.y * cellSize * scale
   )
   updateDetailLevel()
-  revealAroundExplorer()
   if (restoredSnapshot) {
     await restoreSnapshot(restoredSnapshot)
+    updateCamera(true)
   }
+  await ensureInitialViewport()
+  revealAroundExplorer()
   drawExplorer()
   refreshFogVisibility()
   refreshGridVisibility()
@@ -2081,6 +2126,11 @@ export async function createGame(
   drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
+  app.renderer.render(app.stage)
+  app.canvas.dataset.initialPresentation = 'complete'
+  app.canvas.style.visibility = 'visible'
+  initialLoading.remove()
+  options.container.setAttribute('aria-busy', 'false')
   applyCurrentDevPanelTheme(devPanel)
   applyCurrentMinimapTheme(minimapControls)
   attachDevPanelInteractions(devPanel)
@@ -2326,7 +2376,9 @@ export async function createGame(
     })
     const centerChunkX = Math.floor(explorerMotion.x / chunkSize)
     const centerChunkY = Math.floor(explorerMotion.y / chunkSize)
-    void ensureChunkNeighborhood(centerChunkX, centerChunkY, activeChunkRadius)
+    void ensureChunkNeighborhood(centerChunkX, centerChunkY, activeChunkRadius).catch((error) => {
+      app.canvas.dataset.streamingError = error instanceof Error ? error.message : String(error)
+    })
     evictFarChunks(centerChunkX, centerChunkY)
     revealAroundExplorer()
     if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
@@ -2481,6 +2533,7 @@ export async function createGame(
         }
       }
       rpc.rejectAll(new Error('Game destroyed'))
+      chunkRequestQueue.dispose(new Error('Game destroyed'))
       worker.terminate()
       resizeObserver.disconnect()
       devPanel?.panel.remove()

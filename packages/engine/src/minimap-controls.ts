@@ -92,8 +92,9 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
   collapseButton.type = 'button'
   Object.assign(collapseButton.style, {
     position: 'absolute',
-    top: `${MINIMAP_FRAME_OFFSET_TOP - 10}px`,
+    top: `${MINIMAP_FRAME_OFFSET_TOP + 6}px`,
     right: '-10px',
+    zIndex: '2',
     border: '0',
     cursor: 'pointer',
     borderRadius: '999px',
@@ -116,6 +117,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
     position: 'absolute',
     inset: `${MINIMAP_FRAME_OFFSET_TOP}px 0 0 0`,
     pointerEvents: 'none',
+    zIndex: '1',
     transition: 'opacity 180ms ease, transform 180ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   panel.appendChild(frame)
@@ -196,9 +198,9 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       frame.style.opacity = collapsed ? '0' : '1'
       frame.style.transform = collapsed ? 'translateY(-6px)' : 'translateY(0)'
       frame.style.visibility = collapsed ? 'hidden' : 'visible'
-      frame.style.pointerEvents = collapsed ? 'none' : 'auto'
+      frame.style.pointerEvents = 'none'
       panel.style.height = collapsed ? `${COLLAPSED_PANEL_HEIGHT}px` : `${EXPANDED_PANEL_HEIGHT}px`
-      collapseButton.style.top = collapsed ? '2px' : `${MINIMAP_FRAME_OFFSET_TOP - 10}px`
+      collapseButton.style.top = collapsed ? '2px' : `${MINIMAP_FRAME_OFFSET_TOP + 6}px`
       collapseButton.style.right = collapsed ? '-6px' : '-10px'
       collapseButton.textContent = collapsed ? '▾' : '▴'
       collapseButton.title = collapsed

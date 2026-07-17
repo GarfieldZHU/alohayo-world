@@ -78,6 +78,50 @@ export function createWorkerRpc(worker: Worker, options: { timeoutMs?: number } 
   }
 }
 
+interface QueuedChunkRequest {
+  run: () => Promise<GeneratedChunk>
+  resolve: (chunk: GeneratedChunk) => void
+  reject: (error: unknown) => void
+}
+
+export function createChunkRequestQueue(maxConcurrent = 1) {
+  const concurrency = Math.max(1, Math.floor(maxConcurrent))
+  const queued: QueuedChunkRequest[] = []
+  let active = 0
+  let disposedError: Error | null = null
+
+  const drain = () => {
+    while (!disposedError && active < concurrency && queued.length) {
+      const task = queued.shift()!
+      active += 1
+      void task
+        .run()
+        .then(task.resolve, task.reject)
+        .finally(() => {
+          active -= 1
+          drain()
+        })
+    }
+  }
+
+  return {
+    schedule(run: () => Promise<GeneratedChunk>) {
+      if (disposedError) return Promise.reject(disposedError)
+      return new Promise<GeneratedChunk>((resolve, reject) => {
+        queued.push({ run, resolve, reject })
+        drain()
+      })
+    },
+    dispose(error: Error) {
+      disposedError = error
+      for (const task of queued.splice(0)) task.reject(error)
+    },
+    pendingCount() {
+      return active + queued.length
+    },
+  }
+}
+
 export function chunkKey(chunkX: number, chunkY: number): string {
   return `${chunkX},${chunkY}`
 }

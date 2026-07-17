@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed minimap clock/control overlap and made the complete overlapping control hit area
+  interactive.
+- Added a bounded worker request queue and atomic initial viewport presentation so startup
+  shows a loading state before revealing a complete first frame.
 - Added a checked-in GitHub Wiki blueprint for terrain, setting, characters, roles,
   equipment, items, and map interactions.
 - Added an optional config-first character-rules package with derived resources,

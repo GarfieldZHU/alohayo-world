@@ -84,7 +84,12 @@ yarn check:perf
 ```
 
 Use `yarn test:e2e` after a browser-facing worker or embed change. It requires the local
-Playwright browsers; install them once with `yarn playwright install`.
+Playwright browsers; install them once with `yarn playwright install`. If the download is
+unavailable but Chrome is already installed, point Playwright at it explicitly:
+
+```sh
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" yarn test:e2e
+```
 
 ## Wasm migration rules
 

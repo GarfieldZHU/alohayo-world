@@ -20,6 +20,11 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
   exploration feature lands.
 - The engine may request chunks opportunistically, but it must tolerate frontier cells
   not being loaded yet and cleanly release evicted chunk display objects.
+- Queue chunk-generation RPCs at the worker boundary. A request timeout starts only when
+  the worker begins that request, not while it is waiting behind other chunk work.
+- Keep the canvas hidden behind the localized surveying state until every chunk
+  intersecting the initial viewport has rendered. Never expose chunk-by-chunk startup
+  paint to the host page.
 - Verify browser-facing changes with E2E tests.
 - Every worker request needs a bounded timeout plus `error` and `messageerror` cleanup.
   Keep worker implementation/fallback diagnostics on stable canvas data attributes so

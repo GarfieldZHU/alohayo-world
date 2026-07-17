@@ -15,13 +15,43 @@ test('loads game resources only after start', async ({ page }) => {
   expect(gameRequests).toHaveLength(0)
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
-  await expect(canvas).toBeVisible()
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'loading')
   await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
+  await expect(canvas).toBeVisible()
+  const initialViewportChunks = Number(await canvas.getAttribute('data-initial-viewport-chunks'))
+  const initialRenderedChunks = Number(await canvas.getAttribute('data-initial-rendered-chunks'))
+  expect(initialViewportChunks).toBeGreaterThan(0)
+  expect(initialRenderedChunks).toBeGreaterThanOrEqual(initialViewportChunks)
   await expect(canvas).toHaveAttribute('data-worker-implementation', 'typescript')
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
   await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
   expect(gameRequests.length).toBeGreaterThan(0)
   await expect(canvas).toBeVisible()
+})
+
+test('keeps the minimap collapse control interactive and clear of the clock', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  const collapse = page.getByRole('button', { name: 'Hide' })
+  const clock = page.getByLabel('World time')
+  const [collapseBox, clockBox] = await Promise.all([collapse.boundingBox(), clock.boundingBox()])
+  expect(collapseBox).toBeTruthy()
+  expect(clockBox).toBeTruthy()
+  expect(collapseBox!.y).toBeGreaterThanOrEqual(clockBox!.y + clockBox!.height)
+  const hitTarget = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('aria-label'),
+    {
+      x: collapseBox!.x + collapseBox!.width / 2,
+      y: collapseBox!.y + collapseBox!.height / 2,
+    }
+  )
+  expect(hitTarget).toBe('Hide')
+  await collapse.click()
+  await expect(page.getByRole('button', { name: 'Show' })).toBeVisible()
+  await page.getByRole('button', { name: 'Show' }).click()
+  await expect(page.getByRole('button', { name: 'Hide' })).toBeVisible()
 })
 
 const readPerformanceMetrics = (page: Page) =>

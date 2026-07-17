@@ -13,6 +13,12 @@ The day/night module derives a wrapped east-west lighting field from the simulat
 clock plus the visible world X range; it is a render overlay, not a mutation of terrain
 state.
 
+Initial presentation is atomic. The engine displays a localized surveying surface while
+the generation worker resolves a serialized chunk queue, renders every chunk intersecting
+the first viewport, and performs one explicit stage render. Only then does it reveal the
+canvas and begin opportunistic neighborhood streaming. Worker RPC timeouts begin when a
+queued request actually starts so queued chunks cannot expire before the worker sees them.
+
 ## Data flow
 
 `WorldDefinition -> validator -> generator worker -> typed terrain layers -> biome

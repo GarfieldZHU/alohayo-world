@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_WORLD_WORKER_CAPABILITIES } from '@alohayo/map'
-import { createWorkerRpc } from '../packages/engine/src/utils'
+import { createChunkRequestQueue, createWorkerRpc } from '../packages/engine/src/utils'
 
 class FakeWorker {
   onmessage: ((event: MessageEvent) => void) | null = null
@@ -62,5 +62,32 @@ describe('world worker RPC', () => {
     worker.onmessageerror?.(new MessageEvent('messageerror'))
 
     await rejected
+  })
+})
+
+describe('chunk request queue', () => {
+  it('starts serialized work only after the previous worker request settles', async () => {
+    let releaseFirst: ((value: never) => void) | undefined
+    const starts: number[] = []
+    const queue = createChunkRequestQueue(1)
+    const first = queue.schedule(
+      () =>
+        new Promise((resolve) => {
+          starts.push(1)
+          releaseFirst = resolve
+        })
+    )
+    const second = queue.schedule(async () => {
+      starts.push(2)
+      return {} as never
+    })
+
+    await Promise.resolve()
+    expect(starts).toEqual([1])
+    expect(queue.pendingCount()).toBe(2)
+    releaseFirst?.({} as never)
+    await first
+    await second
+    expect(starts).toEqual([1, 2])
   })
 })
