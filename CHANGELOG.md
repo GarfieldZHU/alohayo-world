@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.3 - 2026-07-17
+
 - Promote deterministic chunk base-layer generation to the Rust/Wasm worker path after
   parity, startup, transfer, fallback, and browser performance gates passed.
 - Promote the pure hydrology raster to Rust/Wasm with byte-identical drainage fields,
@@ -11,8 +13,6 @@
   vehicles so both stages share one deterministic movement contract.
 - Conclude the first Rust/Wasm migration program with stable chunk-layer and hydrology
   batches; isolate render-hint and contour promotion as measured follow-ups.
-
-## Unreleased
 
 - Add config-driven erosion, sediment, deposition, and floodplain metadata to generated
   worlds and streamed chunks.

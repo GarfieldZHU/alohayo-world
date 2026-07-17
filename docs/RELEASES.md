@@ -1,5 +1,27 @@
 # Release Checkpoints
 
+## v0.1.3 - Streamed World and Wasm Foundation
+
+This release turns the world-foundation work into a verified production checkpoint while
+keeping optional gameplay and simulation modules independently replaceable.
+
+### Included
+
+- atomic initial viewport presentation, corrected minimap controls, smoother shared
+  shoreline/fog contours, and viewport-lazy streamed rendering;
+- authored entity/protected-region overlays, named local save management, deterministic
+  erosion/deposition/floodplain metadata, and config-first character rules;
+- stable Rust/Wasm chunk base-layer and hydrology batches with exact TypeScript parity,
+  structured fallback diagnostics, worker transfer gates, and measured acceleration;
+- decomposed weather, transport, render-hint, and contour follow-ups with explicit module
+  ownership and acceptance gates.
+
+### Verified Boundary
+
+PixiJS, UI, content orchestration, saves, and embed lifecycle remain TypeScript-owned.
+The game remains client-only, lazy-loaded, bilingual, deterministic, and functional when
+Wasm falls back to the reference implementation.
+
 ## v0.1.2 - World Foundation Checkpoint
 
 This release consolidates the work completed after the original atlas demo into a stable

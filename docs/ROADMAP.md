@@ -1,5 +1,16 @@
 # Roadmap
 
+## v0.1.3-streamed-wasm-foundation
+
+- [x] Atomic first viewport, corrected minimap interaction, natural shared contours, and
+      viewport-lazy streamed presentation.
+- [x] Authored runtime overlays, named save slots, geomorphology metadata, and modular
+      character rules.
+- [x] Stable Rust/Wasm chunk base-layer and hydrology batches with deterministic
+      TypeScript fallback, measured promotion gates, and live browser diagnostics.
+- [x] Weather, transport, render-hint, and contour expansion decomposed into ordered,
+      independently closeable issues.
+
 ## v0.1.2-foundation-checkpoint
 
 - [x] Streamed chunk retention/eviction, explorer movement, discovery, minimap, and

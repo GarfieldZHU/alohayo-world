@@ -23,17 +23,17 @@ Every module must define:
 Configuration may select a registered implementation but cannot provide executable
 scripts.
 
-## Foundation Status (`v0.1.2`)
+## Foundation Status (`v0.1.3`)
 
 | Module      | Status     | Current outcome                                      | Next tracked boundary       |
 | ----------- | ---------- | ---------------------------------------------------- | --------------------------- |
 | Map         | foundation | streamed geography, hydrology, topology, overlays    | #37, #38                    |
-| Water       | foundation | flow-following rivers and shared render helpers      | #20, #29, #34, #38          |
+| Water       | foundation | hydrology, rivers, contours, geomorphology metadata  | #38, #41, #44, #50          |
 | Visibility  | active     | discovery memory and continuous sampled frontier     | skill/action consumers      |
-| Roads       | foundation | tiered curved roads and weather-aware travel         | #32                         |
+| Roads       | foundation | tiered curved roads and weather-aware travel         | #47, #48                    |
 | Characters  | foundation | generated explorer, abilities, appearance, equipment | #39 rules delta             |
 | DayNight    | active     | wrapped solar clock, phases, moonlight, dev override | seasons and schedules       |
-| Weather     | foundation | reversible terrain/road surface conditions           | #31                         |
+| Weather     | foundation | reversible terrain/road surface conditions           | #45, #46                    |
 | Settlements | planned    | suitability and building-growth contract             | first settlement slice      |
 | Economy     | planned    | resources, inventories, and exchange contract        | inventory ownership         |
 | Combat      | deferred   | optional encounter/plugin boundary                   | character delta             |

@@ -7,7 +7,7 @@
   },
   "ui": {
     "gameTitle": "Alohayo World",
-    "eyebrow": "Alohayo World / v0.1.2",
+    "eyebrow": "Alohayo World / v0.1.3",
     "heroTitle": "一枚小小种子，展开一整个鲜活世界。",
     "heroDescription": "生成一张地理世界图谱，探索不同生态地貌，并查看每个地格背后的气候数据。世界会按区块持续流式生成，偏好仅保存在本地，而且在你真正进入之前不会加载引擎或地图资源。游戏模式会让镜头跟随主角；开发模式则解锁调试控制。",
     "standaloneDescription": "流式生成一个无限延展的本地世界。没有任何数据会离开你的浏览器。",
