@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added deterministic smoothed mask contours for layered shorelines, seam refresh, and an
+  adaptive sub-cell discovery fog with a feathered active-vision boundary.
 - Fixed minimap clock/control overlap and made the complete overlapping control hit area
   interactive.
 - Added a bounded worker request queue and atomic initial viewport presentation so startup

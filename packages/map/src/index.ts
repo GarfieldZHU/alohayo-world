@@ -16,6 +16,7 @@ export {
   type ResolvedTopologyIdentity,
   type TopologyMedium,
 } from './topology'
+export { extractMaskContours, type MaskContourOptions } from './contours'
 
 export const BIOME = {
   deepOcean: 0,

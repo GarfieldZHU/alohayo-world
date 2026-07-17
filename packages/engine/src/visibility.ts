@@ -78,8 +78,8 @@ export function redrawSmoothDiscoveryFog({
   const activeVisibilityAt = (localX: number, localY: number) => {
     if (!activeVision) return 0
     return sampleVisionAtPoint({
-      pointX: localX + 0.5,
-      pointY: localY + 0.5,
+      pointX: localX,
+      pointY: localY,
       sourceX: activeVision.sourceX,
       sourceY: activeVision.sourceY,
       radius: activeVision.radius,
@@ -90,13 +90,35 @@ export function redrawSmoothDiscoveryFog({
 
   for (let localY = 0; localY < chunkSize; localY += 1) {
     for (let localX = 0; localX < chunkSize; localX += 1) {
-      const activeVisibility = activeVisibilityAt(localX, localY)
       const memoryAlpha = discoveredAt(localX, localY) ? 0.045 : hiddenAlpha
-      const alpha = memoryAlpha * (1 - activeVisibility)
-      if (alpha < 0.012) continue
-      fill
-        .rect(localX * cellSize - 0.15, localY * cellSize - 0.15, cellSize + 0.3, cellSize + 0.3)
-        .fill({ color: fogColor, alpha })
+      const samples = [
+        activeVisibilityAt(localX + 0.08, localY + 0.08),
+        activeVisibilityAt(localX + 0.92, localY + 0.08),
+        activeVisibilityAt(localX + 0.92, localY + 0.92),
+        activeVisibilityAt(localX + 0.08, localY + 0.92),
+      ]
+      const minVisibility = Math.min(...samples)
+      const maxVisibility = Math.max(...samples)
+      const subdivisions = maxVisibility - minVisibility > 0.08 ? 4 : 1
+      const subCellSize = cellSize / subdivisions
+      for (let subY = 0; subY < subdivisions; subY += 1) {
+        for (let subX = 0; subX < subdivisions; subX += 1) {
+          const visibility = activeVisibilityAt(
+            localX + (subX + 0.5) / subdivisions,
+            localY + (subY + 0.5) / subdivisions
+          )
+          const alpha = memoryAlpha * (1 - visibility)
+          if (alpha < 0.008) continue
+          fill
+            .rect(
+              localX * cellSize + subX * subCellSize - 0.12,
+              localY * cellSize + subY * subCellSize - 0.12,
+              subCellSize + 0.24,
+              subCellSize + 0.24
+            )
+            .fill({ color: fogColor, alpha })
+        }
+      }
     }
   }
 }

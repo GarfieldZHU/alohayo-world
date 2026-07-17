@@ -22,7 +22,15 @@ continuous geography first and a cell simulation second.
 - Rivers now support a shaped path before rendering, and water rendering logic has been
   extracted into `packages/engine/src/water-render.ts`.
 
-This is good prototype quality, but it is still fundamentally cell-derived.
+The first contour slice now traces deterministic water-mask frontiers into smoothed
+typed-array paths, renders layered shore/shelf/foam strokes, and refreshes loaded cardinal
+neighbors when a streamed seam gains context. Discovery fog now adaptively subdivides only
+cells crossed by the continuous visibility field, producing a gradual frontier without
+paying sub-cell draw cost across the whole retained world.
+
+This is a coherent continuous-shape baseline. Distance-field shoreline materials,
+GPU-backed fog masks, delta/estuary forms, and cross-chunk hydrology identities remain
+later refinement rather than reasons to reintroduce cell-edge drawing.
 
 ## Fully Natural Plan
 

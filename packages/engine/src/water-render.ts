@@ -1,8 +1,8 @@
 import type { BiomeDefinition, WorldRiverSystemDefinition } from '@alohayo/config'
-import type { GeneratedRiver } from '@alohayo/map'
+import { extractMaskContours, type GeneratedRiver } from '@alohayo/map'
 import type { Graphics } from 'pixi.js'
 
-export function isWaterBiome(biome: BiomeDefinition | undefined) {
+export function isWaterBiome(biome: BiomeDefinition | null | undefined) {
   return Boolean(
     biome &&
     (biome.id.includes('ocean') ||
@@ -16,8 +16,42 @@ export function isWaterBiome(biome: BiomeDefinition | undefined) {
   )
 }
 
-export function isBeachBiome(biome: BiomeDefinition | undefined) {
+export function isBeachBiome(biome: BiomeDefinition | null | undefined) {
   return Boolean(biome && (biome.id.includes('beach') || biome.id.includes('coast')))
+}
+
+function drawContourPath(graphics: Graphics, contour: Float32Array, cellSize: number) {
+  if (contour.length < 4) return false
+  graphics.moveTo(contour[0]! * cellSize, contour[1]! * cellSize)
+  for (let index = 2; index < contour.length; index += 2) {
+    graphics.lineTo(contour[index]! * cellSize, contour[index + 1]! * cellSize)
+  }
+  return true
+}
+
+export function drawWaterContours(
+  graphics: Graphics,
+  chunkSize: number,
+  cellSize: number,
+  biomeAt: (localX: number, localY: number) => BiomeDefinition | null | undefined
+) {
+  const contours = extractMaskContours({
+    width: chunkSize,
+    height: chunkSize,
+    isInside: (x, y) => isWaterBiome(biomeAt(x, y)),
+    smoothingPasses: 3,
+  })
+  const layers = [
+    { color: 0xd9c18a, width: Math.max(1.8, cellSize * 0.34), alpha: 0.52 },
+    { color: 0x58a9c7, width: Math.max(1.15, cellSize * 0.2), alpha: 0.38 },
+    { color: 0xf5f2e6, width: Math.max(0.55, cellSize * 0.075), alpha: 0.54 },
+  ]
+  for (const layer of layers) {
+    for (const contour of contours) {
+      if (drawContourPath(graphics, contour, cellSize)) graphics.stroke(layer)
+    }
+  }
+  return contours.length
 }
 
 export function drawBoundaryBlend(

@@ -77,7 +77,13 @@ import {
   toChunkCoord,
 } from './utils'
 import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
-import { drawBoundaryBlend, drawRiver, drawWaterCloseDetail } from './water-render'
+import {
+  drawBoundaryBlend,
+  drawRiver,
+  drawWaterCloseDetail,
+  drawWaterContours,
+  isWaterBiome,
+} from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
 import { sampleWeatherSurface } from './weather'
 import {
@@ -965,6 +971,7 @@ export async function createGame(
     }
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
     app.canvas.dataset.visionBoundary = 'continuous'
+    app.canvas.dataset.discoveryFogRenderer = 'adaptive-subcell'
   }
 
   const drawBattleShadow = () => {
@@ -1435,7 +1442,11 @@ export async function createGame(
               ? (biomeByCode.get(chunk.biomes[index + 1]!) ?? biome)
               : null
             : biomeAtCell(chunk.originX + localX + 1, chunk.originY + localY)
-        if (rightBiome && rightBiome.code !== biome.code) {
+        if (
+          rightBiome &&
+          rightBiome.code !== biome.code &&
+          isWaterBiome(rightBiome) === isWaterBiome(biome)
+        ) {
           drawBoundaryBlend(
             view.transitions,
             'east',
@@ -1454,7 +1465,11 @@ export async function createGame(
               ? (biomeByCode.get(chunk.biomes[index + chunk.chunkSize]!) ?? biome)
               : null
             : biomeAtCell(chunk.originX + localX, chunk.originY + localY + 1)
-        if (belowBiome && belowBiome.code !== biome.code) {
+        if (
+          belowBiome &&
+          belowBiome.code !== biome.code &&
+          isWaterBiome(belowBiome) === isWaterBiome(biome)
+        ) {
           drawBoundaryBlend(
             view.transitions,
             'south',
@@ -1513,6 +1528,14 @@ export async function createGame(
         }
       }
     }
+
+    drawWaterContours(view.transitions, chunk.chunkSize, cellSize, (localX, localY) => {
+      if (localX >= 0 && localY >= 0 && localX < chunk.chunkSize && localY < chunk.chunkSize) {
+        return biomeByCode.get(chunk.biomes[localY * chunk.chunkSize + localX]!)
+      }
+      return biomeAtCell(chunk.originX + localX, chunk.originY + localY)
+    })
+    app.canvas.dataset.shorelineRenderer = 'smoothed-contours'
 
     for (const river of chunk.rivers) {
       drawRiver(view.rivers, river, chunk.originX, chunk.originY, cellSize, content.world.rivers)
@@ -1650,6 +1673,16 @@ export async function createGame(
         }
         performanceTracker.markChunkGeneration(chunk.generationMs)
         if (!explorerMotion || chunkIntersectsViewport(chunk)) renderChunk(chunk)
+        for (const [neighborX, neighborY] of [
+          [chunkX - 1, chunkY],
+          [chunkX + 1, chunkY],
+          [chunkX, chunkY - 1],
+          [chunkX, chunkY + 1],
+        ] as const) {
+          const neighborKey = chunkKey(neighborX, neighborY)
+          const neighbor = chunks.get(neighborKey)
+          if (neighbor && chunkViews.has(neighborKey)) renderChunk(neighbor)
+        }
         return chunk
       })
       .catch((error) => {

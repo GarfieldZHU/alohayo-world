@@ -53,5 +53,7 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Keep water presentation logic centralized. Coast, lake, and river polish should flow
   through `water-render.ts` or a successor module rather than scattering new drawing
   rules across `streamed.ts`.
+- Shoreline paths consume map-owned mask contours. When a cardinal neighbor arrives,
+  refresh only the loaded seam neighbors so contours agree without rebuilding the world.
 - Keep day/night as a wrapped world-space overlay derived from clock and visible world X
   range. Do not let it collapse into a player-centered light source.
