@@ -220,7 +220,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.height,
       event.data.biomeDefinitions,
       event.data.riverSystem,
-      event.data.roadSystem
+      event.data.roadSystem,
+      event.data.geomorphology
     )
     if (event.data.mapAreas?.length && event.data.terrainCodes) {
       world = applyMapAreas(
@@ -229,7 +230,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         event.data.terrainCodes,
         event.data.biomeDefinitions,
         event.data.riverSystem,
-        event.data.roadSystem
+        event.data.roadSystem,
+        event.data.geomorphology
       )
     }
     workerScope.postMessage(
@@ -245,6 +247,10 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
           world.flowAccumulation.buffer,
           world.watershed.buffer,
           world.depression.buffer,
+          world.erosionPotential.buffer,
+          world.sedimentLoad.buffer,
+          world.deposition.buffer,
+          world.floodplain.buffer,
           world.landmass.buffer,
           world.waterbody.buffer,
           world.authoredArea.buffer,
@@ -269,6 +275,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.biomeDefinitions,
       event.data.riverSystem,
       event.data.roadSystem,
+      event.data.geomorphology,
       baseLayers.layers
     )
     const renderHints = await buildChunkRenderHints(
@@ -309,6 +316,10 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
           chunk.flowAccumulation.buffer,
           chunk.watershed.buffer,
           chunk.depression.buffer,
+          chunk.erosionPotential.buffer,
+          chunk.sedimentLoad.buffer,
+          chunk.deposition.buffer,
+          chunk.floodplain.buffer,
           chunk.renderHints.noise.buffer,
           chunk.renderHints.eastBoundaryMask.buffer,
           chunk.renderHints.southBoundaryMask.buffer,

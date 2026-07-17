@@ -196,9 +196,21 @@ export interface WorldDefinition {
   stream: WorldStreamDefinition
   roads: WorldRoadSystemDefinition
   rivers?: WorldRiverSystemDefinition
+  geomorphology?: WorldGeomorphologyDefinition
   weather?: WorldWeatherDefinition
   dayNight?: WorldDayNightDefinition
   sizePresets?: WorldSizePreset[]
+}
+
+export interface WorldGeomorphologyDefinition {
+  erosionSlopeWeight: number
+  erosionFlowWeight: number
+  depressionRetention: number
+  sedimentTransport: number
+  depositionSlopeMax: number
+  floodplainAccumulationMin: number
+  floodplainSlopeMax: number
+  floodplainRadius: number
 }
 
 export interface WorldStreamDefinition {

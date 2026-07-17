@@ -47,6 +47,8 @@
       accumulation, watersheds, and flow-following river source selection.
 - [ ] Cross-chunk watershed aliases, seam-safe drainage outlets, and continuous river
       graph segments in issue `#38`.
+- [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
+      the drainage graph.
 - [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
       rendering instead of cell-derived edge decoration.
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.

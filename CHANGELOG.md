@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add config-driven erosion, sediment, deposition, and floodplain metadata to generated
+  worlds and streamed chunks.
 - Add a localized local save manager with named slots, recovery feedback, import/export,
   rename, duplicate, load, and delete controls.
 - Add deterministic runtime authored entities, protected overlay regions, and

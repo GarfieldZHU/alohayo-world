@@ -27,6 +27,10 @@ test('loads game resources only after start', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
   await expect(canvas).toHaveAttribute('data-shoreline-renderer', 'smoothed-contours')
   await expect(canvas).toHaveAttribute('data-discovery-fog-renderer', 'adaptive-subcell')
+  await expect(canvas).toHaveAttribute(
+    'data-geomorphology',
+    'erosion-sediment-deposition-floodplain'
+  )
   await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
   expect(gameRequests.length).toBeGreaterThan(0)
   await expect(canvas).toBeVisible()

@@ -81,14 +81,18 @@ hold lakes.
 Reference: USGS watershed and drainage basin overview:
 https://www.usgs.gov/water-science-school/science/watersheds-and-drainage-basins
 
-Planned deterministic pipeline:
+Deterministic pipeline:
 
 1. remove accidental single-cell pits while retaining authored basins;
 2. choose downhill flow direction for every land cell;
 3. accumulate upstream flow;
 4. trace rivers above content-defined thresholds;
 5. group cells by outlet into watersheds;
-6. derive floodplains, deltas, lake inflows/outflows, and wetland candidates.
+6. derive erosion potential, transported sediment, deposition, and floodplain corridors.
+
+The first six steps now produce static typed metadata. Deltas, changing channels,
+seasonal inundation, and wetland reclassification remain later consumers because they
+require seam-safe cross-chunk transport and persistence.
 
 Reference algorithm background: ArcGIS Pro flow direction documentation:
 https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/how-flow-direction-works.htm

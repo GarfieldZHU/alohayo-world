@@ -27,6 +27,32 @@ export interface HydrologyRaster {
   flowAccumulation: Uint32Array
   watershed: Uint32Array
   depression: Uint8Array
+  erosionPotential: Uint8Array
+  sedimentLoad: Uint8Array
+  deposition: Uint8Array
+  floodplain: Uint8Array
+}
+
+export interface GeomorphologyParameters {
+  erosionSlopeWeight: number
+  erosionFlowWeight: number
+  depressionRetention: number
+  sedimentTransport: number
+  depositionSlopeMax: number
+  floodplainAccumulationMin: number
+  floodplainSlopeMax: number
+  floodplainRadius: number
+}
+
+export const DEFAULT_GEOMORPHOLOGY: GeomorphologyParameters = {
+  erosionSlopeWeight: 0.62,
+  erosionFlowWeight: 0.38,
+  depressionRetention: 0.72,
+  sedimentTransport: 0.84,
+  depositionSlopeMax: 0.2,
+  floodplainAccumulationMin: 0.28,
+  floodplainSlopeMax: 0.16,
+  floodplainRadius: 2,
 }
 
 class MinHeap {
@@ -125,8 +151,9 @@ export function buildHydrologyRaster(args: {
   width: number
   height: number
   sample: (x: number, y: number, index: number) => HydrologySample
+  geomorphology?: GeomorphologyParameters
 }): HydrologyRaster {
-  const { width, height, sample } = args
+  const { width, height, sample, geomorphology = DEFAULT_GEOMORPHOLOGY } = args
   const size = width * height
   const rawElevation = new Float32Array(size)
   const filledElevation = new Float32Array(size)
@@ -136,6 +163,10 @@ export function buildHydrologyRaster(args: {
   const flowAccumulation = new Uint32Array(size)
   const watershed = new Uint32Array(size)
   const depression = new Uint8Array(size)
+  const erosionPotential = new Uint8Array(size)
+  const sedimentLoad = new Uint8Array(size)
+  const deposition = new Uint8Array(size)
+  const floodplain = new Uint8Array(size)
   const visited = new Uint8Array(size)
   const heap = new MinHeap()
 
@@ -258,6 +289,56 @@ export function buildHydrologyRaster(args: {
     resolveWatershed(index)
   }
 
+  const accumulationDenominator = Math.log2(Math.max(2, size + 1))
+  const sedimentMass = new Float32Array(size)
+  for (const index of order) {
+    if (water[index]) continue
+    const slopeValue = slope[index]! / 255
+    const flowValue = clamp01(Math.log2(flowAccumulation[index]! + 1) / accumulationDenominator)
+    const retention = (depression[index]! / 255) * geomorphology.depressionRetention
+    const erosion = clamp01(
+      (slopeValue * geomorphology.erosionSlopeWeight +
+        flowValue * geomorphology.erosionFlowWeight) *
+        (1 - retention)
+    )
+    erosionPotential[index] = Math.round(erosion * 255)
+    const available = sedimentMass[index]! + erosion
+    const lowSlope = clamp01(1 - slopeValue / Math.max(0.001, geomorphology.depositionSlopeMax))
+    const deposited =
+      available * clamp01(lowSlope + retention) * (1 - geomorphology.sedimentTransport)
+    const transported = Math.max(0, available - deposited) * geomorphology.sedimentTransport
+    deposition[index] = Math.round(clamp01(deposited) * 255)
+    sedimentLoad[index] = Math.round(clamp01(available) * 255)
+    const direction = flowDirection[index]!
+    const downstream = hydrologyNeighborIndex(index, direction, width, height)
+    if (downstream >= 0 && downstream !== index) {
+      sedimentMass[downstream] = sedimentMass[downstream]! + transported
+    }
+  }
+
+  const floodplainRadius = Math.max(0, Math.floor(geomorphology.floodplainRadius))
+  for (let index = 0; index < size; index += 1) {
+    if (water[index] || slope[index]! / 255 > geomorphology.floodplainSlopeMax) continue
+    const x = index % width
+    const y = Math.floor(index / width)
+    let nearDrainage = false
+    for (let dy = -floodplainRadius; dy <= floodplainRadius && !nearDrainage; dy += 1) {
+      for (let dx = -floodplainRadius; dx <= floodplainRadius; dx += 1) {
+        if (Math.abs(dx) + Math.abs(dy) > floodplainRadius) continue
+        const nextX = x + dx
+        const nextY = y + dy
+        if (nextX < 0 || nextY < 0 || nextX >= width || nextY >= height) continue
+        const neighbor = nextY * width + nextX
+        const flowValue = Math.log2(flowAccumulation[neighbor]! + 1) / accumulationDenominator
+        if (flowValue >= geomorphology.floodplainAccumulationMin) {
+          nearDrainage = true
+          break
+        }
+      }
+    }
+    if (nearDrainage) floodplain[index] = 255
+  }
+
   return {
     width,
     height,
@@ -269,5 +350,9 @@ export function buildHydrologyRaster(args: {
     flowAccumulation,
     watershed,
     depression,
+    erosionPotential,
+    sedimentLoad,
+    deposition,
+    floodplain,
   }
 }

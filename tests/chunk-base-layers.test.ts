@@ -16,7 +16,14 @@ describe('chunk base layers', () => {
     const args = ['alohayo', 2, -4, 16] as const
     const baseLayers = generateChunkBaseLayers(...args)
     const baseline = generateChunk(...args)
-    const fromInjectedLayers = generateChunk(...args, undefined, undefined, undefined, baseLayers)
+    const fromInjectedLayers = generateChunk(
+      ...args,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      baseLayers
+    )
 
     expect(fromInjectedLayers.hash).toBe(baseline.hash)
     expect(fromInjectedLayers.biomes).toEqual(baseline.biomes)

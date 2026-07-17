@@ -125,6 +125,27 @@ if (world.weather) {
     errors.push('invalid world weather settings')
   }
 }
+if (world.geomorphology) {
+  const config = world.geomorphology
+  const normalizedFields = [
+    config.erosionSlopeWeight,
+    config.erosionFlowWeight,
+    config.depressionRetention,
+    config.sedimentTransport,
+    config.depositionSlopeMax,
+    config.floodplainAccumulationMin,
+    config.floodplainSlopeMax,
+  ]
+  if (
+    normalizedFields.some((value) => !Number.isFinite(value) || value < 0 || value > 1) ||
+    config.erosionSlopeWeight + config.erosionFlowWeight <= 0 ||
+    !Number.isInteger(config.floodplainRadius) ||
+    config.floodplainRadius < 0 ||
+    config.floodplainRadius > 8
+  ) {
+    errors.push('invalid world geomorphology settings')
+  }
+}
 if (!Array.isArray(biomes) || biomes.length < 14)
   errors.push('at least fourteen terrain definitions are required')
 if (!Array.isArray(world.sizePresets) || world.sizePresets.length < 1) {

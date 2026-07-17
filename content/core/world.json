@@ -111,6 +111,16 @@
       "smoothingSamples": 4
     }
   },
+  "geomorphology": {
+    "erosionSlopeWeight": 0.62,
+    "erosionFlowWeight": 0.38,
+    "depressionRetention": 0.72,
+    "sedimentTransport": 0.84,
+    "depositionSlopeMax": 0.2,
+    "floodplainAccumulationMin": 0.28,
+    "floodplainSlopeMax": 0.16,
+    "floodplainRadius": 2
+  },
   "weather": {
     "enabled": true,
     "cycleSeconds": 120,

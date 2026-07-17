@@ -119,6 +119,7 @@ export async function createGame(
     options.container.style.position = 'relative'
   }
   app.canvas.dataset.initialPresentation = 'loading'
+  app.canvas.dataset.geomorphology = 'erosion-sediment-deposition-floodplain'
   app.canvas.style.visibility = 'hidden'
   const initialLoading = document.createElement('div')
   initialLoading.dataset.alohayoWorldInitialLoading = 'true'
@@ -1672,6 +1673,7 @@ export async function createGame(
           biomeDefinitions: content.biomes,
           riverSystem: content.world.rivers,
           roadSystem: content.world.roads,
+          geomorphology: content.world.geomorphology,
           wasmBaseUrl: options.assetBaseUrl,
         })
       )

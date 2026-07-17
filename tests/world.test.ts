@@ -147,8 +147,44 @@ describe('world generation', () => {
     expect(world.flowAccumulation.length).toBe(world.biomes.length)
     expect(world.watershed.length).toBe(world.biomes.length)
     expect(world.depression.length).toBe(world.biomes.length)
+    expect(world.erosionPotential.length).toBe(world.biomes.length)
+    expect(world.sedimentLoad.length).toBe(world.biomes.length)
+    expect(world.deposition.length).toBe(world.biomes.length)
+    expect(world.floodplain.length).toBe(world.biomes.length)
     expect(world.flowAccumulation.some((value) => value > 6)).toBe(true)
     expect(world.watershed.some((value) => value > 0)).toBe(true)
+    expect(world.erosionPotential.some((value) => value > 0)).toBe(true)
+    expect(world.sedimentLoad.some((value) => value > 0)).toBe(true)
+    expect(world.deposition.some((value) => value > 0)).toBe(true)
+    expect(world.floodplain.some((value) => value > 0)).toBe(true)
+  })
+
+  it('keeps geomorphology metadata deterministic and config-sensitive', () => {
+    const baseline = generateWorld('geomorphology-config', 96, 72)
+    const repeated = generateWorld('geomorphology-config', 96, 72)
+    const lowTransport = generateWorld(
+      'geomorphology-config',
+      96,
+      72,
+      undefined,
+      undefined,
+      undefined,
+      {
+        erosionSlopeWeight: 0.62,
+        erosionFlowWeight: 0.38,
+        depressionRetention: 0.72,
+        sedimentTransport: 0.2,
+        depositionSlopeMax: 0.2,
+        floodplainAccumulationMin: 0.28,
+        floodplainSlopeMax: 0.16,
+        floodplainRadius: 2,
+      }
+    )
+
+    expect(baseline.hash).toBe(repeated.hash)
+    expect(Array.from(baseline.sedimentLoad)).toEqual(Array.from(repeated.sedimentLoad))
+    expect(lowTransport.hash).not.toBe(baseline.hash)
+    expect(Array.from(lowTransport.deposition)).not.toEqual(Array.from(baseline.deposition))
   })
 
   it('keeps river mouths and drainage moving toward equal or lower terrain', () => {

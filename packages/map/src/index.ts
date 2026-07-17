@@ -2,6 +2,7 @@ import type {
   BiomeDefinition,
   MapAreaDefinition,
   MapLandmarkDefinition,
+  WorldGeomorphologyDefinition,
   WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
 } from '@alohayo/config'
@@ -89,6 +90,10 @@ export interface GeneratedWorld {
   flowAccumulation: Uint32Array
   watershed: Uint32Array
   depression: Uint8Array
+  erosionPotential: Uint8Array
+  sedimentLoad: Uint8Array
+  deposition: Uint8Array
+  floodplain: Uint8Array
   landmass: Uint16Array
   waterbody: Uint16Array
   authoredArea: Uint16Array
@@ -121,6 +126,10 @@ export interface GeneratedChunk {
   flowAccumulation: Uint32Array
   watershed: Uint32Array
   depression: Uint8Array
+  erosionPotential: Uint8Array
+  sedimentLoad: Uint8Array
+  deposition: Uint8Array
+  floodplain: Uint8Array
   renderHints: ChunkRenderHints
   topology: ChunkTopologySummary
   authoredArea: Uint16Array
@@ -206,6 +215,7 @@ export interface GenerateWorldRequest {
   biomeDefinitions?: BiomeDefinition[]
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
+  geomorphology?: WorldGeomorphologyDefinition
 }
 
 export interface GenerateChunkRequest {
@@ -222,6 +232,7 @@ export interface GenerateChunkRequest {
   biomeDefinitions?: BiomeDefinition[]
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
+  geomorphology?: WorldGeomorphologyDefinition
   wasmBaseUrl?: string
   capabilities?: WorldWorkerCapabilities
 }
@@ -1003,7 +1014,8 @@ function buildHydrologyFromElevationAndWater(
   elevation: Uint8Array,
   width: number,
   height: number,
-  isWater: (index: number) => boolean
+  isWater: (index: number) => boolean,
+  geomorphology?: WorldGeomorphologyDefinition
 ): HydrologyRaster {
   return buildHydrologyRaster({
     width,
@@ -1012,6 +1024,7 @@ function buildHydrologyFromElevationAndWater(
       elevationValue: elevation[index]! / 255,
       water: isWater(index),
     }),
+    geomorphology,
   })
 }
 
@@ -1037,6 +1050,10 @@ function assignHydrologyToWorld(world: GeneratedWorld, hydrology: HydrologyRaste
   world.flowAccumulation = hydrology.flowAccumulation
   world.watershed = hydrology.watershed
   world.depression = hydrology.depression
+  world.erosionPotential = hydrology.erosionPotential
+  world.sedimentLoad = hydrology.sedimentLoad
+  world.deposition = hydrology.deposition
+  world.floodplain = hydrology.floodplain
   return world
 }
 
@@ -1046,6 +1063,10 @@ function assignHydrologyToChunk(chunk: GeneratedChunk, hydrology: HydrologyRaste
   chunk.flowAccumulation = hydrology.flowAccumulation
   chunk.watershed = hydrology.watershed
   chunk.depression = hydrology.depression
+  chunk.erosionPotential = hydrology.erosionPotential
+  chunk.sedimentLoad = hydrology.sedimentLoad
+  chunk.deposition = hydrology.deposition
+  chunk.floodplain = hydrology.floodplain
   return chunk
 }
 
@@ -1996,7 +2017,8 @@ export function applyMapAreas(
   terrainCodes: Record<string, number>,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  geomorphology?: WorldGeomorphologyDefinition
 ): GeneratedWorld {
   const authoredArea = new Uint16Array(world.biomes.length)
   const areaIds = ['']
@@ -2090,7 +2112,8 @@ export function applyMapAreas(
     world.elevation,
     world.width,
     world.height,
-    (index) => isWaterBiome(world.biomes[index]!)
+    (index) => isWaterBiome(world.biomes[index]!),
+    geomorphology
   )
   world.landmass = topology.landmass
   world.waterbody = topology.waterbody
@@ -2113,6 +2136,10 @@ export function applyMapAreas(
       world.biomes[index]! +
       world.elevation[index]! +
       world.slope[index]! +
+      world.erosionPotential[index]! +
+      world.sedimentLoad[index]! +
+      world.deposition[index]! +
+      world.floodplain[index]! +
       world.landmass[index]! +
       world.waterbody[index]! +
       world.authoredArea[index]!
@@ -2131,7 +2158,8 @@ function applyAreasToChunk(
   surveyHeight: number,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  geomorphology?: WorldGeomorphologyDefinition
 ): GeneratedChunk {
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
@@ -2275,7 +2303,8 @@ function applyAreasToChunk(
       chunk.elevation,
       chunk.chunkSize,
       chunk.chunkSize,
-      (index) => isWaterBiome(chunk.biomes[index]!)
+      (index) => isWaterBiome(chunk.biomes[index]!),
+      geomorphology
     )
   )
   chunk.settlements = []
@@ -2291,6 +2320,10 @@ function applyAreasToChunk(
       chunk.moisture[index]! +
       chunk.temperature[index]! +
       chunk.slope[index]! +
+      chunk.erosionPotential[index]! +
+      chunk.sedimentLoad[index]! +
+      chunk.deposition[index]! +
+      chunk.floodplain[index]! +
       chunk.authoredArea[index]! +
       chunk.region[index]!
     chunkHash = Math.imul(chunkHash, 16777619)
@@ -2327,7 +2360,8 @@ export function generateWorld(
   height: number,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  geomorphology?: WorldGeomorphologyDefinition
 ): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -2363,8 +2397,12 @@ export function generateWorld(
   }
 
   const topology = classifyTopology(elevation, width, height, seaLevel)
-  const hydrology = buildHydrologyFromElevationAndWater(elevation, width, height, (index) =>
-    Boolean(topology.waterbody[index])
+  const hydrology = buildHydrologyFromElevationAndWater(
+    elevation,
+    width,
+    height,
+    (index) => Boolean(topology.waterbody[index]),
+    geomorphology
   )
   let worldHash = 2166136261
 
@@ -2396,7 +2434,15 @@ export function generateWorld(
     })
 
     biomes[index] = biome
-    worldHash ^= biome + elevation[index]! + topology.landmass[index]! + topology.waterbody[index]!
+    worldHash ^=
+      biome +
+      elevation[index]! +
+      topology.landmass[index]! +
+      topology.waterbody[index]! +
+      hydrology.erosionPotential[index]! +
+      hydrology.sedimentLoad[index]! +
+      hydrology.deposition[index]! +
+      hydrology.floodplain[index]!
     worldHash = Math.imul(worldHash, 16777619)
   }
 
@@ -2415,6 +2461,10 @@ export function generateWorld(
     flowAccumulation: hydrology.flowAccumulation,
     watershed: hydrology.watershed,
     depression: hydrology.depression,
+    erosionPotential: hydrology.erosionPotential,
+    sedimentLoad: hydrology.sedimentLoad,
+    deposition: hydrology.deposition,
+    floodplain: hydrology.floodplain,
     landmass: topology.landmass,
     waterbody: topology.waterbody,
     authoredArea: new Uint16Array(size),
@@ -2439,6 +2489,7 @@ export function generateChunk(
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
+  geomorphology?: WorldGeomorphologyDefinition,
   baseLayers?: ChunkBaseLayers
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
@@ -2455,8 +2506,12 @@ export function generateChunk(
   let chunkHash = 2166136261
 
   const topology = classifyTopology(elevation, chunkSize, chunkSize, seaLevel)
-  const hydrology = buildHydrologyFromElevationAndWater(elevation, chunkSize, chunkSize, (index) =>
-    Boolean(topology.waterbody[index])
+  const hydrology = buildHydrologyFromElevationAndWater(
+    elevation,
+    chunkSize,
+    chunkSize,
+    (index) => Boolean(topology.waterbody[index]),
+    geomorphology
   )
   for (let localY = 0; localY < chunkSize; localY += 1) {
     for (let localX = 0; localX < chunkSize; localX += 1) {
@@ -2487,7 +2542,15 @@ export function generateChunk(
         oasisChance: valueNoise(globalX - 150, globalY + 180, 24, seed + 8039),
       })
       biomes[index] = biome
-      chunkHash ^= biome + elevation[index]! + moisture[index]! + temperature[index]!
+      chunkHash ^=
+        biome +
+        elevation[index]! +
+        moisture[index]! +
+        temperature[index]! +
+        hydrology.erosionPotential[index]! +
+        hydrology.sedimentLoad[index]! +
+        hydrology.deposition[index]! +
+        hydrology.floodplain[index]!
       chunkHash = Math.imul(chunkHash, 16777619)
     }
   }
@@ -2510,6 +2573,10 @@ export function generateChunk(
     flowAccumulation: hydrology.flowAccumulation,
     watershed: hydrology.watershed,
     depression: hydrology.depression,
+    erosionPotential: hydrology.erosionPotential,
+    sedimentLoad: hydrology.sedimentLoad,
+    deposition: hydrology.deposition,
+    floodplain: hydrology.floodplain,
     renderHints: generateChunkRenderHints({
       biomes,
       elevation,
@@ -2549,6 +2616,7 @@ export function generateChunkWithAreas(
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
+  geomorphology?: WorldGeomorphologyDefinition,
   baseLayers?: ChunkBaseLayers
 ): GeneratedChunk {
   const chunk = generateChunk(
@@ -2559,6 +2627,7 @@ export function generateChunkWithAreas(
     biomeDefinitions,
     riverSystem,
     roadSystem,
+    geomorphology,
     baseLayers
   )
   return applyAreasToChunk(
@@ -2569,6 +2638,7 @@ export function generateChunkWithAreas(
     surveyHeight,
     biomeDefinitions,
     riverSystem,
-    roadSystem
+    roadSystem,
+    geomorphology
   )
 }
