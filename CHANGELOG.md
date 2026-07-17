@@ -7,6 +7,8 @@
 - Promote the pure hydrology raster to Rust/Wasm with byte-identical drainage fields,
   unchanged chunk hashes, explicit fallback, and measured worker acceleration.
 - Split regional weather simulation into explicit state/persistence and consumer stages.
+- Split transport structures/traversal from settlement traffic, maintenance, mounts, and
+  vehicles so both stages share one deterministic movement contract.
 
 ## Unreleased
 

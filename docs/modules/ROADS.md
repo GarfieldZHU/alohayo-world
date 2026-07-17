@@ -36,5 +36,13 @@ passes or major routes.
 - city-street interiors and paving quality;
 - vehicles and mounts consuming the same road-profile queries.
 
-These infrastructure and simulation extensions continue together in issue `#32`; they
-build on the completed tier and condition contract rather than replacing it.
+The broad `#32` tracker is decomposed into two independently testable stages:
+
+- `#47` owns deterministic bridges, causeways, ferries, switchbacks, streamed structure
+  data, and the shared traversal constraints used by walking, swimming, flying, mounts,
+  and vehicles.
+- `#48` consumes that stable structure/traversal API for settlement demand, route choice,
+  congestion, maintenance, supply, mounts, vehicles, and terrain-specific paving assets.
+
+Implement `#47` first. Traffic must consume the same traversal query as player and NPC
+movement; it must not infer passability from rendered road color or PixiJS geometry.
