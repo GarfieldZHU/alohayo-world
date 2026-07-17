@@ -24,6 +24,286 @@ pub struct ChunkBaseLayers {
     pub temperature: Vec<u8>,
 }
 
+const HYDROLOGY_DIRECTIONS: [(i32, i32); 8] = [
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, 1),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
+];
+const OPPOSITE_HYDROLOGY_DIRECTION: [i8; 8] = [1, 0, 3, 2, 7, 6, 5, 4];
+
+#[derive(Clone, Copy)]
+struct HeapEntry {
+    index: usize,
+    priority: f32,
+}
+
+#[derive(Default)]
+struct MinHeap {
+    entries: Vec<HeapEntry>,
+}
+
+impl MinHeap {
+    fn push(&mut self, index: usize, priority: f32) {
+        let mut cursor = self.entries.len();
+        self.entries.push(HeapEntry { index, priority });
+        while cursor > 0 {
+            let parent = (cursor - 1) / 2;
+            let parent_entry = self.entries[parent];
+            if parent_entry.priority < priority
+                || (parent_entry.priority == priority && parent_entry.index <= index)
+            {
+                break;
+            }
+            self.entries[cursor] = parent_entry;
+            cursor = parent;
+        }
+        self.entries[cursor] = HeapEntry { index, priority };
+    }
+
+    fn pop(&mut self) -> Option<HeapEntry> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        let first = self.entries[0];
+        let last = self.entries.pop().expect("heap contains an entry");
+        if !self.entries.is_empty() {
+            let mut cursor = 0;
+            loop {
+                let left = cursor * 2 + 1;
+                let right = left + 1;
+                if left >= self.entries.len() {
+                    break;
+                }
+                let mut child = left;
+                if right < self.entries.len() {
+                    let left_entry = self.entries[left];
+                    let right_entry = self.entries[right];
+                    if right_entry.priority < left_entry.priority
+                        || (right_entry.priority == left_entry.priority
+                            && right_entry.index < left_entry.index)
+                    {
+                        child = right;
+                    }
+                }
+                let child_entry = self.entries[child];
+                if child_entry.priority > last.priority
+                    || (child_entry.priority == last.priority && child_entry.index >= last.index)
+                {
+                    break;
+                }
+                self.entries[cursor] = child_entry;
+                cursor = child;
+            }
+            self.entries[cursor] = last;
+        }
+        Some(first)
+    }
+}
+
+#[wasm_bindgen(getter_with_clone)]
+pub struct HydrologyCoreRaster {
+    pub width: u32,
+    pub height: u32,
+    pub raw_elevation: Vec<f32>,
+    pub filled_elevation: Vec<f32>,
+    pub water: Vec<u8>,
+    pub slope: Vec<u8>,
+    pub flow_direction: Vec<i8>,
+    pub flow_accumulation: Vec<u32>,
+    pub watershed: Vec<u32>,
+    pub depression: Vec<u8>,
+}
+
+fn hydrology_neighbor_index(
+    index: usize,
+    direction: i8,
+    width: usize,
+    height: usize,
+) -> Option<usize> {
+    let &(dx, dy) = HYDROLOGY_DIRECTIONS.get(direction as usize)?;
+    let x = index % width;
+    let y = index / width;
+    let next_x = x as i32 + dx;
+    let next_y = y as i32 + dy;
+    if next_x < 0 || next_y < 0 || next_x >= width as i32 || next_y >= height as i32 {
+        return None;
+    }
+    Some(next_y as usize * width + next_x as usize)
+}
+
+#[wasm_bindgen]
+pub fn build_hydrology_raster(
+    raw_elevation: &[f32],
+    water: &[u8],
+    width: usize,
+    height: usize,
+) -> HydrologyCoreRaster {
+    let size = width
+        .checked_mul(height)
+        .expect("hydrology raster dimensions overflow");
+    assert!(width > 0 && height > 0, "hydrology raster cannot be empty");
+    assert_eq!(raw_elevation.len(), size, "elevation length mismatch");
+    assert_eq!(water.len(), size, "water length mismatch");
+
+    let raw_elevation = raw_elevation.to_vec();
+    let mut filled_elevation = raw_elevation.clone();
+    let water: Vec<u8> = water.iter().map(|value| u8::from(*value != 0)).collect();
+    let mut slope = vec![0_u8; size];
+    let mut flow_direction = vec![-1_i8; size];
+    let mut flow_accumulation = vec![0_u32; size];
+    let mut watershed = vec![0_u32; size];
+    let mut depression = vec![0_u8; size];
+    let mut visited = vec![0_u8; size];
+    let mut heap = MinHeap::default();
+
+    let seed_cell = |index: usize, visited: &mut [u8], heap: &mut MinHeap| {
+        if visited[index] != 0 {
+            return;
+        }
+        visited[index] = 1;
+        heap.push(index, raw_elevation[index]);
+    };
+
+    for x in 0..width {
+        seed_cell(x, &mut visited, &mut heap);
+        seed_cell((height - 1) * width + x, &mut visited, &mut heap);
+    }
+    for y in 0..height {
+        seed_cell(y * width, &mut visited, &mut heap);
+        seed_cell(y * width + width - 1, &mut visited, &mut heap);
+    }
+    for (index, value) in water.iter().enumerate() {
+        if *value != 0 {
+            seed_cell(index, &mut visited, &mut heap);
+        }
+    }
+
+    while let Some(next) = heap.pop() {
+        if next.priority > filled_elevation[next.index] {
+            continue;
+        }
+        let x = next.index % width;
+        let y = next.index / width;
+        for (direction, (dx, dy)) in HYDROLOGY_DIRECTIONS.iter().enumerate() {
+            let next_x = x as i32 + dx;
+            let next_y = y as i32 + dy;
+            if next_x < 0 || next_y < 0 || next_x >= width as i32 || next_y >= height as i32 {
+                continue;
+            }
+            let neighbor = next_y as usize * width + next_x as usize;
+            if visited[neighbor] != 0 {
+                continue;
+            }
+            visited[neighbor] = 1;
+            let spill = raw_elevation[neighbor].max(next.priority);
+            filled_elevation[neighbor] = spill;
+            flow_direction[neighbor] = OPPOSITE_HYDROLOGY_DIRECTION[direction];
+            heap.push(neighbor, spill);
+        }
+    }
+
+    for index in 0..size {
+        let direction = flow_direction[index];
+        if direction < 0 {
+            continue;
+        }
+        let Some(downstream) = hydrology_neighbor_index(index, direction, width, height) else {
+            flow_direction[index] = -1;
+            continue;
+        };
+        let structural_drop =
+            (filled_elevation[index] as f64 - filled_elevation[downstream] as f64).max(0.0);
+        let raw_drop = (raw_elevation[index] as f64 - raw_elevation[downstream] as f64).max(0.0);
+        slope[index] =
+            ((structural_drop.max(raw_drop) * 10.0).clamp(0.0, 1.0) * 255.0).round() as u8;
+        depression[index] =
+            (((filled_elevation[index] as f64 - raw_elevation[index] as f64).max(0.0) * 12.0)
+                .clamp(0.0, 1.0)
+                * 255.0)
+                .round() as u8;
+    }
+
+    let mut order: Vec<usize> = (0..size).collect();
+    order.sort_unstable_by(|left, right| {
+        let filled_order = if filled_elevation[*left] > filled_elevation[*right] {
+            std::cmp::Ordering::Less
+        } else if filled_elevation[*left] < filled_elevation[*right] {
+            std::cmp::Ordering::Greater
+        } else {
+            std::cmp::Ordering::Equal
+        };
+        let raw_order = if raw_elevation[*left] > raw_elevation[*right] {
+            std::cmp::Ordering::Less
+        } else if raw_elevation[*left] < raw_elevation[*right] {
+            std::cmp::Ordering::Greater
+        } else {
+            std::cmp::Ordering::Equal
+        };
+        filled_order.then(raw_order).then_with(|| right.cmp(left))
+    });
+
+    for index in 0..size {
+        flow_accumulation[index] = u32::from(water[index] == 0);
+    }
+    for &index in &order {
+        let direction = flow_direction[index];
+        if direction < 0 {
+            continue;
+        }
+        let Some(downstream) = hydrology_neighbor_index(index, direction, width, height) else {
+            continue;
+        };
+        if downstream != index {
+            flow_accumulation[downstream] =
+                flow_accumulation[downstream].wrapping_add(flow_accumulation[index]);
+        }
+    }
+
+    for start in 0..size {
+        if watershed[start] != 0 {
+            continue;
+        }
+        let mut trail = Vec::new();
+        let mut current = start;
+        let outlet_id = loop {
+            let known = watershed[current];
+            if known != 0 {
+                break known;
+            }
+            trail.push(current);
+            let direction = flow_direction[current];
+            if direction < 0 {
+                break current as u32 + 1;
+            }
+            match hydrology_neighbor_index(current, direction, width, height) {
+                Some(downstream) if downstream != current => current = downstream,
+                _ => break current as u32 + 1,
+            }
+        };
+        for index in trail {
+            watershed[index] = outlet_id;
+        }
+    }
+
+    HydrologyCoreRaster {
+        width: width as u32,
+        height: height as u32,
+        raw_elevation,
+        filled_elevation,
+        water,
+        slope,
+        flow_direction,
+        flow_accumulation,
+        watershed,
+        depression,
+    }
+}
+
 #[wasm_bindgen]
 pub fn hash_seed(seed: &str) -> u32 {
     seed.bytes().fold(2_166_136_261_u32, |hash, value| {
@@ -296,5 +576,64 @@ mod tests {
         assert_eq!(first.moisture, second.moisture);
         assert_eq!(first.temperature, second.temperature);
         assert_eq!(first.elevation.len(), 256);
+    }
+
+    #[test]
+    fn hydrology_fills_a_basin_with_typescript_tie_order() {
+        let raw_elevation = vec![5.0, 5.0, 5.0, 5.0, 1.0, 5.0, 5.0, 5.0, 5.0];
+        let raster = build_hydrology_raster(&raw_elevation, &[0; 9], 3, 3);
+
+        assert_eq!(raster.width, 3);
+        assert_eq!(raster.height, 3);
+        assert_eq!(raster.raw_elevation, raw_elevation);
+        assert_eq!(raster.filled_elevation, vec![5.0; 9]);
+        assert_eq!(
+            raster.flow_direction,
+            vec![-1, -1, -1, -1, 7, -1, -1, -1, -1]
+        );
+        assert_eq!(raster.flow_accumulation, vec![2, 1, 1, 1, 1, 1, 1, 1, 1]);
+        assert_eq!(raster.watershed, vec![1, 2, 3, 4, 1, 6, 7, 8, 9]);
+        assert_eq!(raster.slope, vec![0; 9]);
+        assert_eq!(raster.depression, vec![0, 0, 0, 0, 255, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn hydrology_treats_water_as_an_outlet_without_initial_accumulation() {
+        let raw_elevation = vec![8.0, 8.0, 8.0, 8.0, 0.0, 8.0, 8.0, 8.0, 8.0];
+        let raster = build_hydrology_raster(&raw_elevation, &[0, 0, 0, 0, 7, 0, 0, 0, 0], 3, 3);
+
+        assert_eq!(raster.water, vec![0, 0, 0, 0, 1, 0, 0, 0, 0]);
+        assert_eq!(raster.filled_elevation, raw_elevation);
+        assert_eq!(raster.flow_direction, vec![-1; 9]);
+        assert_eq!(raster.flow_accumulation, vec![1, 1, 1, 1, 0, 1, 1, 1, 1]);
+        assert_eq!(raster.watershed[4], 5);
+    }
+
+    #[test]
+    fn hydrology_uses_raw_drop_for_slope_and_preserves_d8_direction_order() {
+        let raw_elevation = vec![0.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0];
+        let raster = build_hydrology_raster(&raw_elevation, &[1, 0, 0, 0, 0, 0, 0, 0, 0], 3, 3);
+
+        assert_eq!(raster.flow_direction[4], 7);
+        assert_eq!(raster.slope[4], 255);
+        assert_eq!(raster.depression[4], 0);
+        assert_eq!(raster.watershed[4], 1);
+    }
+
+    #[test]
+    fn hydrology_is_deterministic_for_rectangular_rasters() {
+        let raw_elevation: Vec<f32> = (0..24)
+            .map(|index| ((index * 17 + 3) % 19) as f32 / 19.0)
+            .collect();
+        let water: Vec<u8> = (0..24).map(|index| u8::from(index % 7 == 0)).collect();
+        let first = build_hydrology_raster(&raw_elevation, &water, 6, 4);
+        let second = build_hydrology_raster(&raw_elevation, &water, 6, 4);
+
+        assert_eq!(first.filled_elevation, second.filled_elevation);
+        assert_eq!(first.slope, second.slope);
+        assert_eq!(first.flow_direction, second.flow_direction);
+        assert_eq!(first.flow_accumulation, second.flow_accumulation);
+        assert_eq!(first.watershed, second.watershed);
+        assert_eq!(first.depression, second.depression);
     }
 }

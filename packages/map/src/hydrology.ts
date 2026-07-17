@@ -33,6 +33,26 @@ export interface HydrologyRaster {
   floodplain: Uint8Array
 }
 
+export interface HydrologyCoreRaster {
+  width: number
+  height: number
+  rawElevation: Float32Array
+  filledElevation: Float32Array
+  water: Uint8Array
+  slope: Uint8Array
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+  watershed: Uint32Array
+  depression: Uint8Array
+}
+
+export type HydrologyCoreBuilder = (input: {
+  width: number
+  height: number
+  rawElevation: Float32Array
+  water: Uint8Array
+}) => HydrologyCoreRaster
+
 export interface GeomorphologyParameters {
   erosionSlopeWeight: number
   erosionFlowWeight: number
@@ -147,39 +167,26 @@ export function hydrologyNeighborIndex(
   return nextY * width + nextX
 }
 
-export function buildHydrologyRaster(args: {
-  width: number
-  height: number
-  sample: (x: number, y: number, index: number) => HydrologySample
-  geomorphology?: GeomorphologyParameters
-}): HydrologyRaster {
-  const { width, height, sample, geomorphology = DEFAULT_GEOMORPHOLOGY } = args
+export const buildHydrologyCoreRaster: HydrologyCoreBuilder = ({
+  width,
+  height,
+  rawElevation,
+  water,
+}) => {
   const size = width * height
-  const rawElevation = new Float32Array(size)
-  const filledElevation = new Float32Array(size)
-  const water = new Uint8Array(size)
+  if (rawElevation.length !== size || water.length !== size) {
+    throw new RangeError('hydrology core inputs must match width * height')
+  }
+  const filledElevation = rawElevation.slice()
   const slope = new Uint8Array(size)
   const flowDirection = new Int8Array(size)
   const flowAccumulation = new Uint32Array(size)
   const watershed = new Uint32Array(size)
   const depression = new Uint8Array(size)
-  const erosionPotential = new Uint8Array(size)
-  const sedimentLoad = new Uint8Array(size)
-  const deposition = new Uint8Array(size)
-  const floodplain = new Uint8Array(size)
   const visited = new Uint8Array(size)
   const heap = new MinHeap()
 
   flowDirection.fill(-1)
-
-  for (let index = 0; index < size; index += 1) {
-    const x = index % width
-    const y = Math.floor(index / width)
-    const sampled = sample(x, y, index)
-    rawElevation[index] = sampled.elevationValue
-    filledElevation[index] = sampled.elevationValue
-    water[index] = sampled.water ? 1 : 0
-  }
 
   const seedCell = (index: number) => {
     if (visited[index]) return
@@ -285,9 +292,62 @@ export function buildHydrologyRaster(args: {
     }
   }
 
-  for (let index = 0; index < size; index += 1) {
-    resolveWatershed(index)
+  for (let index = 0; index < size; index += 1) resolveWatershed(index)
+
+  return {
+    width,
+    height,
+    rawElevation,
+    filledElevation,
+    water,
+    slope,
+    flowDirection,
+    flowAccumulation,
+    watershed,
+    depression,
   }
+}
+
+export function buildHydrologyRaster(args: {
+  width: number
+  height: number
+  sample: (x: number, y: number, index: number) => HydrologySample
+  geomorphology?: GeomorphologyParameters
+  coreBuilder?: HydrologyCoreBuilder
+}): HydrologyRaster {
+  const {
+    width,
+    height,
+    sample,
+    geomorphology = DEFAULT_GEOMORPHOLOGY,
+    coreBuilder = buildHydrologyCoreRaster,
+  } = args
+  const size = width * height
+  const rawElevation = new Float32Array(size)
+  const water = new Uint8Array(size)
+  const erosionPotential = new Uint8Array(size)
+  const sedimentLoad = new Uint8Array(size)
+  const deposition = new Uint8Array(size)
+  const floodplain = new Uint8Array(size)
+
+  for (let index = 0; index < size; index += 1) {
+    const x = index % width
+    const y = Math.floor(index / width)
+    const sampled = sample(x, y, index)
+    rawElevation[index] = sampled.elevationValue
+    water[index] = sampled.water ? 1 : 0
+  }
+  const core = coreBuilder({ width, height, rawElevation, water })
+  const { filledElevation, slope, flowDirection, flowAccumulation, watershed, depression } = core
+
+  const order = Array.from({ length: size }, (_, index) => index)
+  order.sort((left, right) => {
+    const filledDelta = filledElevation[right]! - filledElevation[left]!
+    if (filledDelta !== 0) return filledDelta
+    const rawDelta = rawElevation[right]! - rawElevation[left]!
+    if (rawDelta !== 0) return rawDelta
+    return right - left
+  })
 
   const accumulationDenominator = Math.log2(Math.max(2, size + 1))
   const sedimentMass = new Float32Array(size)

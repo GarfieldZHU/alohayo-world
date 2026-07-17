@@ -31,9 +31,12 @@ This package owns deterministic geography and worker-safe data.
   structured request-scoped errors instead of leaving callers pending.
 - The first stable Wasm production path is `ChunkBaseLayers`: elevation, moisture, and
   temperature from one coarse worker call. Preserve typed-array transfer semantics and
-  keep TypeScript topology, hydrology, biome classification, overlays, and fallback as
+  keep TypeScript topology, geomorphology, biome classification, overlays, and fallback as
   the reference fallback. Issue `#35` passed the 16/64/128 parity, benchmark, transfer,
   startup, and browser gates; do not expand the default batch list without repeating them.
+- `HydrologyCoreRaster` is stable in Wasm after issue `#34`. Rust owns only priority
+  flood, slope, D8 direction, accumulation, watershed, and depression buffers. Keep water
+  masks, geomorphology, terrain rules, rivers, roads, overlays, and rendering in TypeScript.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.

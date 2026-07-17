@@ -9,7 +9,12 @@ import type {
   WorldWorkerWasmBatch,
 } from '@alohayo/config'
 export type { WorldWorkerCapabilities, WorldWorkerWasmBatch } from '@alohayo/config'
-import { buildHydrologyRaster, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
+import {
+  buildHydrologyRaster,
+  hydrologyNeighborIndex,
+  type HydrologyCoreBuilder,
+  type HydrologyRaster,
+} from './hydrology'
 import {
   modifierStrengthAt,
   overlayBlockedAt,
@@ -242,7 +247,11 @@ export interface GenerateChunkRequest {
 
 export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   protocolVersion: 1,
-  wasm: { abiVersion: 1, enabled: true, batches: ['chunk-base-layers'] },
+  wasm: {
+    abiVersion: 1,
+    enabled: true,
+    batches: ['chunk-base-layers', 'hydrology-raster'],
+  },
 }
 
 export interface WorldWorkerDiagnostics {
@@ -1010,7 +1019,8 @@ function buildHydrologyFromElevationAndWater(
   width: number,
   height: number,
   isWater: (index: number) => boolean,
-  geomorphology?: WorldGeomorphologyDefinition
+  geomorphology?: WorldGeomorphologyDefinition,
+  coreBuilder?: HydrologyCoreBuilder
 ): HydrologyRaster {
   return buildHydrologyRaster({
     width,
@@ -1020,6 +1030,7 @@ function buildHydrologyFromElevationAndWater(
       water: isWater(index),
     }),
     geomorphology,
+    coreBuilder,
   })
 }
 
@@ -2154,7 +2165,8 @@ function applyAreasToChunk(
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
-  geomorphology?: WorldGeomorphologyDefinition
+  geomorphology?: WorldGeomorphologyDefinition,
+  hydrologyCoreBuilder?: HydrologyCoreBuilder
 ): GeneratedChunk {
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
@@ -2299,7 +2311,8 @@ function applyAreasToChunk(
       chunk.chunkSize,
       chunk.chunkSize,
       (index) => isWaterBiome(chunk.biomes[index]!),
-      geomorphology
+      geomorphology,
+      hydrologyCoreBuilder
     )
   )
   chunk.settlements = []
@@ -2485,7 +2498,8 @@ export function generateChunk(
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
   geomorphology?: WorldGeomorphologyDefinition,
-  baseLayers?: ChunkBaseLayers
+  baseLayers?: ChunkBaseLayers,
+  hydrologyCoreBuilder?: HydrologyCoreBuilder
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -2506,7 +2520,8 @@ export function generateChunk(
     chunkSize,
     chunkSize,
     (index) => Boolean(topology.waterbody[index]),
-    geomorphology
+    geomorphology,
+    hydrologyCoreBuilder
   )
   for (let localY = 0; localY < chunkSize; localY += 1) {
     for (let localX = 0; localX < chunkSize; localX += 1) {
@@ -2612,7 +2627,8 @@ export function generateChunkWithAreas(
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
   geomorphology?: WorldGeomorphologyDefinition,
-  baseLayers?: ChunkBaseLayers
+  baseLayers?: ChunkBaseLayers,
+  hydrologyCoreBuilder?: HydrologyCoreBuilder
 ): GeneratedChunk {
   const chunk = generateChunk(
     seedText,
@@ -2623,7 +2639,8 @@ export function generateChunkWithAreas(
     riverSystem,
     roadSystem,
     geomorphology,
-    baseLayers
+    baseLayers,
+    hydrologyCoreBuilder
   )
   return applyAreasToChunk(
     chunk,
@@ -2634,6 +2651,7 @@ export function generateChunkWithAreas(
     biomeDefinitions,
     riverSystem,
     roadSystem,
-    geomorphology
+    geomorphology,
+    hydrologyCoreBuilder
   )
 }

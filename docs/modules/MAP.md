@@ -21,10 +21,15 @@ persistence boundaries.
 Unbounded chunk coordinates with streamed terrain, chunk-local sea/lake/mainland/island
 labels, discovery-ready authored overlays, and worker-applied landmark configs.
 
+The pure hydrology raster is a promoted Rust/Wasm worker batch: priority flood, slope,
+D8 direction, accumulation, watershed IDs, and depression depth. TypeScript remains the
+reference fallback and owns water masks, geomorphology policy, terrain classification,
+rivers, roads, overlays, and rendering.
+
 ## Next Slice
 
-Global topology continuity, real slope, drainage, rivers, watersheds, persisted
-discovery, minimap LOD, benchmark budgets, shared shape hints consumed by the water
+Global topology continuity, cross-chunk drainage and rivers, persisted discovery,
+minimap LOD, benchmark budgets, shared shape hints consumed by the water
 module, and a resolved content-pack overlay stream with dependency-safe provenance.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages

@@ -11,6 +11,11 @@ import {
   type WorldWorkerResponse,
 } from './index'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
+import {
+  buildHydrologyCoreRaster,
+  type HydrologyCoreBuilder,
+  type HydrologyCoreRaster,
+} from './hydrology'
 
 const workerScope = self as unknown as {
   onmessage: ((event: MessageEvent<WorldWorkerRequest>) => void) | null
@@ -38,6 +43,17 @@ type WasmWorldCoreModule = {
     originX: number,
     originY: number
   ) => ChunkRenderHints
+  build_hydrology_raster?: (
+    rawElevation: Float32Array,
+    water: Uint8Array,
+    width: number,
+    height: number
+  ) => HydrologyCoreRaster & {
+    raw_elevation?: Float32Array
+    filled_elevation?: Float32Array
+    flow_direction?: Int8Array
+    flow_accumulation?: Uint32Array
+  }
 }
 
 let wasmRenderHintsBaseUrl: string | null = null
@@ -111,6 +127,100 @@ function validBaseLayers(layers: WasmChunkBaseLayers, size: number): layers is C
     layers.moisture.length === size &&
     layers.temperature.length === size
   )
+}
+
+function normalizeHydrologyCore(
+  result: ReturnType<NonNullable<WasmWorldCoreModule['build_hydrology_raster']>>,
+  input: Parameters<HydrologyCoreBuilder>[0]
+): HydrologyCoreRaster | null {
+  const core = {
+    width: input.width,
+    height: input.height,
+    rawElevation: result.rawElevation ?? result.raw_elevation ?? input.rawElevation,
+    filledElevation: result.filledElevation ?? result.filled_elevation,
+    water: result.water ?? input.water,
+    slope: result.slope,
+    flowDirection: result.flowDirection ?? result.flow_direction,
+    flowAccumulation: result.flowAccumulation ?? result.flow_accumulation,
+    watershed: result.watershed,
+    depression: result.depression,
+  }
+  const size = input.width * input.height
+  return core.rawElevation instanceof Float32Array &&
+    core.filledElevation instanceof Float32Array &&
+    core.water instanceof Uint8Array &&
+    core.slope instanceof Uint8Array &&
+    core.flowDirection instanceof Int8Array &&
+    core.flowAccumulation instanceof Uint32Array &&
+    core.watershed instanceof Uint32Array &&
+    core.depression instanceof Uint8Array &&
+    [
+      core.rawElevation,
+      core.filledElevation,
+      core.water,
+      core.slope,
+      core.flowDirection,
+      core.flowAccumulation,
+      core.watershed,
+      core.depression,
+    ].every((layer) => layer.length === size)
+    ? core
+    : null
+}
+
+async function buildHydrologyCoreProvider(
+  request: Extract<WorldWorkerRequest, { type: 'generate-chunk' }>
+): Promise<{
+  builder?: HydrologyCoreBuilder
+  implementation: 'typescript' | 'wasm'
+  fallbackReason?: string
+  elapsedMs: number
+}> {
+  const started = performance.now()
+  if (!wasmBatchEnabled(request.capabilities, 'hydrology-raster')) {
+    return { implementation: 'typescript', elapsedMs: performance.now() - started }
+  }
+  const module = await loadWasmRenderHintsModule(request.wasmBaseUrl)
+  if (!module?.build_hydrology_raster) {
+    return {
+      implementation: 'typescript',
+      fallbackReason: 'wasm-module-unavailable',
+      elapsedMs: performance.now() - started,
+    }
+  }
+  let fallbackReason: string | undefined
+  let elapsedMs = performance.now() - started
+  const builder: HydrologyCoreBuilder = (input) => {
+    const callStarted = performance.now()
+    try {
+      const result = normalizeHydrologyCore(
+        module.build_hydrology_raster!(input.rawElevation, input.water, input.width, input.height),
+        input
+      )
+      if (result) {
+        elapsedMs += performance.now() - callStarted
+        return result
+      }
+      fallbackReason = 'invalid-wasm-output'
+    } catch {
+      fallbackReason = 'wasm-execution-failed'
+    }
+    const fallback = buildHydrologyCoreRaster(input)
+    elapsedMs += performance.now() - callStarted
+    return fallback
+  }
+  return {
+    builder,
+    get implementation() {
+      return fallbackReason ? 'typescript' : 'wasm'
+    },
+    get fallbackReason() {
+      return fallbackReason
+    },
+    get elapsedMs() {
+      return elapsedMs
+    },
+  }
 }
 
 async function buildChunkBaseLayers(
@@ -286,6 +396,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
   if (event.data.type !== 'generate-chunk') return
   try {
     const baseLayers = await buildChunkBaseLayers(event.data)
+    const hydrology = await buildHydrologyCoreProvider(event.data)
     const chunk = generateChunkWithAreas(
       event.data.seed,
       event.data.chunkX,
@@ -299,7 +410,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.riverSystem,
       event.data.roadSystem,
       event.data.geomorphology,
-      baseLayers.layers
+      baseLayers.layers,
+      hydrology.builder
     )
     const renderHints = await buildChunkRenderHints(
       chunk,
@@ -338,13 +450,17 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
     ]
     const diagnostics: WorldWorkerDiagnostics = {
       protocolVersion: 1,
-      implementation:
-        baseLayers.implementation === renderHints.implementation
-          ? baseLayers.implementation
-          : 'mixed',
+      implementation: [
+        baseLayers.implementation,
+        renderHints.implementation,
+        hydrology.implementation,
+      ].every((implementation) => implementation === baseLayers.implementation)
+        ? baseLayers.implementation
+        : 'mixed',
       batches: {
         'chunk-base-layers': baseLayers.implementation,
         'render-hints': renderHints.implementation,
+        'hydrology-raster': hydrology.implementation,
       },
       fallbacks: [
         ...(baseLayers.fallbackReason
@@ -353,10 +469,14 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         ...(renderHints.fallbackReason
           ? [{ batch: 'render-hints' as const, reason: renderHints.fallbackReason }]
           : []),
+        ...(hydrology.fallbackReason
+          ? [{ batch: 'hydrology-raster' as const, reason: hydrology.fallbackReason }]
+          : []),
       ],
       timingsMs: {
         'chunk-base-layers': baseLayers.elapsedMs,
         'render-hints': renderHints.elapsedMs,
+        'hydrology-raster': hydrology.elapsedMs,
       },
       wasmStartupMs,
       transferBytes: transferables.reduce((sum, buffer) => sum + buffer.byteLength, 0),

@@ -1687,6 +1687,7 @@ export async function createGame(
         if (chunk.workerDiagnostics) {
           app.canvas.dataset.workerImplementation = chunk.workerDiagnostics.implementation
           app.canvas.dataset.workerBaseLayers = chunk.workerDiagnostics.batches['chunk-base-layers']
+          app.canvas.dataset.workerHydrology = chunk.workerDiagnostics.batches['hydrology-raster']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
           app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)
           app.canvas.dataset.workerWasmStartupMs = chunk.workerDiagnostics.wasmStartupMs.toFixed(3)

@@ -4,6 +4,8 @@
 
 - Promote deterministic chunk base-layer generation to the Rust/Wasm worker path after
   parity, startup, transfer, fallback, and browser performance gates passed.
+- Promote the pure hydrology raster to Rust/Wasm with byte-identical drainage fields,
+  unchanged chunk hashes, explicit fallback, and measured worker acceleration.
 
 ## Unreleased
 

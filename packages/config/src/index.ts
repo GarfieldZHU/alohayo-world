@@ -753,7 +753,7 @@ export interface WorldManifest {
   characters?: CharacterContentDefinition
 }
 
-export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints'
+export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints' | 'hydrology-raster'
 
 export interface WorldWorkerCapabilities {
   protocolVersion: 1

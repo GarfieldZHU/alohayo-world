@@ -36,9 +36,9 @@ Each batch follows this state machine:
 No browser query string is a production rollout mechanism. The engine must receive an
 explicit local developer capability and a versioned worker request field.
 
-The active protocol is `protocolVersion: 1`. The production default enables only the
-promoted `chunk-base-layers` batch. A batch may load Wasm only when `enabled` is true, ABI version 1 is
-present, and that batch appears in the request list. Responses report per-batch
+The active protocol is `protocolVersion: 1`. The production default enables the promoted
+`chunk-base-layers` and `hydrology-raster` batches. A batch may load Wasm only when
+`enabled` is true, ABI version 1 is present, and that batch appears in the request list. Responses report per-batch
 implementation and fallback reasons; request failures are structured and the engine
 rejects stalled requests after 15 seconds.
 
@@ -78,8 +78,7 @@ under #33; Wasm-enabled browser parity and promotion remain gated by #35.
 
 - Inputs: seed, origin, chunk size.
 - Outputs: `elevation`, `moisture`, `temperature` `Uint8Array`s.
-- Keep topology, hydrology, biome classification, areas, settlements, rivers, and roads in
-  TypeScript.
+- Keep topology, biome classification, areas, settlements, rivers, and roads in TypeScript.
 - Baseline fixtures cover 16/64 sizes and positive/negative coordinates with exact byte
   equality. Issue `#35` owns the larger 16/64/128 matrix, worker/browser parity, transfer
   metrics, and promotion benchmark.
@@ -108,10 +107,17 @@ no visible seam regression across chunk borders.
 **Gate:** contour topology handles negative chunks and eviction/reload; visual browser
 review and seam fixtures pass.
 
-### M4: Path cost and drainage candidates
+### M4: Hydrology raster (stable) and path-cost candidates
 
-- Profile before migrating. Candidates are coarse cost grids, priority-flood helpers, and
-  pathfinding expansions for #9/#29.
+- The pure hydrology core owns priority flood, slope, D8 flow direction, accumulation,
+  watershed IDs, and depression depth for one complete raster batch.
+- TypeScript owns water-mask construction, geomorphology derivation, terrain
+  classification, rivers, roads, overlays, and rendering.
+- Issue #34 passed byte parity for 16/64/128 fixtures, chunk-hash parity, explicit
+  fallback, and browser startup gates. A 20-sample benchmark measured 1.444 ms TypeScript
+  median versus 0.554 ms Wasm median (61.7% lower), 6.088/2.394 ms p95, 0% transfer
+  growth, and 0.570 ms cold startup.
+- Profile remaining candidates such as coarse path-cost grids before migrating them.
 - Do not move content rules, road tier selection, or world mutations.
 
 **Gate:** deterministic world hashes and downstream river/road fixtures remain identical.
