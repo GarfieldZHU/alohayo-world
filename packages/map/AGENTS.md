@@ -37,6 +37,11 @@ This package owns deterministic geography and worker-safe data.
 - `HydrologyCoreRaster` is stable in Wasm after issue `#34`. Rust owns only priority
   flood, slope, D8 direction, accumulation, watershed, and depression buffers. Keep water
   masks, geomorphology, terrain rules, rivers, roads, overlays, and rendering in TypeScript.
+- Render hints remain a measured candidate under issue `#49`; do not enable them by
+  default until built-Wasm parity, fallback, transfer, benchmark, and browser gates pass.
+- Contour/frontier geometry remains TypeScript-authoritative while issue `#50` evaluates
+  a coarse Rust/Wasm typed-segment batch. PixiJS paths, smoothing, feathering, gradients,
+  visibility authority, and gameplay collision stay in TypeScript.
 - Water generation should separate hydrology truth from renderer polish hints. River
   meanders, lake outlines, shoreline distance, and future drainage fields must remain
   deterministic and config-driven.

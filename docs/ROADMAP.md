@@ -54,9 +54,11 @@
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
       persistent aliases and change events continue in issue `#37`.
-- [~] Worker-side Wasm batch generation for streamed chunk terrain layers: base climate
-  layers are now a coarse worker batch with TypeScript fallback and parity fixtures;
-  topology/hydrology/biome authority remains staged under issue `#30`.
+- [x] First Rust/Wasm promotion program: base climate layers and the pure hydrology
+      raster are stable worker batches with exact TypeScript parity, structured fallback,
+      transfer/benchmark gates, and browser coverage. Render hints and contour geometry
+      remain measured candidates in issues `#49` and `#50`; biome/content authority stays
+      in TypeScript.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
       restoration, including named-slot management and visible recovery states.
 - [x] Content-pack dependency loading, authored overlay provenance, and schema

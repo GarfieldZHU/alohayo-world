@@ -1,6 +1,8 @@
 # Rust/Wasm Migration Program
 
-**Tracker:** GitHub issue #30.  
+**Program status:** first promotion program completed in GitHub issue #30.
+
+**Next measured candidates:** render hints in #49 and contour/frontier geometry in #50.
 **Principle:** Rust/Wasm accelerates deterministic worker batches; TypeScript continues to
 own content orchestration, rendering, UI, input, persistence, and public embed APIs.
 
@@ -49,7 +51,12 @@ Every migrated message includes:
 ```ts
 type WasmBatchRequest = {
   abiVersion: 1
-  batch: 'chunk-base-layers' | 'render-hints' | 'contour-geometry' | 'path-cost-grid'
+  batch:
+    | 'chunk-base-layers'
+    | 'hydrology-raster'
+    | 'render-hints'
+    | 'contour-geometry'
+    | 'path-cost-grid'
   seed: number
   chunkX: number
   chunkY: number
@@ -90,7 +97,7 @@ TypeScript median and 0.903 ms Wasm median (43.4% lower), with 1.706/0.966 ms p9
 path and an explicit forced-TypeScript capability, so this batch is default-on while the
 reference fallback remains supported.
 
-### M2: Render hints
+### M2: Render hints (candidate #49)
 
 - Inputs: biome/elevation buffers plus origin/chunk size.
 - Outputs: noise, transition masks, detail classes, and offsets.
@@ -99,13 +106,21 @@ reference fallback remains supported.
 **Gate:** bitwise parity with `generateChunkRenderHints`, no changed draw-call budget, and
 no visible seam regression across chunk borders.
 
-### M3: Contour and frontier geometry
+The TypeScript reference and optional Rust export exist. Issue #49 owns built-Wasm
+16/64/128 parity, worker fallback/browser coverage, transfer metrics, and the measured
+authority decision. It is not a default production batch until those gates pass.
+
+### M3: Contour and frontier geometry (candidate #50)
 
 - Produce coast, lake, river, and fog contour segments for issue #20.
 - Rust prepares geometry only; TypeScript owns smoothing style, gradient, and Pixi paths.
 
 **Gate:** contour topology handles negative chunks and eviction/reload; visual browser
 review and seam fixtures pass.
+
+Issue #50 owns the coarse typed-segment ABI and promotion review. The existing TypeScript
+contour implementation remains authoritative until the candidate proves exact topology,
+seam continuity, and a worthwhile worker CPU improvement.
 
 ### M4: Hydrology raster (stable) and path-cost candidates
 
@@ -136,5 +151,5 @@ behind the explicit developer capability.
 2. Add the TypeScript fixture before Rust code.
 3. Add Rust unit, `wasm-pack` parity, worker-transfer, and browser fallback tests.
 4. Profile both paths on the same fixture matrix.
-5. Update #30 and the child issue with measured results, not assumptions.
+5. Update the active candidate issue with measured results, not assumptions.
 6. Only then alter rollout state.

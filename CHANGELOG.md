@@ -9,6 +9,8 @@
 - Split regional weather simulation into explicit state/persistence and consumer stages.
 - Split transport structures/traversal from settlement traffic, maintenance, mounts, and
   vehicles so both stages share one deterministic movement contract.
+- Conclude the first Rust/Wasm migration program with stable chunk-layer and hydrology
+  batches; isolate render-hint and contour promotion as measured follow-ups.
 
 ## Unreleased
 
