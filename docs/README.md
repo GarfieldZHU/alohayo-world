@@ -8,6 +8,7 @@ blindly.
 - `GAME_DESIGN.md`: vision, player promise, non-goals, and future modes.
 - `GAMEPLAY.md`: current explorer behavior and gameplay conventions.
 - `ROADMAP.md`: milestone status and implementation sequence.
+- `RELEASES.md`: concise published checkpoints and their verified boundaries.
 - `DEVELOPMENT_STAGES.md`: gates for growing from atlas to extensible game.
 
 ## Engineering

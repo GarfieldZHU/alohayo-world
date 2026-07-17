@@ -12,7 +12,7 @@ writeFileSync(
   JSON.stringify(
     {
       name: 'Alohayo World',
-      version: '0.1.0-demo',
+      version: '0.1.2',
       entry: 'bootstrap.js',
       api: ['mountGame', 'pause', 'resume', 'destroy'],
     },

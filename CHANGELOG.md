@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Planned the next config-first character, equipment, role, and world-lore expansion.
+
+## 0.1.2 - 2026-07-17
+
 - Added AI-first repository and module agent guides with staged extension plans.
 - Added the repo-first delivery workflow to `AGENTS.md` so multi-step work is implemented,
   verified, pushed, monitored, and handed off consistently.
@@ -80,6 +84,8 @@
 - Made startup center-first and added viewport-lazy PixiJS chunk geometry/culling so
   background streaming stays responsive; throttled lighting and cached vision overlays
   avoid redundant full-screen paints while telemetry measures rendered frames accurately.
+- Added deterministic content-pack provenance reports and source-rich duplicate area
+  diagnostics for CI and future developer inspectors.
 
 ## 0.1.0-demo
 

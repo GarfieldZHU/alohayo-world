@@ -288,13 +288,14 @@ Before release or handoff, run the complete set listed under Commands.
 
 ## Current State
 
-Released: `v0.1.0-demo`, published through GitHub Pages and embedded at
+Released: `v0.1.2`, published through GitHub Pages and embedded at
 `https://alohayo.me/game`.
 
-Active: `v0.2.0-world-foundation`. Current work expands geographic classification,
-world topology, scalable map sizes, streamed chunks, i18n-first UI plumbing, and
-agent-readable module plans. The next runtime priority after the active streamed-world
-slice is seam-safe global topology merging plus drainage and rivers.
+Active: `v0.2.0-world-foundation`. The map foundation now includes streamed chunks,
+retained topology, drainage, terrain rules, roads, weather surfaces, visibility, local
+saves, and a first shared character runtime. The next gameplay priority is the
+config-first character-domain delta documented under `docs/modules/CHARACTERS.md`, while
+map continuity and natural-water work remain tracked in their existing issues.
 
 Known boundary: the worker already has an optional Wasm render-hint path. The next active
 migration slice is a coarse chunk base-layer batch for elevation, moisture, and

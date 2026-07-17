@@ -28,6 +28,19 @@ rustup component add rustfmt clippy --toolchain 1.87.0
 cargo install wasm-pack --version 0.13.1 --locked
 ```
 
+On Apple Silicon, `wasm-pack` may not find a prebuilt `wasm-bindgen` binary. If its
+fallback installer fails because a host dependency requires a newer compiler, install
+the matching host CLI with an already-installed current stable toolchain:
+
+```sh
+cargo +stable install wasm-bindgen-cli --version 0.2.126 --locked
+```
+
+This does not change `rust-toolchain.toml`: the host CLI may use current stable Rust,
+while the `world-core` crate still compiles and tests with pinned Rust `1.87.0`. Keep the
+CLI version equal to the crate's resolved `wasm-bindgen` version in
+`crates/world-core/Cargo.lock`.
+
 Add `$HOME/.cargo/bin` to your shell startup file if it is not already present. Verify the
 tooling from the repository root:
 

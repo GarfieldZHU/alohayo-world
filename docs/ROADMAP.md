@@ -1,5 +1,20 @@
 # Roadmap
 
+## v0.1.2-foundation-checkpoint
+
+- [x] Streamed chunk retention/eviction, explorer movement, discovery, minimap, and
+      versioned local saves.
+- [x] Terrain/material catalog, topology resolver, hydrology foundation, tiered roads,
+      reversible weather surfaces, and wrapped day/night lighting.
+- [x] Configurable shared character generation with abilities, appearance, slots, gear,
+      actions, and one-ninth-cell movement.
+- [x] Content-pack ordering, provenance, overlap diagnostics, and save-compatible
+      resolution hashes.
+- [x] Worker startup/fallback diagnostics, center-first rendering, viewport culling,
+      performance budgets, and Rust/Wasm parity boundaries.
+- [x] CI and Pages verification for the release head; blog integration consumes a pinned
+      immutable revision.
+
 ## v0.1.0-demo
 
 - [x] Repository, agent guide, architecture, content guide, and game design.
@@ -63,3 +78,8 @@ target is global topology continuity plus drainage, with natural-water contour w
 running beside it as the main visual polish track. Gameplay plugins now wait on stable
 cross-chunk spatial queries and persistence. Dev-demo tooling should stay debug-only and
 must never weaken the public embed contract or lazy-load boundary.
+
+The next gameplay track is a standalone character-domain expansion: derived resources,
+roles/backgrounds, inventory item instances, weapon/armor rules, terrain interactions,
+and an optional combat adapter. It must remain reversible as one package/content-pack
+delta and must not move gameplay authority into PixiJS.

@@ -23,19 +23,25 @@ Every module must define:
 Configuration may select a registered implementation but cannot provide executable
 scripts.
 
-## Planned Modules
+## Foundation Status (`v0.1.2`)
 
-| Module      | First useful outcome                   | Depends on      |
-| ----------- | -------------------------------------- | --------------- |
-| Map         | streamed geography, drainage, overlays | config, worker  |
-| Roads       | tiered travel corridors and conditions | map, weather    |
-| Characters  | configurable generated explorer marker | map, config     |
-| DayNight    | wrapped solar band and local clock     | map, clock      |
-| Weather     | deterministic local weather fronts     | map, clock      |
-| Settlements | place and grow one settlement          | map, characters |
-| Economy     | resources, inventories, local exchange | settlements     |
-| Combat      | data-driven encounters and equipment   | characters      |
-| Vehicles    | roads, steering, traversal modes       | map, characters |
-| Creatures   | habitats, spawning, observation        | map, weather    |
+| Module      | Status     | Current outcome                                      | Next tracked boundary       |
+| ----------- | ---------- | ---------------------------------------------------- | --------------------------- |
+| Map         | foundation | streamed geography, hydrology, topology, overlays    | #37, #38                    |
+| Water       | foundation | flow-following rivers and shared render helpers      | #20, #29, #34, #38          |
+| Visibility  | active     | discovery memory and continuous sampled frontier     | skill/action consumers      |
+| Roads       | foundation | tiered curved roads and weather-aware travel         | #32                         |
+| Characters  | foundation | generated explorer, abilities, appearance, equipment | role/inventory/combat delta |
+| DayNight    | active     | wrapped solar clock, phases, moonlight, dev override | seasons and schedules       |
+| Weather     | foundation | reversible terrain/road surface conditions           | #31                         |
+| Settlements | planned    | suitability and building-growth contract             | first settlement slice      |
+| Economy     | planned    | resources, inventories, and exchange contract        | inventory ownership         |
+| Combat      | deferred   | optional encounter/plugin boundary                   | character delta             |
+| Vehicles    | planned    | shared road/traversal capability boundary            | roads and locomotion        |
+| Creatures   | planned    | habitat-driven spawn and observation boundary        | map/weather habitat queries |
+
+`foundation` means the deterministic public/data contract and one runtime slice exist;
+it does not mean the module's long-term simulation is complete. Follow the linked issue
+and nearest module document rather than expanding a foundation ad hoc.
 
 Read the matching `modules/*.md` before implementing one.
