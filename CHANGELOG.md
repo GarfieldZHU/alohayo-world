@@ -6,6 +6,7 @@
   parity, startup, transfer, fallback, and browser performance gates passed.
 - Promote the pure hydrology raster to Rust/Wasm with byte-identical drainage fields,
   unchanged chunk hashes, explicit fallback, and measured worker acceleration.
+- Split regional weather simulation into explicit state/persistence and consumer stages.
 
 ## Unreleased
 

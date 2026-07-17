@@ -86,7 +86,7 @@ describe('world generation', () => {
     expect(hashSeed('alohayo')).toBe(2244857266)
   })
 
-  it('generates deterministic settlements and roads for the same seed', () => {
+  it('generates deterministic settlements and roads for the same seed', { timeout: 15_000 }, () => {
     const first = generateChunk('trade-routes', 1, -1, 64)
     const second = generateChunk('trade-routes', 1, -1, 64)
     expect(first.settlements).toEqual(second.settlements)

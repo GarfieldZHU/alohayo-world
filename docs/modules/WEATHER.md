@@ -48,8 +48,10 @@ traffic, settlements, creatures, and saves remain the next modular consumers.
 4. Region-scale fronts, wind, and drainage feedback.
 5. Saveable world weather history and forecast surfaces.
 
-Slices 3-5 continue together in issue `#31`, which owns regional fronts, persistence,
-and non-road consumers on top of this completed reversible surface contract.
+The broad design tracker `#31` is decomposed into `#45` for the deterministic regional
+state/persistence core and `#46` for settlement, creature, visibility, drainage, HUD, and
+developer consumers. Implement `#45` first; consumers must query its stable API instead
+of reading renderer state or inventing separate clocks.
 
 ## Dependencies and Tests
 
