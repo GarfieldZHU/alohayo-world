@@ -29,9 +29,22 @@ import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
 
 export {
   ChunkTopologyResolver,
+  TOPOLOGY_LEDGER_MAX_ALIASES,
+  TOPOLOGY_LEDGER_MAX_BYTES,
+  TOPOLOGY_LEDGER_SCHEMA_VERSION,
+  TOPOLOGY_RESOLVER_VERSION,
+  TopologyLedgerError,
+  emptyTopologyLedger,
   summarizeChunkTopology,
+  topologyLedgerBytes,
+  validateTopologyLedger,
   type ChunkTopologySummary,
   type ResolvedTopologyIdentity,
+  type TopologyAliasRecord,
+  type TopologyChangeEvent,
+  type TopologyChangeListener,
+  type TopologyIdentityLedger,
+  type TopologyLedgerErrorCode,
   type TopologyMedium,
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'

@@ -115,6 +115,18 @@ export interface WorldSaveDiscoveryChunk {
   discovered: string
 }
 
+export interface WorldSaveTopologyAlias {
+  aliasId: string
+  canonicalId: string
+  medium: 'land' | 'water'
+}
+
+export interface WorldSaveTopologyLedger {
+  schemaVersion: 1
+  resolverVersion: string
+  aliases: WorldSaveTopologyAlias[]
+}
+
 export interface WorldSavePreferences {
   locale: LocaleCode
   devMode: boolean
@@ -140,6 +152,7 @@ export interface WorldSaveSnapshot {
     discoveredCells: number
     discoveredChunkKeys: string[]
   }
+  topology: WorldSaveTopologyLedger
   preferences: WorldSavePreferences
   contentPacks: ContentPackSaveMetadata
 }

@@ -28,8 +28,7 @@ rivers, roads, overlays, and rendering.
 
 ## Next Slice
 
-Global topology continuity, cross-chunk drainage and rivers, persisted discovery,
-minimap LOD, benchmark budgets, shared shape hints consumed by the water
+Cross-chunk drainage and rivers, minimap LOD, benchmark budgets, shared shape hints consumed by the water
 module, and a resolved content-pack overlay stream with dependency-safe provenance.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
@@ -63,8 +62,18 @@ renderer-only guesses about topology.
 
 The resolver may report a provisional identity at the exploration frontier because an
 unbounded world cannot prove global connectivity from unloaded space. Its canonical ID
-and alias chain remain deterministic for the retained horizon. Persistent alias history
-and explicit topology-change events for cached consumers continue in issue `#37`.
+and alias chain remain deterministic for the retained horizon.
+
+Issue `#37` completed persistent alias history and explicit topology-change events. The
+ledger stores only non-canonical aliases, is capped at 20,000 aliases and 2 MiB serialized,
+and is restored before the first streamed chunk. Merge/frontier notifications are map-owned;
+the engine refreshes minimap and inspection state, while hydrology, roads, settlements, and
+future habitat systems must either resolve IDs at read time or subscribe before caching.
+
+Legacy schema-one saves without a ledger migrate to an empty version-one ledger. Invalid
+records fail as `corrupt`; unsupported resolver/schema versions fail as
+`unsupported-version`. Regression coverage includes negative coordinates, load order,
+eviction/reload, diagonal travel, save round trips, legacy migration, and browser restart.
 
 Read `../CONTENT_PACKS.md` when the work touches authored overlays, pack discovery,
 optional map-area activation, or future overlay conflict tooling.

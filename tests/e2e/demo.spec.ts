@@ -118,6 +118,47 @@ test('manages named local saves and reports bad imports', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('Save recovery:')
 })
 
+test('rehydrates topology aliases before streamed chunks after a browser restart', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 20_000,
+  })
+  await expect
+    .poll(async () => Number((await canvas.getAttribute('data-topology-aliases')) ?? 0))
+    .toBeGreaterThan(0)
+
+  await page.keyboard.press('ArrowRight')
+  const readSavedAliases = () =>
+    page.evaluate(async () => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('alohayo-world')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => resolve(request.result)
+      })
+      return new Promise<number>((resolve, reject) => {
+        const transaction = database.transaction('world-saves', 'readonly')
+        const request = transaction.objectStore('world-saves').get('autosave')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => resolve(request.result?.snapshot?.topology?.aliases?.length ?? 0)
+      })
+    })
+  await expect.poll(readSavedAliases, { timeout: 10_000 }).toBeGreaterThan(0)
+  const savedAliases = await readSavedAliases()
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const restoredCanvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-topology-restored-aliases',
+    String(savedAliases),
+    { timeout: 20_000 }
+  )
+})
+
 const readPerformanceMetrics = (page: Page) =>
   page.evaluate(() => {
     return (window as Window & { __ALOHAYO_WORLD_PERF__?: Record<string, number | null> })

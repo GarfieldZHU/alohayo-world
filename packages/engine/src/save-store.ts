@@ -4,6 +4,7 @@ import {
   type WorldSaveSnapshot,
   type WorldSaveSummary,
 } from '@alohayo/config'
+import { TopologyLedgerError, emptyTopologyLedger, validateTopologyLedger } from '@alohayo/map'
 
 export const WORLD_SAVE_SCHEMA_VERSION = 1
 export const WORLD_SAVE_ENGINE_VERSION = '0.1.0'
@@ -226,6 +227,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     !Array.isArray(migrated.discovery.chunks) ||
     typeof migrated.discovery.discoveredCells !== 'number' ||
     !Array.isArray(migrated.discovery.discoveredChunkKeys) ||
+    !migrated.topology ||
     !migrated.preferences ||
     typeof migrated.preferences.locale !== 'string' ||
     typeof migrated.preferences.devMode !== 'boolean' ||
@@ -245,6 +247,19 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     !Array.isArray(migrated.contentPacks.resolvedMapAreaIds)
   ) {
     throw new WorldSaveError('corrupt', 'save snapshot does not match schema version 1')
+  }
+
+  try {
+    validateTopologyLedger(migrated.topology)
+  } catch (error) {
+    if (error instanceof TopologyLedgerError) {
+      throw new WorldSaveError(
+        error.code === 'incompatible-version' ? 'unsupported-version' : 'corrupt',
+        error.message,
+        error
+      )
+    }
+    throw error
   }
 
   for (const chunk of migrated.discovery.chunks) {
@@ -290,7 +305,11 @@ function migrateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot {
   ) {
     throw new WorldSaveError('unsupported-version', 'current save schema version is not registered')
   }
-  return snapshot as WorldSaveSnapshot
+  const current = snapshot as WorldSaveSnapshot & { topology?: WorldSaveSnapshot['topology'] }
+  return {
+    ...current,
+    topology: current.topology ?? emptyTopologyLedger(),
+  }
 }
 
 function openSaveDatabase(indexedDb: IDBFactory | undefined): Promise<IDBDatabase> {

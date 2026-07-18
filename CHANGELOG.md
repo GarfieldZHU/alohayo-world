@@ -6,6 +6,8 @@
   setting, characters, equipment, architecture, and config-first extension workflows.
 - Validate Wiki language pairs, version metadata, internal links, and all localized
   terrain entries before publication.
+- Persist versioned topology aliases across saves and browser restarts with typed change
+  events, migration recovery, and bounded serialization.
 
 ## 0.1.3 - 2026-07-17
 

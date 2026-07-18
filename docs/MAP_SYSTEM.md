@@ -56,8 +56,11 @@ component samples; a deterministic resolver joins matching land or water compone
 neighboring chunks arrive. A frontier identity remains `provisional` until its unseen
 neighbors are loaded, while canonical IDs and retained aliases let UI, saves, and
 downstream hydrology respond to a merge without depending on renderer state. See
-`modules/MAP.md` for the contract and regression matrix. Issue `#37` owns persistence of
-alias history across browser restarts and typed change events for long-lived consumers.
+`modules/MAP.md` for the contract and regression matrix. The resolver exports a compact
+versioned alias ledger into every world save, rehydrates it before startup chunk requests,
+and publishes typed merge/frontier events for long-lived consumers. Legacy schema-one
+saves migrate to an empty ledger; corrupt or incompatible ledgers fail through typed save
+recovery instead of partially restoring identity.
 
 ### Future layers
 
@@ -99,6 +102,7 @@ Current behavior:
 - unbounded integer chunk coordinates;
 - worker-generated typed-array chunk payloads;
 - distance-based retention and eviction;
+- persistent cross-chunk land/water aliases with deterministic merge events;
 - zoom-dependent chunk detail layers;
 - per-cell discovery tracked only for loaded chunks;
 - minimap summaries built from discovered chunk data.
@@ -106,9 +110,9 @@ Current behavior:
 Still pending:
 
 - seam-safe coastline blending at chunk borders;
-- global landmass, waterbody, and watershed identity merge across chunk boundaries;
-- chunk persistence in IndexedDB;
-- benchmarked memory budgets for larger retention radii.
+- cross-chunk watershed identity and continuous river graphs;
+- optional generated-chunk payload caching beyond the compact topology/discovery save state;
+- benchmarked memory budgets for larger retention radii;
 - contour-based fog and shoreline rendering that no longer reads as cell-decorated edges.
 
 ## Hydrology

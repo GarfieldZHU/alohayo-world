@@ -64,7 +64,8 @@
       rendering instead of cell-derived edge decoration.
 - [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
-      persistent aliases and change events continue in issue `#37`.
+      versioned persistent aliases, typed merge/frontier events, legacy-save migration,
+      and browser-restart coverage completed in issue `#37`.
 - [x] First Rust/Wasm promotion program: base climate layers and the pure hydrology
       raster are stable worker batches with exact TypeScript parity, structured fallback,
       transfer/benchmark gates, and browser coverage. Render hints and contour geometry

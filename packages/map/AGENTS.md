@@ -24,6 +24,10 @@ This package owns deterministic geography and worker-safe data.
   or conflict-failing before implementing merge code.
 - Chunk-local `region` labels are an exploration/runtime aid today, not a substitute for
   future cross-chunk global topology IDs.
+- Persist cross-chunk identity only through `TopologyIdentityLedger`. Keep aliases flat,
+  deterministic, versioned, and within the declared alias/serialized-byte budgets.
+- Rehydrate topology before streamed summaries arrive. Cached consumers must subscribe to
+  typed topology changes or resolve canonical IDs on demand; renderer objects never own IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
 - Rust/Wasm output must have parity tests before becoming authoritative.
 - Worker requests must carry the versioned capability contract. TypeScript is the default;

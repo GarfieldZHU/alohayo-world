@@ -163,6 +163,17 @@ const sampleSnapshot: WorldSaveSnapshot = {
     discoveredCells: 3,
     discoveredChunkKeys: ['0:0'],
   },
+  topology: {
+    schemaVersion: 1,
+    resolverVersion: '1',
+    aliases: [
+      {
+        aliasId: 'topology:1,0:1',
+        canonicalId: 'topology:0,0:1',
+        medium: 'land',
+      },
+    ],
+  },
   preferences: {
     locale: 'en',
     devMode: false,
@@ -210,6 +221,36 @@ describe('world save store', () => {
     const imported = await store.importSnapshot(serialized)
 
     expect(imported).toEqual(sampleSnapshot)
+  })
+
+  it('migrates legacy schema-one saves without a topology ledger', async () => {
+    const store = createWorldSaveStore(undefined)
+    const legacy = { ...sampleSnapshot } as Partial<WorldSaveSnapshot>
+    delete legacy.topology
+
+    await expect(store.importSnapshot(JSON.stringify(legacy))).resolves.toMatchObject({
+      topology: { schemaVersion: 1, resolverVersion: '1', aliases: [] },
+    })
+  })
+
+  it('maps corrupt and incompatible topology ledgers to typed recovery errors', async () => {
+    const store = createWorldSaveStore(undefined)
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          topology: { ...sampleSnapshot.topology, aliases: [{ broken: true }] },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'corrupt' })
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          topology: { ...sampleSnapshot.topology, resolverVersion: 'future' },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'unsupported-version' })
   })
 
   it('lists, renames, duplicates, and deletes named save slots', async () => {

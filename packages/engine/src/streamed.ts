@@ -37,6 +37,7 @@ import {
 } from '@alohayo/config'
 import {
   ChunkTopologyResolver,
+  TopologyLedgerError,
   hashSeed,
   type GeneratedChunk,
   type GeneratedLandmark,
@@ -215,6 +216,7 @@ export async function createGame(
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
   const topologyResolver = new ChunkTopologyResolver()
+  let unsubscribeTopology = () => {}
   const chunkViews = new Map<string, ChunkView>()
   const roadMasks = new Map<string, Uint8Array>()
   const riverMasks = new Map<string, Uint8Array>()
@@ -367,6 +369,19 @@ export async function createGame(
 
   const buildSaveSnapshot = (): WorldSaveSnapshot | null => {
     if (!explorer || !explorerMotion || !contentPackSaveMetadata) return null
+    let topology: WorldSaveSnapshot['topology']
+    try {
+      topology = topologyResolver.exportLedger()
+    } catch (error) {
+      if (error instanceof TopologyLedgerError) {
+        throw new WorldSaveError(
+          error.code === 'budget-exceeded' ? 'quota-exceeded' : 'corrupt',
+          error.message,
+          error
+        )
+      }
+      throw error
+    }
     return {
       schemaVersion: 1,
       engineVersion: WORLD_SAVE_ENGINE_VERSION,
@@ -401,6 +416,7 @@ export async function createGame(
         discoveredCells,
         discoveredChunkKeys: Array.from(discoveredChunks).sort(),
       },
+      topology,
       preferences: {
         locale,
         devMode,
@@ -479,6 +495,8 @@ export async function createGame(
     try {
       applySavedPreferences(snapshot)
       applySavedDiscovery(snapshot)
+      topologyResolver.rehydrate(snapshot.topology)
+      app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
       devPanel?.panel.remove()
       devPanel = buildDevPanel()
       if (devPanel) {
@@ -2098,6 +2116,16 @@ export async function createGame(
     return { x: 0.5, y: 0.5 }
   }
 
+  unsubscribeTopology = topologyResolver.subscribe((event) => {
+    app.canvas.dataset.topologyRevision = String(event.revision)
+    app.canvas.dataset.topologyEvent = event.type
+    if (event.type !== 'merge') return
+    app.canvas.dataset.topologyAliases = String(topologyResolver.getAliasCount())
+    drawMinimap()
+    updateStatus()
+    markSaveDirty()
+  })
+
   applyThemeToContainer()
   let restoredSnapshot: WorldSaveSnapshot | null = null
   let restoreWarning: WorldSaveError | null = null
@@ -2111,6 +2139,8 @@ export async function createGame(
       ) {
         restoredSnapshot = snapshot
         applySavedPreferences(snapshot)
+        topologyResolver.rehydrate(snapshot.topology)
+        app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
         window.localStorage.setItem('alohayo-world:locale', locale)
       }
     } catch (error) {
@@ -2610,6 +2640,7 @@ export async function createGame(
       }
       rpc.rejectAll(new Error('Game destroyed'))
       chunkRequestQueue.dispose(new Error('Game destroyed'))
+      unsubscribeTopology()
       worker.terminate()
       resizeObserver.disconnect()
       devPanel?.panel.remove()

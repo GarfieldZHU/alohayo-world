@@ -29,6 +29,8 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Saves use one versioned snapshot contract for autosave, manual slots, and imports.
   Preserve typed errors, deterministic summary ordering, world/content compatibility
   gates, and explicit slot kinds; never silently partially restore an incompatible save.
+- Restore the topology ledger before requesting startup chunks. Topology merge events
+  invalidate minimap/inspection state; consumers must not retain unresolvable alias IDs.
 - Every worker request needs a bounded timeout plus `error` and `messageerror` cleanup.
   Keep worker implementation/fallback diagnostics on stable canvas data attributes so
   browser tests can distinguish TypeScript fallback from an enabled Wasm batch.
