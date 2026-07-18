@@ -55,6 +55,9 @@ This package owns deterministic geography and worker-safe data.
   `flowDirection`, upstream `flowAccumulation`, per-cell `watershed`, and flow-following
   river tracing. Extend that graph before adding new wetland, floodplain, lake, or
   erosion heuristics.
+- Read `docs/CROSS_CHUNK_HYDROLOGY.md` before issue `#38` work. A fixed halo is provisional,
+  not proof of seam correctness; pair reconciliation and stable resolver identities are the
+  required authority.
 - Static geomorphology metadata is config-driven and typed: `erosionPotential`,
   `sedimentLoad`, `deposition`, and `floodplain`. Include new fields in worker transfer
   lists and deterministic hashes. Do not mutate elevation or imply time evolution in

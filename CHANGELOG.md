@@ -8,6 +8,8 @@
   terrain entries before publication.
 - Persist versioned topology aliases across saves and browser restarts with typed change
   events, migration recovery, and bounded serialization.
+- Define the staged halo, seam-reconciliation, watershed-resolver, and river-graph contract
+  for cross-chunk hydrology.
 
 ## 0.1.3 - 2026-07-17
 

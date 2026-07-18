@@ -18,6 +18,7 @@ blindly.
   benchmark gates for issue #30.
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
+- `CROSS_CHUNK_HYDROLOGY.md`: seam-safe watershed and river continuity delivery plan.
 - `PERFORMANCE_BUDGETS.md`: enforced runtime, benchmark, and bundle-size budgets.
 - `NATURAL_WORLD_POLISH.md`: the path from blended prototype visuals to natural fog,
   shoreline, lake, and river presentation.

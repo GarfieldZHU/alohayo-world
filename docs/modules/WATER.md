@@ -59,6 +59,9 @@ elevation, simulate time, or claim cross-chunk sediment conservation.
 6. Seasonal inundation, delta growth, and persistent terrain change in the dedicated
    dynamic-geomorphology follow-up.
 
+The cross-chunk implementation contract lives in `../CROSS_CHUNK_HYDROLOGY.md`. Keep
+hydrology truth, river graph identity, and smoothed water presentation as separate layers.
+
 ## Tests
 
 - deterministic river path shaping for the same seed/config
