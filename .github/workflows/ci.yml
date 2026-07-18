@@ -30,6 +30,7 @@ jobs:
       - run: yarn typecheck
       - run: yarn validate:content
       - run: yarn validate:assets
+      - run: yarn validate:wiki
       - run: yarn test
       - run: REQUIRE_WASM=1 yarn build
       - run: yarn check:perf

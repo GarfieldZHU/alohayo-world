@@ -1,30 +1,61 @@
 # Character and Map Interactions
 
-Terrain interaction is evaluated from stable terrain IDs, active surface effects,
-equipment capability tags, and background roles. The result is a pure value containing
-movement, stamina, control, and exposure modifiers. Rendering and input do not own these
-rules.
+> **Wiki page version:** EN 1.0.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-18
+> **中文:** [角色与地图交互](Character-and-Map-Interactions-zh-CN) · **Translation status:** synced with EN 1.0.0
 
-## Examples
-
-- A marsh raises movement and stamina costs; waterproof boots or a river-warden
-  background can mitigate, but not erase, the penalty.
-- Snow and glacier terrain add cold exposure; insulated equipment reduces exposure while
-  traction equipment improves control.
-- Mountains reward climbing capability and pass knowledge. Roads can supersede the local
-  movement modifier through the road module without changing the underlying terrain.
-- Open ocean remains blocked without swimming, boat, amphibious, or flight capability.
-- Desert travel couples terrain heat with time-of-day and weather. The character rules
-  produce exposure; future inventory/survival systems decide water consumption and harm.
+Terrain interaction is a pure query over stable terrain IDs, active surfaces, structures,
+weather, character roles, body state, and equipment capabilities. It returns movement,
+stamina, control, exposure, entry, and hazard results. Rendering and input do not own
+these rules.
 
 ## Composition Order
 
-1. Terrain supplies base material and traversal facts.
-2. Surface/weather layers add temporary conditions.
-3. Road/water structures add route capabilities or crossings.
-4. Character role and equipment supply mitigation/capability tags.
-5. Character rules return costs and exposure.
-6. Movement, action, AI, and combat systems consume the result.
+1. Base terrain supplies material, slope, roughness, exposure, and traversal facts.
+2. Hydrology/topology supplies water body, river crossing, depth, flow, and shoreline.
+3. Weather and surfaces add rain, mud, snow, ice, heat, wind, flood, ash, or decay.
+4. Roads/bridges/ferries/buildings add route or shelter capabilities without rewriting
+   underlying terrain.
+5. Body, role, equipment, mount, vehicle, and temporary effects grant capabilities and
+   mitigation.
+6. Character rules return costs, control, exposure, hazards, and matched rule IDs.
+7. Movement, AI, action, combat, survival, and settlement systems consume that result.
 
-This order prevents equipment from rewriting the map and prevents the renderer from
-becoming a physics authority.
+This prevents equipment from rewriting the map and prevents the renderer from becoming a
+physics authority.
+
+## Representative Outcomes
+
+- Marsh raises movement and stamina cost and reduces control. Waterproof boots and a
+  river-warden role mitigate specific penalties; a causeway can provide a route.
+- Snowfield/glacier add cold and traction risk. Insulation reduces exposure, crampon-like
+  equipment improves control, and glacier entry may still require skill/rope support.
+- Mountains reward climbing capability and pass knowledge. A maintained pass can
+  supersede local movement cost without flattening the mountain terrain.
+- Rivers block ordinary crossing unless depth/flow allows a ford or a bridge, ferry,
+  swimming, boat, amphibious, or flight capability applies.
+- Open/deep ocean require watercraft, powerful swimming/amphibious capability, or flight;
+  weather and load may invalidate an otherwise valid capability.
+- Desert travel combines heat, time of day, wind, surface, carried water, clothing, and
+  route knowledge. Terrain rules produce exposure; survival state applies harm/supplies.
+- Roads accelerate compatible movement but wet, muddy, snowy, slushy, flooded, damaged,
+  congested, or poorly maintained conditions reduce the bonus.
+
+## Visibility and Battle Shadow
+
+Discovery memory, current vision, physical line of sight, and battle-shadow legality are
+related but distinct. Fog presentation may be smooth/sub-cell, while gameplay queries use
+continuous frontier geometry and obstacles. Future skills declare whether they require
+visible target, discovered location, unobstructed path, or may continue into shadow.
+
+## Flight
+
+Dev flight is a debugging bypass. Real flight must come from equipment, creature body,
+mount, vehicle, technique, or temporary effect and account for load, wind, altitude,
+weather, stamina/focus, landing space, and visibility. It bypasses ground collision but
+does not make hazards, costs, or world boundaries meaningless.
+
+## Determinism and Diagnostics
+
+Queries are pure and ordered by stable priority. Results include matched rule IDs so UI,
+AI, tests, and developer tools can explain why movement slowed or entry failed. Random
+hazards use explicit seeded context, never renderer frame timing.

@@ -103,6 +103,18 @@ renderer.
 - Locale support must stay additive: adding a new language should mean adding a catalog
   file and wiring it into the locale registry, not rewriting feature code.
 
+## GitHub Wiki Priority
+
+- `docs/wiki/` is the canonical source for the public GitHub Wiki; never make a live-only
+  Wiki edit that agents cannot review from the repository.
+- English is the editorial base and every content page has a paired `-zh-CN` page.
+- Bump the page's Wiki version when meaning changes. Chinese pages must state the exact EN
+  version translated; if translation lags, mark it outdated instead of copying the new EN
+  version number.
+- Update `docs/wiki/Wiki-Versioning.md` and its Chinese pair when page sync status changes.
+- Run `yarn validate:wiki` before committing and before publishing the separate Wiki repo.
+- Follow `docs/WIKI.md` for publication and verify public navigation after pushing.
+
 ## Common Change Recipes
 
 ### Add or change terrain

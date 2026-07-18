@@ -33,6 +33,7 @@ blindly.
 - `config/MAPS.md`: write and plug authored area files into the world.
 - `config/CHARACTERS.md`: abilities, appearance, equipment, weapons, and archetypes.
 - `MODULE_CATALOG.md`: dependency map and extension protocol.
+- `WIKI.md`: bilingual Wiki versioning, validation, canonical source, and publication.
 
 ## Module Plans
 
@@ -54,9 +55,11 @@ dependencies, first vertical slice, tests, and deferred work.
 
 ## Wiki Mirror
 
-`wiki/` is the reviewed source mirrored to the GitHub Wiki. Start at `wiki/Home.md`.
-Keep executable contracts in config/code docs and use the Wiki for approachable system
-introductions, cross-links, and setting context.
+`wiki/` is the reviewed bilingual source mirrored to the GitHub Wiki. Start at
+`wiki/Home.md`; Simplified Chinese pages use the `-zh-CN` suffix. Every pair records its
+Wiki version, product baseline, and translated-from version. Keep executable contracts in
+config/code docs and use the Wiki for approachable system introductions, cross-links, and
+setting context. Run `yarn validate:wiki` before publication.
 
 ## Decisions
 
