@@ -200,6 +200,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       frame.style.visibility = collapsed ? 'hidden' : 'visible'
       frame.style.pointerEvents = 'none'
       panel.style.height = collapsed ? `${COLLAPSED_PANEL_HEIGHT}px` : `${EXPANDED_PANEL_HEIGHT}px`
+      header.style.right = collapsed ? '18px' : '0'
       collapseButton.style.top = collapsed ? '2px' : `${MINIMAP_FRAME_OFFSET_TOP + 6}px`
       collapseButton.style.right = collapsed ? '-6px' : '-10px'
       collapseButton.textContent = collapsed ? '▾' : '▴'

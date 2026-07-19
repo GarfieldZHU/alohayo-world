@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix cross-chunk road streaks and the collapsed minimap clock/control overlap.
+
 - Replace the placeholder GitHub Wiki with a versioned bilingual handbook for terrain,
   setting, characters, equipment, architecture, and config-first extension workflows.
 - Validate Wiki language pairs, version metadata, internal links, and all localized

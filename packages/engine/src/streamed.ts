@@ -55,6 +55,7 @@ import {
   MINIMAP_PANEL_TOP,
   renderMinimapLocale,
 } from './minimap-controls'
+import { clipRoadToBounds, roadWeatherOverlayAlpha, type RoadRenderPoint } from './road-render'
 import { themePalette } from './theme'
 import type {
   ActiveDayNightState,
@@ -1120,6 +1121,36 @@ export async function createGame(
   const roadProfile = (id: WorldRoadProfileId) =>
     roadProfiles.get(id) ?? content.world.roads.profiles[0]!
 
+  const clippedRoadPaths = (chunk: GeneratedChunk, points: readonly RoadRenderPoint[]) =>
+    clipRoadToBounds(points, {
+      minX: chunk.originX - 0.5,
+      minY: chunk.originY - 0.5,
+      maxX: chunk.originX + chunk.chunkSize - 0.5,
+      maxY: chunk.originY + chunk.chunkSize - 0.5,
+    })
+
+  const appendRoadPaths = (
+    graphics: Graphics,
+    chunk: GeneratedChunk,
+    paths: readonly (readonly RoadRenderPoint[])[]
+  ) => {
+    for (const path of paths) {
+      const first = path[0]
+      if (!first) continue
+      graphics.moveTo(
+        (first.x - chunk.originX) * cellSize + cellSize / 2,
+        (first.y - chunk.originY) * cellSize + cellSize / 2
+      )
+      for (let index = 1; index < path.length; index += 1) {
+        const point = path[index]!
+        graphics.lineTo(
+          (point.x - chunk.originX) * cellSize + cellSize / 2,
+          (point.y - chunk.originY) * cellSize + cellSize / 2
+        )
+      }
+    }
+  }
+
   const rebuildRoadMask = (chunk: GeneratedChunk) => {
     const mask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
     for (const road of chunk.roads) {
@@ -1315,7 +1346,6 @@ export async function createGame(
     for (const road of chunk.roads) {
       const profile = roadProfile(road.kind)
       const width = profile.width * 0.58
-      let started = false
       let maxConditionAlpha = 0
       for (const point of road.points) {
         const localX = Math.round(point.x - chunk.originX)
@@ -1334,12 +1364,6 @@ export async function createGame(
           snowCover: condition.surface.snowCover,
           mud: condition.surface.mud,
         })
-        if (!started) {
-          view.surfaces.moveTo(x, y)
-          started = true
-        } else {
-          view.surfaces.lineTo(x, y)
-        }
         if (
           cellNoise(localX, localY, 912) %
             Math.max(2, content.world.roads.generation.textureStep) ===
@@ -1356,17 +1380,24 @@ export async function createGame(
           })
         }
       }
-      if (started && state.fade > 0.02) {
+      const paths = clippedRoadPaths(chunk, road.points)
+      const overlayAlpha = roadWeatherOverlayAlpha(
+        profile.weatherTextureStrength,
+        maxConditionAlpha,
+        state
+      )
+      if (paths.length > 0 && overlayAlpha > 0) {
         const overlayColor =
           state.snowCover > state.mud && state.snowCover > state.wetness
             ? 0xf0f4f9
             : state.mud > state.wetness
               ? 0x5f4631
               : 0x6d8ca4
+        appendRoadPaths(view.surfaces, chunk, paths)
         view.surfaces.stroke({
           color: overlayColor,
           width,
-          alpha: profile.weatherTextureStrength * maxConditionAlpha,
+          alpha: overlayAlpha,
         })
       }
     }
@@ -1580,19 +1611,11 @@ export async function createGame(
       const color = colorFromHex(profile.color, 0xc8b6a1)
       const edgeColor = colorFromHex(profile.edgeColor, 0x5f4631)
       const width = profile.width
-      let started = false
-      for (const point of road.points) {
-        const x = (point.x - chunk.originX) * cellSize + cellSize / 2
-        const y = (point.y - chunk.originY) * cellSize + cellSize / 2
-        if (!started) {
-          view.roads.moveTo(x, y)
-          started = true
-        } else {
-          view.roads.lineTo(x, y)
-        }
-      }
-      if (started) {
+      const paths = clippedRoadPaths(chunk, road.points)
+      if (paths.length > 0) {
+        appendRoadPaths(view.roads, chunk, paths)
         view.roads.stroke({ color: edgeColor, width: width + 0.34, alpha: 0.76 })
+        appendRoadPaths(view.roads, chunk, paths)
         view.roads.stroke({ color, width, alpha: 0.93 })
       }
     }
