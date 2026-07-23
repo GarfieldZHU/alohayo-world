@@ -1,7 +1,7 @@
 # Character and Map Interactions
 
-> **Wiki page version:** EN 1.0.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-18
-> **中文:** [角色与地图交互](Character-and-Map-Interactions-zh-CN) · **Translation status:** synced with EN 1.0.0
+> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-23
+> **中文:** [角色与地图交互](Character-and-Map-Interactions-zh-CN) · **Translation status:** synced with EN 1.1.0
 
 Terrain interaction is a pure query over stable terrain IDs, active surfaces, structures,
 weather, character roles, body state, and equipment capabilities. It returns movement,
@@ -22,6 +22,19 @@ these rules.
 
 This prevents equipment from rewriting the map and prevents the renderer from becoming a
 physics authority.
+
+## Equipment Capability Adapter
+
+`@alohayo/character-rules` exposes `evaluateCharacterTerrainTraversal` as the small,
+pure bridge between a character loadout and terrain rules. It gathers only declared item
+tags, then delegates to the same deterministic traversal evaluator used by AI and tests.
+For example, an equipped item tagged `traversal:boat` can satisfy the open-water rule;
+boots, ropes, insulation, and future mounts use the same data path.
+
+The adapter does not mutate inventory, generate UI, or grant hidden abilities. Content
+packs own item schemas and may be enabled or removed independently. This keeps the
+character system a reversible plugin while preserving a stable terrain interaction
+contract.
 
 ## Representative Outcomes
 

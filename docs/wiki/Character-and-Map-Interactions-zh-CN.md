@@ -1,10 +1,20 @@
 # 角色与地图交互
 
-> **Wiki 页面版本：** zh-CN 1.0.0 · **英文源版本：** EN 1.0.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-07-18
-> **English:** [Character and Map Interactions](Character-and-Map-Interactions) · **同步状态：** 已同步至 EN 1.0.0
+> **Wiki 页面版本：** zh-CN 1.1.0 · **英文源版本：** EN 1.1.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-07-23
+> **English:** [Character and Map Interactions](Character-and-Map-Interactions) · **同步状态：** 已同步至 EN 1.1.0
 
 地形交互是一个纯查询：输入稳定地形 ID、活动表面、结构、天气、角色身份、身体状态和
 装备能力，输出移动、体力、操控、暴露、进入条件与危险。渲染与输入不拥有这些规则。
+
+## 装备能力适配器
+
+`@alohayo/character-rules` 的 `evaluateCharacterTerrainTraversal` 是角色装备栏与地形规则
+之间的小型纯适配器。它只收集物品声明的 tags，再调用 AI 和测试共用的确定性通行评估器。
+例如带有 `traversal:boat` 标签的装备可满足远洋进入规则；防水鞋、绳索、保暖装、坐骑等
+未来内容都走相同的数据通道。
+
+适配器不会修改背包、生成 UI 或授予隐藏能力。内容包继续拥有物品 schema，并可独立启用或
+移除；这样角色系统保持可逆插件，同时保留稳定的地形交互契约。
 
 ## 组合顺序
 

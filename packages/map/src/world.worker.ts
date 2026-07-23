@@ -295,6 +295,13 @@ async function buildChunkRenderHints(
         chunk.originX,
         chunk.originY
       )
+      const localHints = generateChunkRenderHints({
+        biomes: chunk.biomes,
+        elevation: chunk.elevation,
+        chunkSize: chunk.chunkSize,
+        originX: chunk.originX,
+        originY: chunk.originY,
+      })
       return {
         hints: {
           noise: wasmHints.noise,
@@ -322,6 +329,10 @@ async function buildChunkRenderHints(
           detailOffsetY:
             (wasmHints as ChunkRenderHints & { detail_offset_y?: Uint8Array }).detailOffsetY ??
             (wasmHints as ChunkRenderHints & { detail_offset_y?: Uint8Array }).detail_offset_y!,
+          // The current Wasm ABI predates shoreline fields. Keep the existing Wasm
+          // batches authoritative and supply this small deterministic local hint until
+          // #41 promotes the full signed-distance batch.
+          shoreDistance: localHints.shoreDistance,
         } satisfies ChunkRenderHints,
         implementation: 'wasm' as const,
         elapsedMs: performance.now() - started,
@@ -440,6 +451,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       chunk.renderHints.closeDetailKind.buffer,
       chunk.renderHints.detailOffsetX.buffer,
       chunk.renderHints.detailOffsetY.buffer,
+      chunk.renderHints.shoreDistance.buffer,
       chunk.topology.componentIds.buffer,
       chunk.topology.edges.north.buffer,
       chunk.topology.edges.east.buffer,

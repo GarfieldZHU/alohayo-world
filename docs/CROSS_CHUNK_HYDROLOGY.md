@@ -1,7 +1,7 @@
 # Cross-Chunk Hydrology
 
 **Tracking issue:** `#38`  
-**Status:** implementation design; local chunk hydrology remains authoritative until the
+**Status:** stage 1 implemented; local chunk hydrology remains provisional until the
 stages below pass their gates.
 
 ## Goal
@@ -59,6 +59,20 @@ Consumers must resolve at read time or subscribe to change events. Split is rese
 content/generator-version reconciliation that proves one previous identity represented
 multiple drainage graphs.
 
+## Implemented Foundation
+
+`packages/map/src/drainage-summary.ts` now emits a serializable
+`ChunkDrainageSummary` for every generated chunk. It exposes only the local D8 flow that
+crosses a cardinal frontier, including the local watershed component, accumulation, and
+filled elevation. The state is always `provisional`; no consumer may treat its watershed
+integer as a stable world identity.
+
+This gives workers, fixtures, diagnostics, and a future resolver the exact same typed
+handoff contract. It intentionally does **not** use a synthetic edge-water mask or
+reconstruct fields after generation: summaries use the actual hydrology raster that
+generated the chunk. `tests/drainage-summary.test.ts` locks deterministic behavior for
+negative coordinates and repeat generation.
+
 ## Data Contracts
 
 The map package should add serializable, worker-safe contracts equivalent to:
@@ -100,7 +114,7 @@ contract stays the same.
 
 ## Generation Strategy
 
-### 1. Provisional halo raster
+### 1. Provisional halo raster (next)
 
 Generate a deterministic rectangular window around an isolated chunk:
 

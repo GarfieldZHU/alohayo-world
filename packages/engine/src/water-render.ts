@@ -183,6 +183,22 @@ export function drawWaterCloseDetail(
     .stroke({ color: accentColor, width: 0.45, alpha: 0.68 })
 }
 
+/** A subtle material band driven by the map's signed shoreline hint. */
+export function drawWaterMaterialBand(
+  graphics: Graphics,
+  originX: number,
+  originY: number,
+  cellSize: number,
+  shoreDistance: number,
+  accentColor: number
+) {
+  if (shoreDistance > 0 || shoreDistance <= -4) return
+  const depth = Math.abs(shoreDistance)
+  graphics
+    .rect(originX, originY, cellSize, cellSize)
+    .fill({ color: depth === 0 ? 0xf5f2e6 : accentColor, alpha: depth === 0 ? 0.055 : 0.028 })
+}
+
 function catmullRom(a: number, b: number, c: number, d: number, t: number) {
   const t2 = t * t
   const t3 = t2 * t

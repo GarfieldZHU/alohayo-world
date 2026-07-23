@@ -23,6 +23,22 @@ export interface TerrainTraversalInput {
   roleIds?: readonly string[]
 }
 
+/**
+ * Minimal equipment contract shared by runtime adapters. Content packages keep
+ * ownership of the item schema; terrain rules only need the declared tags.
+ */
+export interface TaggedCharacterEquipment {
+  tags?: readonly string[]
+}
+
+export interface CharacterTerrainTraversalInput extends Omit<
+  TerrainTraversalInput,
+  'equipmentTags' | 'roleIds'
+> {
+  equipment?: readonly TaggedCharacterEquipment[]
+  roleIds?: readonly string[]
+}
+
 export interface TerrainTraversalResult {
   blocked: boolean
   movementMultiplier: number
@@ -191,4 +207,21 @@ export function evaluateTerrainTraversal(
   }
   result.missingRequiredTags = [...new Set(result.missingRequiredTags)].sort()
   return result
+}
+
+/**
+ * Convenience adapter for a character inventory/loadout. It deliberately
+ * remains pure: callers choose when terrain movement should be evaluated.
+ */
+export function evaluateCharacterTerrainTraversal(
+  input: CharacterTerrainTraversalInput,
+  registry?: CharacterRulesRegistry
+): TerrainTraversalResult {
+  return evaluateTerrainTraversal(
+    {
+      ...input,
+      equipmentTags: input.equipment?.flatMap((equipment) => equipment.tags ?? []),
+    },
+    registry
+  )
 }

@@ -85,6 +85,7 @@ import {
   drawRiver,
   drawWaterCloseDetail,
   drawWaterContours,
+  drawWaterMaterialBand,
   isWaterBiome,
 } from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
@@ -1500,6 +1501,16 @@ export async function createGame(
         view.terrain
           .rect(originX - 0.4, originY - 0.4, cellSize + 0.8, cellSize + 0.8)
           .fill(biome.color)
+        if (isWaterBiome(biome)) {
+          drawWaterMaterialBand(
+            view.transitions,
+            originX,
+            originY,
+            cellSize,
+            chunk.renderHints.shoreDistance[index]!,
+            colorFromHex(biome.accent, 0x7bd3f7)
+          )
+        }
 
         const rightBiome =
           localX + 1 < chunk.chunkSize

@@ -15,6 +15,7 @@ import {
   type HydrologyCoreBuilder,
   type HydrologyRaster,
 } from './hydrology'
+import { buildChunkDrainageSummary, type ChunkDrainageSummary } from './drainage-summary'
 import {
   modifierStrengthAt,
   overlayBlockedAt,
@@ -48,6 +49,12 @@ export {
   type TopologyMedium,
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
+export {
+  buildChunkDrainageSummary,
+  type CardinalDirection,
+  type ChunkDrainageSummary,
+  type DrainageEdgeSample,
+} from './drainage-summary'
 export {
   modifierStrengthAt,
   overlayBlockedAt,
@@ -151,6 +158,7 @@ export interface GeneratedChunk {
   sedimentLoad: Uint8Array
   deposition: Uint8Array
   floodplain: Uint8Array
+  drainageSummary: ChunkDrainageSummary
   renderHints: ChunkRenderHints
   topology: ChunkTopologySummary
   authoredArea: Uint16Array
@@ -2317,17 +2325,20 @@ function applyAreasToChunk(
     originX: chunk.originX,
     originY: chunk.originY,
   })
-  assignHydrologyToChunk(
-    chunk,
-    buildHydrologyFromElevationAndWater(
-      chunk.elevation,
-      chunk.chunkSize,
-      chunk.chunkSize,
-      (index) => isWaterBiome(chunk.biomes[index]!),
-      geomorphology,
-      hydrologyCoreBuilder
-    )
+  const hydrology = buildHydrologyFromElevationAndWater(
+    chunk.elevation,
+    chunk.chunkSize,
+    chunk.chunkSize,
+    (index) => isWaterBiome(chunk.biomes[index]!),
+    geomorphology,
+    hydrologyCoreBuilder
   )
+  assignHydrologyToChunk(chunk, hydrology)
+  chunk.drainageSummary = buildChunkDrainageSummary({
+    chunkX: chunk.chunkX,
+    chunkY: chunk.chunkY,
+    hydrology,
+  })
   chunk.settlements = []
   chunk.rivers = []
   chunk.roads = []
@@ -2600,6 +2611,7 @@ export function generateChunk(
     sedimentLoad: hydrology.sedimentLoad,
     deposition: hydrology.deposition,
     floodplain: hydrology.floodplain,
+    drainageSummary: buildChunkDrainageSummary({ chunkX, chunkY, hydrology }),
     renderHints: generateChunkRenderHints({
       biomes,
       elevation,

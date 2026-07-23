@@ -42,6 +42,29 @@ describe('chunk render hints', () => {
     expect(first.closeDetailKind).toEqual(second.closeDetailKind)
     expect(first.detailOffsetX).toEqual(second.detailOffsetX)
     expect(first.detailOffsetY).toEqual(second.detailOffsetY)
+    expect(first.shoreDistance).toEqual(second.shoreDistance)
+  })
+
+  it('creates a signed local shoreline field without altering biome authority', () => {
+    const hints = generateChunkRenderHints({
+      biomes: Uint8Array.from([
+        BIOME.ocean,
+        BIOME.ocean,
+        BIOME.lowland,
+        BIOME.ocean,
+        BIOME.ocean,
+        BIOME.lowland,
+        BIOME.ocean,
+        BIOME.ocean,
+        BIOME.lowland,
+      ]),
+      elevation: new Uint8Array(9),
+      chunkSize: 3,
+      originX: 0,
+      originY: 0,
+    })
+
+    expect(Array.from(hints.shoreDistance)).toEqual([-1, 0, 0, -1, 0, 0, -1, 0, 0])
   })
 
   it('marks local boundaries and close-detail classes predictably', () => {

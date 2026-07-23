@@ -2,6 +2,7 @@ import type { CharacterRulesPackDefinition } from '@alohayo/config'
 import {
   createCharacterRulesRegistry,
   deriveCharacterResources,
+  evaluateCharacterTerrainTraversal,
   evaluateTerrainTraversal,
 } from '@alohayo/character-rules'
 import { describe, expect, it } from 'vitest'
@@ -78,6 +79,19 @@ describe('character rules plugin', () => {
       controlModifier: 0,
       exposurePerMinute: 0,
     })
+  })
+
+  it('derives traversal capability from a character equipment loadout', () => {
+    const result = evaluateCharacterTerrainTraversal(
+      {
+        terrainId: 'core:ocean',
+        equipment: [{ tags: ['traversal:boat'] }, { tags: ['equipment:travel'] }],
+      },
+      registry
+    )
+
+    expect(result).toMatchObject({ blocked: false, movementMultiplier: 1 })
+    expect(result.matchedRuleIds).toContain('terrain:open-water')
   })
 
   it('applies role mitigation and composes matching surface rules deterministically', () => {

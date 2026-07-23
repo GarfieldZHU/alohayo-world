@@ -58,6 +58,12 @@ This package owns deterministic geography and worker-safe data.
 - Read `docs/CROSS_CHUNK_HYDROLOGY.md` before issue `#38` work. A fixed halo is provisional,
   not proof of seam correctness; pair reconciliation and stable resolver identities are the
   required authority.
+- `drainage-summary.ts` is the stage-one, worker-safe handoff contract. Its edge samples
+  describe only the exact local hydrology raster and must remain `provisional` until the
+  resolver has reconciled a halo and emitted canonical aliases.
+- `render-hints.ts` owns the provisional signed local shoreline field used by #41:
+  water negative, land positive, zero on a local edge, `+/-127` without a local shore.
+  It is visual input only; never use it for terrain identity, pathing, or seam truth.
 - Static geomorphology metadata is config-driven and typed: `erosionPotential`,
   `sedimentLoad`, `deposition`, and `floodplain`. Include new fields in worker transfer
   lists and deterministic hashes. Do not mutate elevation or imply time evolution in

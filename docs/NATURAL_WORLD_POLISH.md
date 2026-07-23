@@ -30,7 +30,11 @@ paying sub-cell draw cost across the whole retained world. A bounded GPU blur on
 container removes the final sub-cell raster pattern while leaving logical action checks on
 the unblurred continuous visibility sampler.
 
-This is a coherent continuous-shape baseline. Distance-field shoreline materials,
+This is a coherent continuous-shape baseline. The map now also emits a deterministic
+signed local shoreline-distance hint: negative values are water, positive values land,
+zero touches a water/land edge, and `+/-127` means no local shore. The engine uses the
+nearest water bands only as a subtle material tint beneath the existing contour renderer.
+It is intentionally local until #41 adds a halo-aware field and seam refresh contract.
 GPU-backed fog masks, delta/estuary forms, and cross-chunk hydrology identities remain
 later refinement rather than reasons to reintroduce cell-edge drawing.
 
@@ -90,11 +94,13 @@ Natural rendering must survive streamed generation:
 
 ## Implementation Stages
 
-### Stage A: foundation
+### Stage A: foundation (partially implemented)
 
 - Keep the current extracted `water-render.ts` helper as the renderer boundary.
 - Keep map-side river shaping deterministic and config-driven.
 - Add explicit water-shape configuration values before adding new visuals.
+- Emit a worker-safe signed local shoreline field and consume it only as a subtle
+  water-material band. This is implemented; it must not be promoted to seam authority.
 
 ### Stage B: contour frontier
 

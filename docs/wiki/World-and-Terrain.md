@@ -1,7 +1,7 @@
 # World and Terrain
 
-> **Wiki page version:** EN 1.0.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-18
-> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.0.0
+> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-23
+> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.1.0
 
 The map is the central simulation model. Terrain is derived from continuous geography,
 not painted first and rationalized later. The same stable fields support exploration,
@@ -89,6 +89,29 @@ Chunks are deterministic for generator version, seed, coordinates, size, and res
 content. Nearby chunks are retained, distant chunks evicted, and topology summaries kept
 beyond the render horizon. Negative coordinates and load order must not change output.
 The same seed reproduces hashes and fields; authored overlays apply in stable pack order.
+
+## Water Terrain and Seams
+
+Water has three different authorities which must not be collapsed into one biome label:
+
+| Question                                   | Current authority | Meaning                                               |
+| ------------------------------------------ | ----------------- | ----------------------------------------------------- |
+| Is this water ocean-connected or enclosed? | topology resolver | ocean/sea vs lake identity                            |
+| Which way does local drainage flow?        | hydrology raster  | D8 direction, accumulation, local watershed component |
+| How should the renderer soften a shore?    | render hint       | local signed shoreline distance and contours          |
+
+The current shoreline field is signed: negative for water, positive for land, zero on a
+water/land boundary, and `+/-127` when no local shoreline is present. It drives a subtle
+water material band under the contour renderer; it does not change terrain IDs, movement,
+or topology.
+
+Every chunk also publishes a `ChunkDrainageSummary` with its cardinal flow handoffs. Its
+state is `provisional`: chunks have not yet reconciled a halo or canonical watershed
+identity. Issue [#38](https://github.com/GarfieldZHU/alohayo-world/issues/38) owns
+halo generation, pairwise seam reconciliation, graph identities, persistence, and
+load-order benchmarks. Issue [#41](https://github.com/GarfieldZHU/alohayo-world/issues/41)
+owns the halo-aware shoreline field, GPU fog mask, and specialized lake/estuary/delta
+materials. Never use a local field as proof that a river ends at a chunk edge.
 
 ## Developer Showcase
 

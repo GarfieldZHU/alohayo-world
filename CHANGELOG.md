@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add provisional typed drainage handoff summaries for streamed chunks and deterministic
+  seam fixtures; full halo reconciliation remains tracked in #38.
+- Add signed local shoreline-distance hints with subtle water material bands as the first
+  #41 polish slice, without claiming cross-chunk shoreline authority.
+- Add a pure character-loadout terrain adapter so data-defined equipment tags can grant
+  traversal capabilities while the optional character rules plugin remains reversible.
+- Expand the bilingual Wiki with water terrain/seam authority and equipment-to-terrain
+  interaction contracts.
+
 - Fix cross-chunk road streaks and the collapsed minimap clock/control overlap.
 
 - Replace the placeholder GitHub Wiki with a versioned bilingual handbook for terrain,
