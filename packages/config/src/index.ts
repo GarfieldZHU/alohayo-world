@@ -475,14 +475,25 @@ export interface MapLandmarkDefinition {
 
 export interface MapAuthoredEntityDefinition {
   id: string
-  kind: string
+  kind: MapAuthoredEntityKind
   x: number
   y: number
   archetypeId?: string
   factionId?: string
   tags?: string[]
   notes?: string
+  respawnPolicy?: MapAuthoredEntityRespawnPolicy
 }
+
+/** Closed registry: content selects a capability but never supplies executable behavior. */
+export type MapAuthoredEntityKind =
+  | 'npc-spawn'
+  | 'enemy-spawn'
+  | 'merchant-spawn'
+  | 'resource-node'
+  | 'quest-marker'
+
+export type MapAuthoredEntityRespawnPolicy = 'never' | 'on-chunk-revisit'
 
 export interface MapProtectedRegionDefinition {
   id: string

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Organize Rust/Wasm typed batch outputs and shared raster-dimension checks into dedicated
+  modules while preserving current promoted-batch parity and worker ownership.
+- Add a deterministic, non-executable authored-entity lifecycle registry with streamed
+  retain/release diagnostics, closed capability kinds, respawn policy, and focused tests.
+
 - Add provisional typed drainage handoff summaries for streamed chunks and deterministic
   seam fixtures; full halo reconciliation remains tracked in #38.
 - Add signed local shoreline-distance hints with subtle water material bands as the first

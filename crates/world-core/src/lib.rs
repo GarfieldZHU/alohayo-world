@@ -1,5 +1,11 @@
 use wasm_bindgen::prelude::*;
 
+mod batches;
+mod shape;
+
+pub use batches::{ChunkBaseLayers, ChunkRenderHints, HydrologyCoreRaster};
+use shape::checked_raster_size;
+
 const BIOME_DEEP_OCEAN: u8 = 0;
 const BIOME_OCEAN: u8 = 1;
 const BIOME_SHALLOW_SEA: u8 = 2;
@@ -16,13 +22,6 @@ const CLOSE_DETAIL_FOREST: u8 = 2;
 const CLOSE_DETAIL_MOUNTAIN: u8 = 3;
 const CLOSE_DETAIL_WETLAND: u8 = 4;
 const CLOSE_DETAIL_GENERIC: u8 = 5;
-
-#[wasm_bindgen(getter_with_clone)]
-pub struct ChunkBaseLayers {
-    pub elevation: Vec<u8>,
-    pub moisture: Vec<u8>,
-    pub temperature: Vec<u8>,
-}
 
 const HYDROLOGY_DIRECTIONS: [(i32, i32); 8] = [
     (1, 0),
@@ -105,20 +104,6 @@ impl MinHeap {
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-pub struct HydrologyCoreRaster {
-    pub width: u32,
-    pub height: u32,
-    pub raw_elevation: Vec<f32>,
-    pub filled_elevation: Vec<f32>,
-    pub water: Vec<u8>,
-    pub slope: Vec<u8>,
-    pub flow_direction: Vec<i8>,
-    pub flow_accumulation: Vec<u32>,
-    pub watershed: Vec<u32>,
-    pub depression: Vec<u8>,
-}
-
 fn hydrology_neighbor_index(
     index: usize,
     direction: i8,
@@ -143,10 +128,7 @@ pub fn build_hydrology_raster(
     width: usize,
     height: usize,
 ) -> HydrologyCoreRaster {
-    let size = width
-        .checked_mul(height)
-        .expect("hydrology raster dimensions overflow");
-    assert!(width > 0 && height > 0, "hydrology raster cannot be empty");
+    let size = checked_raster_size(width, height, "hydrology raster");
     assert_eq!(raw_elevation.len(), size, "elevation length mismatch");
     assert_eq!(water.len(), size, "water length mismatch");
 
@@ -429,7 +411,7 @@ pub fn generate_chunk_base_layers(
     origin_x: i32,
     origin_y: i32,
 ) -> ChunkBaseLayers {
-    let size = chunk_size * chunk_size;
+    let size = checked_raster_size(chunk_size, chunk_size, "chunk base layers");
     let mut elevation = vec![0_u8; size];
     let mut moisture = vec![0_u8; size];
     let mut temperature = vec![0_u8; size];
@@ -454,17 +436,6 @@ pub fn generate_chunk_base_layers(
         moisture,
         temperature,
     }
-}
-
-#[wasm_bindgen(getter_with_clone)]
-pub struct ChunkRenderHints {
-    pub noise: Vec<u32>,
-    pub east_boundary_mask: Vec<u8>,
-    pub south_boundary_mask: Vec<u8>,
-    pub regional_detail_mask: Vec<u8>,
-    pub close_detail_kind: Vec<u8>,
-    pub detail_offset_x: Vec<u8>,
-    pub detail_offset_y: Vec<u8>,
 }
 
 fn render_hint_noise(x: i32, y: i32, salt: u8) -> u32 {
@@ -492,7 +463,7 @@ pub fn prepare_chunk_render_hints(
     origin_x: i32,
     origin_y: i32,
 ) -> ChunkRenderHints {
-    let size = chunk_size * chunk_size;
+    let size = checked_raster_size(chunk_size, chunk_size, "chunk render hints");
     let mut noise = vec![0_u32; size];
     let mut east_boundary_mask = vec![0_u8; size];
     let mut south_boundary_mask = vec![0_u8; size];

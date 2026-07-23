@@ -36,6 +36,7 @@ import {
   translateContentName,
 } from '@alohayo/config'
 import {
+  AuthoredEntityLifecycleRegistry,
   ChunkTopologyResolver,
   TopologyLedgerError,
   hashSeed,
@@ -217,6 +218,7 @@ export async function createGame(
   let lastChunkGenerationMs = 0
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
+  const authoredEntityLifecycle = new AuthoredEntityLifecycleRegistry()
   const topologyResolver = new ChunkTopologyResolver()
   let unsubscribeTopology = () => {}
   const chunkViews = new Map<string, ChunkView>()
@@ -1732,6 +1734,11 @@ export async function createGame(
       .then((chunk) => {
         pendingChunks.delete(key)
         chunks.set(key, chunk)
+        authoredEntityLifecycle.retainChunk(key, chunk.authoredEntities)
+        app.canvas.dataset.authoredEntityRuntime = 'map-lifecycle-v1'
+        app.canvas.dataset.authoredEntityCount = String(
+          authoredEntityLifecycle.activeEntities().length
+        )
         topologyResolver.add(chunk.topology)
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
@@ -1813,6 +1820,10 @@ export async function createGame(
         chunkViews.delete(key)
       }
       chunks.delete(key)
+      authoredEntityLifecycle.releaseChunk(key)
+      app.canvas.dataset.authoredEntityCount = String(
+        authoredEntityLifecycle.activeEntities().length
+      )
       topologyResolver.release(chunk.chunkX, chunk.chunkY)
       roadMasks.delete(key)
       riverMasks.delete(key)

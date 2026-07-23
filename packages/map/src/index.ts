@@ -50,6 +50,13 @@ export {
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
 export {
+  AUTHORED_ENTITY_CAPABILITY_KINDS,
+  AuthoredEntityLifecycleError,
+  AuthoredEntityLifecycleRegistry,
+  type AuthoredEntityLifecycleSnapshot,
+  type RuntimeAuthoredEntity,
+} from './authored-entities'
+export {
   buildChunkDrainageSummary,
   type CardinalDirection,
   type ChunkDrainageSummary,

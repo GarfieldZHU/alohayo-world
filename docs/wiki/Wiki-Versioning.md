@@ -39,7 +39,7 @@ records which released behavior the page describes.
 | Weapons, Armor, and Items      |      1.0.0 | Weapons-Armor-and-Items-zh-CN        |         1.0.0 |             1.0.0 | synced |
 | Character and Map Interactions |      1.1.0 | Character-and-Map-Interactions-zh-CN |         1.1.0 |             1.1.0 | synced |
 | Repository Architecture        |      1.0.0 | Repository-Architecture-zh-CN        |         1.0.0 |             1.0.0 | synced |
-| Content and Modding            |      1.0.0 | Content-and-Modding-zh-CN            |         1.0.0 |             1.0.0 | synced |
+| Content and Modding            |      1.1.0 | Content-and-Modding-zh-CN            |         1.1.0 |             1.1.0 | synced |
 | Sources and Design Boundaries  |      1.0.0 | Sources-and-Design-Boundaries-zh-CN  |         1.0.0 |             1.0.0 | synced |
 
 ## Publication Workflow

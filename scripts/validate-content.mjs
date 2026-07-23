@@ -69,6 +69,14 @@ const characterRules = {
   ),
 }
 const errors = []
+const authoredEntityKinds = new Set([
+  'npc-spawn',
+  'enemy-spawn',
+  'merchant-spawn',
+  'resource-node',
+  'quest-marker',
+])
+const authoredEntityRespawnPolicies = new Set(['never', 'on-chunk-revisit'])
 
 const orderedPackIds = validateContentPackDependencies(allManifestEntries, errors)
 const resolvedPackAreas = orderedPackIds.flatMap((packId) => {
@@ -278,10 +286,12 @@ for (const area of mapAreas) {
     if (
       !entity.id ||
       entityIds.has(entity.id) ||
-      !entity.kind ||
+      !authoredEntityKinds.has(entity.kind) ||
       !isValidAreaCoordinate(entity.x, area.width) ||
       !isValidAreaCoordinate(entity.y, area.height) ||
-      (entity.tags && !Array.isArray(entity.tags))
+      (entity.tags && !Array.isArray(entity.tags)) ||
+      (entity.respawnPolicy && !authoredEntityRespawnPolicies.has(entity.respawnPolicy)) ||
+      ['script', 'code', 'handler', 'module', 'command'].some((field) => field in entity)
     ) {
       errors.push(`invalid authored entity ${entity.id || '<missing>'} in ${area.id}`)
       continue

@@ -25,3 +25,6 @@ test -f dist/embed/wasm/world_core_bg.wasm
   ownership and validate its length before the worker consumes it.
 - Run `cargo fmt --check`, `cargo clippy -- -D warnings`, and `cargo test`.
 - Document memory ownership and transferred output buffers.
+- Keep `batches.rs` limited to Wasm-facing typed-array output structs and `shape.rs` to
+  checked batch dimensions. Algorithm modules own hot loops; the entrypoint exports only
+  coarse batches. Add a parity fixture before changing any exported field or ABI.
