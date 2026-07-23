@@ -1,6 +1,5 @@
 import {
   Application,
-  BlurFilter,
   Container,
   CullerPlugin,
   extensions,
@@ -1009,6 +1008,7 @@ export async function createGame(
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
     app.canvas.dataset.visionBoundary = 'continuous'
     app.canvas.dataset.discoveryFogRenderer = 'adaptive-subcell'
+    app.canvas.dataset.discoveryFogComposite = 'unfiltered-chunks-global-vision'
   }
 
   const drawBattleShadow = () => {
@@ -1435,7 +1435,6 @@ export async function createGame(
       const fogCutout = new Graphics()
       fogCutout.blendMode = 'erase'
       fog.addChild(fogFill, fogCutout)
-      fog.filters = [new BlurFilter({ strength: Math.max(1.4, cellSize * 0.72), quality: 2 })]
       container.cullable = true
       container.cullArea = new Rectangle(
         0,
@@ -1614,6 +1613,7 @@ export async function createGame(
       return biomeAtCell(chunk.originX + localX, chunk.originY + localY)
     })
     app.canvas.dataset.shorelineRenderer = 'smoothed-contours'
+    app.canvas.dataset.shorelineFrontier = 'known-neighbors-only'
 
     for (const river of chunk.rivers) {
       drawRiver(view.rivers, river, chunk.originX, chunk.originY, cellSize, content.world.rivers)

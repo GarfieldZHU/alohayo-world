@@ -60,5 +60,11 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
   rules across `streamed.ts`.
 - Shoreline paths consume map-owned mask contours. When a cardinal neighbor arrives,
   refresh only the loaded seam neighbors so contours agree without rebuilding the world.
+- Never draw a shoreline against an unloaded chunk. The contour sampler distinguishes
+  unknown frontier samples from known land; unknown frontiers stay visually open until
+  seam-neighbor refresh supplies real geography.
+- Never apply neighborhood-sampling fog filters independently per chunk. Chunk-local blur
+  leaks transparency at filter bounds and creates visible world seams. The long-term
+  compositor is one viewport/global GPU mask fed by halo-aware worker/Wasm batches.
 - Keep day/night as a wrapped world-space overlay derived from clock and visible world X
   range. Do not let it collapse into a player-centered light source.

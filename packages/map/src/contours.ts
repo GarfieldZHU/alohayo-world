@@ -2,6 +2,7 @@ export interface MaskContourOptions {
   width: number
   height: number
   isInside: (x: number, y: number) => boolean
+  isKnown?: (x: number, y: number) => boolean
   smoothingPasses?: number
 }
 
@@ -45,6 +46,7 @@ export function extractMaskContours({
   width,
   height,
   isInside,
+  isKnown = () => true,
   smoothingPasses = 2,
 }: MaskContourOptions): Float32Array[] {
   const edges: Edge[] = []
@@ -55,10 +57,10 @@ export function extractMaskContours({
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       if (!isInside(x, y)) continue
-      if (!isInside(x, y - 1)) add(x, y, x + 1, y)
-      if (!isInside(x + 1, y)) add(x + 1, y, x + 1, y + 1)
-      if (!isInside(x, y + 1)) add(x + 1, y + 1, x, y + 1)
-      if (!isInside(x - 1, y)) add(x, y + 1, x, y)
+      if (isKnown(x, y - 1) && !isInside(x, y - 1)) add(x, y, x + 1, y)
+      if (isKnown(x + 1, y) && !isInside(x + 1, y)) add(x + 1, y, x + 1, y + 1)
+      if (isKnown(x, y + 1) && !isInside(x, y + 1)) add(x + 1, y + 1, x, y + 1)
+      if (isKnown(x - 1, y) && !isInside(x - 1, y)) add(x, y + 1, x, y)
     }
   }
 

@@ -23,6 +23,8 @@ Water-specific shape logic and rendering language above the base terrain/topolog
 
 - classify whether a visible boundary is open sea, shallow shelf, lake edge, or river bank
 - render shoreline bands and foam/highlight passes from stable shape hints
+- distinguish known land/water samples from unknown streamed frontiers so unloaded chunks
+  never become synthetic straight coastlines
 - render river curves with width, flow emphasis, and bank color
 - expose streaming-safe refresh hooks for seam-adjacent water geometry
 - expose typed erosion potential, sediment load, deposition, and floodplain metadata over

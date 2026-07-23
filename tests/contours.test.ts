@@ -34,4 +34,29 @@ describe('mask contour extraction', () => {
       second.map((contour) => Array.from(contour))
     )
   })
+
+  it('does not turn an unknown streamed frontier into a coastline', () => {
+    const contours = extractMaskContours({
+      width: 2,
+      height: 2,
+      isKnown: (x, y) => x >= 0 && y >= 0 && x < 2 && y < 2,
+      isInside: (x, y) => x >= 0 && y >= 0 && x < 2 && y < 2,
+      smoothingPasses: 2,
+    })
+
+    expect(contours).toHaveLength(0)
+  })
+
+  it('still traces a coastline when the neighboring land sample is known', () => {
+    const contours = extractMaskContours({
+      width: 2,
+      height: 2,
+      isInside: (x, y) => x >= 0 && y >= 0 && x < 2 && y < 2,
+      smoothingPasses: 2,
+    })
+
+    expect(contours).toHaveLength(1)
+    expect(contours[0]!.at(0)).toBe(contours[0]!.at(-2))
+    expect(contours[0]!.at(1)).toBe(contours[0]!.at(-1))
+  })
 })

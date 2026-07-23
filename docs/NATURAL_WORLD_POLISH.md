@@ -26,9 +26,10 @@ The first contour slice now traces deterministic water-mask frontiers into smoot
 typed-array paths, renders layered shore/shelf/foam strokes, and refreshes loaded cardinal
 neighbors when a streamed seam gains context. Discovery fog now adaptively subdivides only
 cells crossed by the continuous visibility field, producing a gradual frontier without
-paying sub-cell draw cost across the whole retained world. A bounded GPU blur on the fog
-container removes the final sub-cell raster pattern while leaving logical action checks on
-the unblurred continuous visibility sampler.
+paying sub-cell draw cost across the whole retained world. Per-chunk blur filters were
+removed after they proved to sample transparent pixels beyond each finite chunk and expose
+bright horizontal/vertical seams. The current renderer keeps chunk masks unfiltered and
+uses the global screen-space vision layer for the soft active boundary.
 
 This is a coherent continuous-shape baseline. The map now also emits a deterministic
 signed local shoreline-distance hint: negative values are water, positive values land,
@@ -37,6 +38,37 @@ nearest water bands only as a subtle material tint beneath the existing contour 
 It is intentionally local until #41 adds a halo-aware field and seam refresh contract.
 GPU-backed fog masks, delta/estuary forms, and cross-chunk hydrology identities remain
 later refinement rather than reasons to reintroduce cell-edge drawing.
+
+## Fog Compositing Architecture
+
+Chunk boundaries are storage and streaming boundaries, never visual boundaries. Do not
+attach blur, glow, displacement, or other neighborhood-sampling filters to an isolated
+chunk mask: every such filter needs samples outside that chunk and will otherwise clamp or
+sample transparency at the edge.
+
+The same rule applies to shoreline topology. A missing streamed neighbor is `unknown`,
+not land. Contour extraction therefore accepts a known-sample predicate and suppresses
+frontier segments where the neighboring sample is unavailable. Once that chunk arrives,
+the existing cardinal-neighbor refresh draws the real coast, lake bank, or continuous
+water surface. This tri-state contract (`water`, `land`, `unknown`) must survive any future
+worker/Wasm contour batch as an explicit known-data mask or halo.
+
+The production target tracked in issue `#41` is one viewport/global fog composite:
+
+1. Map/worker code packs discovered and active-visibility samples for the visible chunk
+   neighborhood with a one-cell halo.
+2. Rust/Wasm may accelerate deterministic halo packing, distance-field generation, and
+   dirty-rectangle updates as coarse typed-array batches.
+3. PixiJS/WebGL owns one mask texture or render texture and one fragment-shader composite
+   across the viewport.
+4. The shader applies hidden, explored, current-vision, and feathered mist values without
+   knowing chunk borders.
+5. Gameplay legality continues to query the CPU visibility field; the shader is
+   presentation only.
+
+Wasm should not issue draw calls or own GPU resources. Promotion requires TypeScript
+parity, seam screenshots, dirty-update benchmarks, transfer budgets, and context-loss
+recovery.
 
 ## Fully Natural Plan
 

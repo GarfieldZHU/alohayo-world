@@ -51,6 +51,10 @@ This package owns deterministic geography and worker-safe data.
   deterministic and config-driven.
 - Cell-mask frontiers use `extractMaskContours` and typed-array paths. Extend that shared
   tracer instead of adding renderer-owned edge walks or per-biome shoreline algorithms.
+- Treat samples beyond the loaded streamed neighborhood as unknown, not as land or water.
+  Unknown samples suppress contour edges until neighbor data arrives; otherwise chunk
+  frontiers become false coastlines. Cross-chunk contour batches need an explicit known-data
+  mask or halo with the same semantics.
 - The current hydrology truth is: priority-flood depression handling, downhill
   `flowDirection`, upstream `flowAccumulation`, per-cell `watershed`, and flow-following
   river tracing. Extend that graph before adding new wetland, floodplain, lake, or

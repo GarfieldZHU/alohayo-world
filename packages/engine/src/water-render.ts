@@ -35,10 +35,17 @@ export function drawWaterContours(
   cellSize: number,
   biomeAt: (localX: number, localY: number) => BiomeDefinition | null | undefined
 ) {
+  const sampledBiomes = new Map<string, BiomeDefinition | null | undefined>()
+  const sampleBiome = (x: number, y: number) => {
+    const key = `${x},${y}`
+    if (!sampledBiomes.has(key)) sampledBiomes.set(key, biomeAt(x, y))
+    return sampledBiomes.get(key)
+  }
   const contours = extractMaskContours({
     width: chunkSize,
     height: chunkSize,
-    isInside: (x, y) => isWaterBiome(biomeAt(x, y)),
+    isKnown: (x, y) => sampleBiome(x, y) != null,
+    isInside: (x, y) => isWaterBiome(sampleBiome(x, y)),
     smoothingPasses: 3,
   })
   const layers = [
