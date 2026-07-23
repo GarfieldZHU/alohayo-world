@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   VISION_ACTION_THRESHOLD,
   pointCrossesVisionShadow,
+  sampleChunkVisionAtPoint,
   sampleVisionAtPoint,
 } from '../packages/engine/src/visibility'
 
@@ -33,5 +34,28 @@ describe('continuous visibility field', () => {
     expect(VISION_ACTION_THRESHOLD).toBe(0.5)
     expect(pointCrossesVisionShadow({ ...source, pointX: 13, pointY: 10 })).toBe(false)
     expect(pointCrossesVisionShadow({ ...source, pointX: 16, pointY: 10 })).toBe(true)
+  })
+
+  it('keeps the visibility field continuous across chunk coordinate systems', () => {
+    const fromWestChunk = sampleChunkVisionAtPoint({
+      localPointX: 64,
+      localPointY: 10.5,
+      localSourceX: 67.5,
+      localSourceY: 8.5,
+      chunkOriginX: -64,
+      chunkOriginY: 0,
+      radius: 5,
+    })
+    const fromEastChunk = sampleChunkVisionAtPoint({
+      localPointX: 0,
+      localPointY: 10.5,
+      localSourceX: 3.5,
+      localSourceY: 8.5,
+      chunkOriginX: 0,
+      chunkOriginY: 0,
+      radius: 5,
+    })
+
+    expect(fromWestChunk).toBe(fromEastChunk)
   })
 })

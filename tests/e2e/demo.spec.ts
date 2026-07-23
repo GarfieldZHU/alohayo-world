@@ -36,6 +36,8 @@ test('loads game resources only after start', async ({ page }) => {
     'data-discovery-fog-composite',
     'unfiltered-chunks-global-vision'
   )
+  await expect(canvas).toHaveAttribute('data-discovery-fog-coverage', 'global-world-graphics')
+  await expect(canvas).toHaveAttribute('data-discovery-fog-coordinates', 'world-space')
   await expect(canvas).toHaveAttribute(
     'data-geomorphology',
     'erosion-sediment-deposition-floodplain'

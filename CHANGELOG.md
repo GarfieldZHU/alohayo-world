@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Fix visible world seams by removing isolated per-chunk fog blur and suppressing false
-  shoreline contours where streamed neighbor geography is still unknown.
+  shoreline contours where streamed neighbor geography is still unknown; discovery fog now
+  uses one world-space graphics layer and world-coordinate visibility noise.
 
 - Organize Rust/Wasm typed batch outputs and shared raster-dimension checks into dedicated
   modules while preserving current promoted-batch parity and worker ownership.

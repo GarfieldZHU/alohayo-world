@@ -46,6 +46,17 @@ attach blur, glow, displacement, or other neighborhood-sampling filters to an is
 chunk mask: every such filter needs samples outside that chunk and will otherwise clamp or
 sample transparency at the edge.
 
+Translucent discovery fog is accumulated into one world-space `Graphics` layer across all
+rendered chunks. Chunk-local data still drives incremental discovery, but chunks no longer
+own independently composited fog surfaces. Blanket primitive overscan is forbidden because
+it turns every cell edge into a dark grid; feathering belongs in the global composite, not
+overlapping CPU primitives.
+
+Visibility noise and distance are evaluated in world coordinates. Chunk-local coordinates
+remain valid for buffer lookup only; using them as a procedural-noise phase resets the fog
+field at every chunk origin and exposes a vertical/horizontal separator even when geometry
+coverage is correct.
+
 The same rule applies to shoreline topology. A missing streamed neighbor is `unknown`,
 not land. Contour extraction therefore accepts a known-sample predicate and suppresses
 frontier segments where the neighboring sample is unavailable. Once that chunk arrives,
@@ -53,7 +64,7 @@ the existing cardinal-neighbor refresh draws the real coast, lake bank, or conti
 water surface. This tri-state contract (`water`, `land`, `unknown`) must survive any future
 worker/Wasm contour batch as an explicit known-data mask or halo.
 
-The production target tracked in issue `#41` is one viewport/global fog composite:
+The production target tracked in issue `#41` builds on this single-layer baseline:
 
 1. Map/worker code packs discovered and active-visibility samples for the visible chunk
    neighborhood with a one-cell halo.

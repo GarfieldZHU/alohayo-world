@@ -66,5 +66,11 @@ The engine coordinates lifecycle, rendering, input, diagnostics, and module serv
 - Never apply neighborhood-sampling fog filters independently per chunk. Chunk-local blur
   leaks transparency at filter bounds and creates visible world seams. The long-term
   compositor is one viewport/global GPU mask fed by halo-aware worker/Wasm batches.
+- Discovery fog is accumulated into one world-space `Graphics` layer across rendered
+  chunks. Never restore one translucent fog `Graphics` per chunk: independent composition
+  exposes storage boundaries even when the sampled visibility field is continuous.
+- Visibility distance and noise fields are sampled in world coordinates. Chunk-local
+  coordinates may address buffers, but must never seed presentation noise or the phase will
+  reset into a visible axis-aligned seam.
 - Keep day/night as a wrapped world-space overlay derived from clock and visible world X
   range. Do not let it collapse into a player-centered light source.

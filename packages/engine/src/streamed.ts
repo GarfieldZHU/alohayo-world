@@ -147,11 +147,16 @@ export async function createGame(
   const rpc = createWorkerRpc(worker, { capabilities: options.workerCapabilities })
   const viewport = new Container()
   const chunkLayer = new Container()
+  const discoveryFogLayer = new Container()
+  const discoveryFogFill = new Graphics()
+  const discoveryFogCutout = new Graphics()
+  discoveryFogCutout.blendMode = 'erase'
+  discoveryFogLayer.addChild(discoveryFogFill, discoveryFogCutout)
   const devLayer = new Graphics()
   const characterLayer = new Graphics()
   const overlay = new Container()
   const minimapLayer = new Graphics()
-  viewport.addChild(chunkLayer, devLayer, characterLayer)
+  viewport.addChild(chunkLayer, discoveryFogLayer, devLayer, characterLayer)
   app.stage.addChild(viewport, overlay)
   overlay.addChild(minimapLayer)
   const visionFogElement = document.createElement('div')
@@ -958,32 +963,41 @@ export async function createGame(
       .stroke({ color: weapon, width: Math.max(0.5, cellSize * 0.12), alpha: 0.92 })
   }
 
-  const redrawChunkFog = (key: string) => {
-    const chunk = chunks.get(key)
-    const view = chunkViews.get(key)
-    const discovered = discovery.get(key)
-    if (!chunk || !view || !discovered) return
-    view.fogFill.clear()
-    view.fogCutout.clear()
+  const redrawWorldFog = () => {
+    discoveryFogFill.clear()
+    discoveryFogCutout.clear()
     if (devMode && !devBattleShadow) return
-    redrawSmoothDiscoveryFog({
-      fill: view.fogFill,
-      cutout: view.fogCutout,
-      discovered,
-      chunkSize: chunk.chunkSize,
-      cellSize,
-      fogColor: 0x182434,
-      hiddenAlpha: 0.68,
-      activeVision:
-        explorerMotion && (!devMode || devBattleShadow)
-          ? {
-              sourceX: explorerMotion.x - chunk.originX,
-              sourceY: explorerMotion.y - chunk.originY,
-              radius: content.world.stream.discoveryRadius,
-            }
-          : undefined,
-    })
+    for (const [key, view] of chunkViews) {
+      if (!view.container.visible) continue
+      const chunk = chunks.get(key)
+      const discovered = discovery.get(key)
+      if (!chunk || !discovered) continue
+      redrawSmoothDiscoveryFog({
+        fill: discoveryFogFill,
+        cutout: discoveryFogCutout,
+        discovered,
+        chunkSize: chunk.chunkSize,
+        cellSize,
+        chunkOriginX: chunk.originX,
+        chunkOriginY: chunk.originY,
+        fogColor: 0x182434,
+        hiddenAlpha: 0.68,
+        clear: false,
+        offsetX: chunk.originX * cellSize,
+        offsetY: chunk.originY * cellSize,
+        activeVision:
+          explorerMotion && (!devMode || devBattleShadow)
+            ? {
+                sourceX: explorerMotion.x - chunk.originX,
+                sourceY: explorerMotion.y - chunk.originY,
+                radius: content.world.stream.discoveryRadius,
+              }
+            : undefined,
+      })
+    }
   }
+
+  const redrawChunkFog = () => redrawWorldFog()
 
   const attachDevPanelInteractions = (panelControls: DevPanelControls | null) => {
     if (!panelControls) return
@@ -1002,13 +1016,13 @@ export async function createGame(
 
   const refreshFogVisibility = () => {
     const fogVisible = !devMode || devBattleShadow
-    for (const view of chunkViews.values()) {
-      view.fog.visible = fogVisible
-    }
+    discoveryFogLayer.visible = fogVisible
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
     app.canvas.dataset.visionBoundary = 'continuous'
     app.canvas.dataset.discoveryFogRenderer = 'adaptive-subcell'
     app.canvas.dataset.discoveryFogComposite = 'unfiltered-chunks-global-vision'
+    app.canvas.dataset.discoveryFogCoverage = 'global-world-graphics'
+    app.canvas.dataset.discoveryFogCoordinates = 'world-space'
   }
 
   const drawBattleShadow = () => {
@@ -1430,11 +1444,6 @@ export async function createGame(
       const roads = new Graphics()
       const settlements = new Graphics()
       const landmarks = new Graphics()
-      const fog = new Container()
-      const fogFill = new Graphics()
-      const fogCutout = new Graphics()
-      fogCutout.blendMode = 'erase'
-      fog.addChild(fogFill, fogCutout)
       container.cullable = true
       container.cullArea = new Rectangle(
         0,
@@ -1452,8 +1461,7 @@ export async function createGame(
         rivers,
         roads,
         settlements,
-        landmarks,
-        fog
+        landmarks
       )
       chunkLayer.addChild(container)
       view = {
@@ -1468,9 +1476,6 @@ export async function createGame(
         roads,
         settlements,
         landmarks,
-        fog,
-        fogFill,
-        fogCutout,
       }
       chunkViews.set(key, view)
     }
@@ -1486,9 +1491,6 @@ export async function createGame(
     view.roads.clear()
     view.settlements.clear()
     view.landmarks.clear()
-    view.fog.visible = !devMode
-    view.fogFill.clear()
-    view.fogCutout.clear()
     rebuildRoadMask(chunk)
     rebuildRiverMask(chunk)
 
@@ -1683,7 +1685,7 @@ export async function createGame(
     view.settlements.visible = scale >= 0.85
     view.landmarks.visible = scale >= 1.15
     redrawChunkSurfaces(chunk, activeWeather())
-    redrawChunkFog(key)
+    if (app.canvas.dataset.initialPresentation === 'complete') redrawChunkFog()
     redrawChunkGrid(chunk)
   }
 
@@ -1830,6 +1832,7 @@ export async function createGame(
       bridgeMasks.delete(key)
       dirtyFog.delete(key)
     }
+    redrawWorldFog()
   }
 
   const getChunkForCell = (cellX: number, cellY: number) => {
@@ -2020,7 +2023,7 @@ export async function createGame(
   }
 
   const refreshFog = () => {
-    for (const key of chunkViews.keys()) redrawChunkFog(key)
+    redrawChunkFog()
   }
 
   const sampleBattleVisibility = (cellX: number, cellY: number) => {
@@ -2076,7 +2079,7 @@ export async function createGame(
         affected.add(location.key)
       }
     }
-    for (const key of affected) redrawChunkFog(key)
+    if (affected.size > 0) redrawChunkFog()
     if (affected.size) {
       drawMinimap()
       markSaveDirty()
@@ -2707,7 +2710,7 @@ export async function createGame(
 }
 
 function estimateDrawCalls(chunkViews: Map<string, ChunkView>): number {
-  let drawCalls = 5
+  let drawCalls = 7
   for (const view of chunkViews.values()) {
     if (!view.container.visible || view.container.culled) continue
     if (view.terrain.visible) drawCalls += 1
@@ -2720,7 +2723,6 @@ function estimateDrawCalls(chunkViews: Map<string, ChunkView>): number {
     if (view.roads.visible) drawCalls += 1
     if (view.settlements.visible) drawCalls += 1
     if (view.landmarks.visible) drawCalls += 1
-    if (view.fog.visible) drawCalls += 2
   }
   return drawCalls
 }

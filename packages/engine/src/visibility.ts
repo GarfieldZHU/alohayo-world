@@ -12,12 +12,26 @@ interface VisionSampleOptions {
   noiseStrength?: number
 }
 
+interface ChunkVisionSampleOptions {
+  localPointX: number
+  localPointY: number
+  localSourceX: number
+  localSourceY: number
+  chunkOriginX: number
+  chunkOriginY: number
+  radius: number
+  softness?: number
+  noiseStrength?: number
+}
+
 interface SmoothDiscoveryFogOptions {
   fill: Graphics
   cutout: Graphics
   discovered: Uint8Array
   chunkSize: number
   cellSize: number
+  chunkOriginX: number
+  chunkOriginY: number
   fogColor: number
   hiddenAlpha: number
   activeVision?: {
@@ -25,6 +39,9 @@ interface SmoothDiscoveryFogOptions {
     sourceY: number
     radius: number
   }
+  clear?: boolean
+  offsetX?: number
+  offsetY?: number
 }
 
 const smoothstep = (edge0: number, edge1: number, value: number) => {
@@ -57,18 +74,47 @@ export function pointCrossesVisionShadow(options: VisionSampleOptions) {
   return sampleVisionAtPoint(options) < VISION_ACTION_THRESHOLD
 }
 
+export function sampleChunkVisionAtPoint({
+  localPointX,
+  localPointY,
+  localSourceX,
+  localSourceY,
+  chunkOriginX,
+  chunkOriginY,
+  radius,
+  softness,
+  noiseStrength,
+}: ChunkVisionSampleOptions) {
+  return sampleVisionAtPoint({
+    pointX: chunkOriginX + localPointX,
+    pointY: chunkOriginY + localPointY,
+    sourceX: chunkOriginX + localSourceX,
+    sourceY: chunkOriginY + localSourceY,
+    radius,
+    softness,
+    noiseStrength,
+  })
+}
+
 export function redrawSmoothDiscoveryFog({
   fill,
   cutout,
   discovered,
   chunkSize,
   cellSize,
+  chunkOriginX,
+  chunkOriginY,
   fogColor,
   hiddenAlpha,
   activeVision,
+  clear = true,
+  offsetX = 0,
+  offsetY = 0,
 }: SmoothDiscoveryFogOptions) {
-  fill.clear()
-  cutout.clear()
+  if (clear) {
+    fill.clear()
+    cutout.clear()
+  }
 
   const discoveredAt = (localX: number, localY: number) => {
     if (localX < 0 || localY < 0 || localX >= chunkSize || localY >= chunkSize) return false
@@ -77,11 +123,13 @@ export function redrawSmoothDiscoveryFog({
 
   const activeVisibilityAt = (localX: number, localY: number) => {
     if (!activeVision) return 0
-    return sampleVisionAtPoint({
-      pointX: localX,
-      pointY: localY,
-      sourceX: activeVision.sourceX,
-      sourceY: activeVision.sourceY,
+    return sampleChunkVisionAtPoint({
+      localPointX: localX,
+      localPointY: localY,
+      localSourceX: activeVision.sourceX,
+      localSourceY: activeVision.sourceY,
+      chunkOriginX,
+      chunkOriginY,
       radius: activeVision.radius,
       softness: 1.35,
       noiseStrength: 0.34,
@@ -111,10 +159,10 @@ export function redrawSmoothDiscoveryFog({
           if (alpha < 0.008) continue
           fill
             .rect(
-              localX * cellSize + subX * subCellSize - 0.12,
-              localY * cellSize + subY * subCellSize - 0.12,
-              subCellSize + 0.24,
-              subCellSize + 0.24
+              offsetX + localX * cellSize + subX * subCellSize,
+              offsetY + localY * cellSize + subY * subCellSize,
+              subCellSize,
+              subCellSize
             )
             .fill({ color: fogColor, alpha })
         }
