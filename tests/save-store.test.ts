@@ -174,6 +174,10 @@ const sampleSnapshot: WorldSaveSnapshot = {
       },
     ],
   },
+  authoredEntities: {
+    schemaVersion: 1,
+    despawnedRuntimeIds: ['test:area:test:guide:-64:9'],
+  },
   preferences: {
     locale: 'en',
     devMode: false,
@@ -223,13 +227,15 @@ describe('world save store', () => {
     expect(imported).toEqual(sampleSnapshot)
   })
 
-  it('migrates legacy schema-one saves without a topology ledger', async () => {
+  it('migrates legacy schema-one saves without topology or entity lifecycle ledgers', async () => {
     const store = createWorldSaveStore(undefined)
     const legacy = { ...sampleSnapshot } as Partial<WorldSaveSnapshot>
     delete legacy.topology
+    delete legacy.authoredEntities
 
     await expect(store.importSnapshot(JSON.stringify(legacy))).resolves.toMatchObject({
       topology: { schemaVersion: 1, resolverVersion: '1', aliases: [] },
+      authoredEntities: { schemaVersion: 1, despawnedRuntimeIds: [] },
     })
   })
 
@@ -248,6 +254,26 @@ describe('world save store', () => {
         JSON.stringify({
           ...sampleSnapshot,
           topology: { ...sampleSnapshot.topology, resolverVersion: 'future' },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'unsupported-version' })
+  })
+
+  it('maps malformed entity lifecycle snapshots to typed recovery errors', async () => {
+    const store = createWorldSaveStore(undefined)
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          authoredEntities: { schemaVersion: 1, despawnedRuntimeIds: ['z', 'a'] },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'corrupt' })
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          authoredEntities: { schemaVersion: 2, despawnedRuntimeIds: [] },
         })
       )
     ).rejects.toMatchObject({ code: 'unsupported-version' })
@@ -278,6 +304,65 @@ describe('world save store', () => {
     })
     await store.clear('copy-slot')
     await expect(store.load('copy-slot')).resolves.toBeNull()
+  })
+
+  it('keeps bounded rolling backups and restores a selected previous version', async () => {
+    const store = createWorldSaveStore(new FakeIndexedDbFactory() as unknown as IDBFactory)
+    await store.save(sampleSnapshot, 'journey', { label: 'Wayfinder' })
+    await store.save(
+      {
+        ...sampleSnapshot,
+        savedAt: '2026-07-06T00:00:00.000Z',
+        explorer: { ...sampleSnapshot.explorer, x: 42 },
+      },
+      'journey',
+      { label: 'Wayfinder' }
+    )
+
+    const [summary] = await store.list()
+    expect(summary).toMatchObject({
+      slotId: 'journey',
+      backupCount: 1,
+      explorerX: 42,
+      health: 'healthy',
+    })
+    const [backup] = await store.listBackups('journey')
+    expect(backup).toMatchObject({
+      savedAt: sampleSnapshot.savedAt,
+      explorerX: sampleSnapshot.explorer.x,
+      health: 'healthy',
+    })
+
+    await store.restoreBackup('journey', backup!.backupId)
+    await expect(store.load('journey')).resolves.toMatchObject({
+      savedAt: sampleSnapshot.savedAt,
+      explorer: { x: sampleSnapshot.explorer.x },
+    })
+    await expect(store.listBackups('journey')).resolves.toEqual([
+      expect.objectContaining({ savedAt: '2026-07-06T00:00:00.000Z', explorerX: 42 }),
+    ])
+  })
+
+  it('isolates corrupt records while keeping healthy save summaries available', async () => {
+    const factory = new FakeIndexedDbFactory()
+    const store = createWorldSaveStore(factory as unknown as IDBFactory)
+    await store.save(sampleSnapshot, 'healthy')
+    factory.records.set('broken', {
+      slotId: 'broken',
+      label: 'Broken crossing',
+      kind: 'manual',
+      snapshot: { ...sampleSnapshot, explorer: null },
+    })
+
+    await expect(store.list()).resolves.toEqual([
+      expect.objectContaining({ slotId: 'healthy', health: 'healthy' }),
+      expect.objectContaining({
+        slotId: 'broken',
+        label: 'Broken crossing',
+        health: 'corrupt',
+        errorCode: 'corrupt',
+      }),
+    ])
   })
 
   it('decodes discovery chunks from base64 payloads', () => {

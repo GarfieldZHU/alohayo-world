@@ -66,6 +66,52 @@ footer {
   gap: 8px;
   margin: 8px 0;
 }
+.save-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.save-preview > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid rgb(77 125 145 / 48%);
+  border-radius: 9px;
+  color: #9bb2bf;
+  background: rgb(7 23 35 / 72%);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+.save-preview strong {
+  overflow: hidden;
+  color: #d8f3ff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-preview[data-health='corrupt'] strong:last-child {
+  color: #ffb39d;
+}
+.save-recovery {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+.save-preview[hidden],
+.save-recovery[hidden] {
+  display: none;
+}
+.save-recovery select {
+  min-width: 0;
+  border: 1px solid #315263;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: inherit;
+  background: #071723;
+}
 .save-actions button,
 #save-import {
   padding: 8px 11px;
@@ -156,6 +202,10 @@ footer {
     flex-direction: column;
   }
   .save-grid {
+    grid-template-columns: 1fr;
+  }
+  .save-preview,
+  .save-recovery {
     grid-template-columns: 1fr;
   }
   #game {

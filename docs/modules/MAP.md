@@ -79,6 +79,12 @@ records fail as `corrupt`; unsupported resolver/schema versions fail as
 `unsupported-version`. Regression coverage includes negative coordinates, load order,
 eviction/reload, diagonal travel, save round trips, legacy migration, and browser restart.
 
+Authored entity anchors follow the same ownership rule without joining topology state.
+The map-owned lifecycle registry reference-counts overlapping streamed owners and exports
+only sorted, bounded `never`-respawn deltas. The engine rehydrates that delta before
+retaining restored chunks and exposes read-only active/retained/owner/despawn/conflict
+diagnostics; PixiJS remains a disposable consumer.
+
 Read `../CONTENT_PACKS.md` when the work touches authored overlays, pack discovery,
 optional map-area activation, or future overlay conflict tooling.
 

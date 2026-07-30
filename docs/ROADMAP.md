@@ -72,7 +72,8 @@
       remain measured candidates in issues `#49` and `#50`; biome/content authority stays
       in TypeScript.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
-      restoration, including named-slot management and visible recovery states.
+      restoration, including named-slot management, isolated corrupt records, bounded
+      rolling backups, compact journey previews, and explicit previous-version recovery.
 - [x] Content-pack dependency loading, authored overlay provenance, and schema
       migration planning. See `docs/CONTENT_PACKS.md` and issue `#7`.
 - [x] Dev demo mode: reveal battle shadow, fast move, fly, teleport, and test

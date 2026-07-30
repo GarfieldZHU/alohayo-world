@@ -127,6 +127,11 @@ export interface WorldSaveTopologyLedger {
   aliases: WorldSaveTopologyAlias[]
 }
 
+export interface WorldSaveAuthoredEntityLifecycle {
+  schemaVersion: 1
+  despawnedRuntimeIds: string[]
+}
+
 export interface WorldSavePreferences {
   locale: LocaleCode
   devMode: boolean
@@ -153,6 +158,7 @@ export interface WorldSaveSnapshot {
     discoveredChunkKeys: string[]
   }
   topology: WorldSaveTopologyLedger
+  authoredEntities: WorldSaveAuthoredEntityLifecycle
   preferences: WorldSavePreferences
   contentPacks: ContentPackSaveMetadata
 }
@@ -182,11 +188,22 @@ export interface WorldSaveSummary {
   slotId: string
   label: string
   kind: 'autosave' | 'manual' | 'imported'
+  health: 'healthy' | 'corrupt'
+  errorCode: WorldSaveErrorCode | null
   savedAt: string
   seed: string
+  engineVersion: string
+  explorerX: number
+  explorerY: number
   discoveredChunks: number
   discoveredCells: number
   resolutionHash: string
+  backupCount: number
+  sizeBytes: number
+}
+
+export interface WorldSaveBackupSummary extends WorldSaveSummary {
+  backupId: string
 }
 
 export const WORLD_SAVE_MIGRATION_REGISTRY_SHAPE: WorldSaveMigrationRegistryShape = {
@@ -813,10 +830,12 @@ export interface GameHandle {
   setLocale?(locale: LocaleCode): void
   setTheme?(theme: 'light' | 'dark'): void
   listSaves?(): Promise<WorldSaveSummary[]>
+  listSaveBackups?(slotId: string): Promise<WorldSaveBackupSummary[]>
   save?(slotId?: string, label?: string): Promise<WorldSaveSummary>
   loadSave?(slotId: string): Promise<WorldSaveSummary>
   renameSave?(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
   duplicateSave?(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
+  restoreSaveBackup?(slotId: string, backupId: string): Promise<WorldSaveSummary>
   exportSave?(slotId?: string): Promise<string>
   importSave?(serialized: string, slotId?: string, label?: string): Promise<WorldSaveSummary>
   clearSave?(slotId?: string): Promise<void>

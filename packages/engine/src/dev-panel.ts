@@ -23,6 +23,13 @@ interface CreateDevPanelArgs {
   setDayNight: (enabled: boolean) => void
   getLightLevel: () => number
   setLightLevel: (level: number) => void
+  getEntityDiagnostics: () => {
+    active: number
+    retained: number
+    despawned: number
+    owners: number
+    conflicts: number
+  }
   teleport: (x: number, y: number) => void
   applyEquipment: (slotId: string, itemId: string | null, itemName: string) => void
   onRefreshVisuals: () => void
@@ -322,6 +329,39 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
   updateLightLevelMode()
   lightLevelRow.append(lightLevelLabel, lightLevelSlider, lightLevelValue)
 
+  const entityDiagnostics = document.createElement('div')
+  entityDiagnostics.dataset.alohayoWorldEntityDiagnostics = 'true'
+  Object.assign(entityDiagnostics.style, {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    gap: '5px 10px',
+    marginTop: '10px',
+    padding: '9px 10px',
+    borderRadius: '9px',
+    fontSize: '10px',
+    lineHeight: '1.45',
+    fontVariantNumeric: 'tabular-nums',
+  } satisfies Partial<CSSStyleDeclaration>)
+  const entityDiagnosticsLabel = document.createElement('div')
+  entityDiagnosticsLabel.textContent = args.getText('entityDiagnostics')
+  entityDiagnosticsLabel.style.fontWeight = '800'
+  const entityDiagnosticsValue = document.createElement('div')
+  entityDiagnosticsValue.style.textAlign = 'right'
+  const refreshEntityDiagnostics = () => {
+    const diagnostics = args.getEntityDiagnostics()
+    entityDiagnosticsValue.textContent = `${diagnostics.active}/${diagnostics.retained} · ${diagnostics.owners} · ${diagnostics.despawned} · ${diagnostics.conflicts}`
+    entityDiagnosticsValue.title = args
+      .getText('entityDiagnosticsDetail')
+      .replace('{active}', String(diagnostics.active))
+      .replace('{retained}', String(diagnostics.retained))
+      .replace('{owners}', String(diagnostics.owners))
+      .replace('{despawned}', String(diagnostics.despawned))
+      .replace('{conflicts}', String(diagnostics.conflicts))
+  }
+  refreshEntityDiagnostics()
+  entityDiagnostics.append(entityDiagnosticsLabel, entityDiagnosticsValue)
+  worldSection.appendChild(entityDiagnostics)
+
   activeTab = 'gear'
   const gearRow = makeRow()
   const slotSelect = document.createElement('select')
@@ -463,6 +503,8 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     lightLevelLabel,
     lightLevelValue,
     lightLevelSlider,
+    entityDiagnosticsLabel,
+    entityDiagnosticsValue,
     teleportX,
     teleportY,
     teleportButton,
@@ -478,6 +520,7 @@ export function createDevPanel(args: CreateDevPanelArgs): DevPanelControls {
     dayNightToggle,
     fillEquipmentOptions,
     fillItemOptions,
+    refreshEntityDiagnostics,
     setCollapsed(collapsed) {
       args.setCollapsedState(collapsed)
       body.style.display = collapsed ? 'none' : 'flex'
@@ -561,6 +604,8 @@ export function renderDevPanelLocale(
   panel.lightLevelValue.textContent =
     percent <= 8 ? getText('lightMidnight') : percent >= 92 ? getText('lightNoon') : `${percent}%`
   panel.lightLevelSlider.setAttribute('aria-label', getText('lightLevel'))
+  panel.entityDiagnosticsLabel.textContent = getText('entityDiagnostics')
+  panel.refreshEntityDiagnostics()
   panel.teleportButton.textContent = getText('teleport')
   panel.applyGearButton.textContent = getText('equip')
   panel.note.textContent = getText('note')
@@ -584,6 +629,8 @@ export function applyThemeToDevPanel(
   } satisfies Partial<CSSStyleDeclaration>)
   panel.heading.style.color = palette.devAccent
   panel.note.style.color = palette.devMuted
+  panel.entityDiagnosticsValue.style.color = palette.devMuted
+  panel.entityDiagnosticsValue.parentElement!.style.background = palette.devButtonBackground
   panel.tabHint.style.color = palette.devMuted
   panel.collapseButton.style.color = palette.devText
   panel.tabFooter.style.borderTopColor = palette.devBorder

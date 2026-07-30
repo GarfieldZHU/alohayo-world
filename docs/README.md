@@ -31,6 +31,8 @@ blindly.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
 - `CONTENT_PACKS.md`: dependency-safe pack loading, authored overlays, conflicts, and
   migration planning.
+- `AUTHORED_ENTITY_LIFECYCLE.md`: deterministic streamed ownership, persistent despawn
+  deltas, save migration, and diagnostics for authored map entities.
 - `config/MAPS.md`: write and plug authored area files into the world.
 - `config/CHARACTERS.md`: abilities, appearance, equipment, weapons, and archetypes.
 - `MODULE_CATALOG.md`: dependency map and extension protocol.

@@ -1,7 +1,7 @@
 # Content and Modding
 
-> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-23
-> **中文:** [内容与模组](Content-and-Modding-zh-CN) · **Translation status:** synced with EN 1.1.0
+> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
+> **中文:** [内容与模组](Content-and-Modding-zh-CN) · **Translation status:** synced with EN 1.2.0
 
 Alohayo World is config-first. Content may select registered engine capabilities, but
 JSON never executes code. Stable namespaced IDs are the language shared by terrain,
@@ -42,6 +42,10 @@ Entities are declarative anchors, not scripts. Use only registered `kind` values
 one-time entity. The content validator rejects unknown kinds, invalid policies, and
 executable-shaped fields. Read [Authored Entity Lifecycle](../AUTHORED_ENTITY_LIFECYCLE.md)
 before adding behavior, persistence, or renderer views.
+
+Runtime IDs combine authored provenance and resolved world coordinates. Multiple streamed
+chunks may retain one logical entity, so capability adapters must never key state by PixiJS
+object or chunk view. Only `never` despawns enter saves; definitions remain in content.
 
 ## Add Character or Equipment Content
 

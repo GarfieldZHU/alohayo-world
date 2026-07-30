@@ -35,6 +35,7 @@ import {
   translateContentName,
 } from '@alohayo/config'
 import {
+  AuthoredEntityLifecycleError,
   AuthoredEntityLifecycleRegistry,
   ChunkTopologyResolver,
   TopologyLedgerError,
@@ -303,6 +304,7 @@ export async function createGame(
   window.localStorage.setItem('alohayo-world:locale', locale)
   const devPanelStateStorageKey = 'alohayo-world:dev-panel-collapsed'
   let minimapControls: ReturnType<typeof createMinimapControls> | null = null
+  let devPanel: DevPanelControls | null = null
   const saveStore = createWorldSaveStore()
   const contentPackSaveMetadata = content.contentPackSaveMetadata
   let autosaveTimer: number | null = null
@@ -334,6 +336,18 @@ export async function createGame(
       : catalog().hud.fallbackExplorerName
   const translatedState = (state: string) => catalog().hud.states[state] ?? state
   const translatedRegion = (region: string) => catalog().hud.regions[region] ?? region
+
+  const updateAuthoredEntityDiagnostics = () => {
+    const diagnostics = authoredEntityLifecycle.diagnostics()
+    app.canvas.dataset.authoredEntityRuntime = 'map-lifecycle-v1'
+    app.canvas.dataset.authoredEntityActive = String(diagnostics.active)
+    app.canvas.dataset.authoredEntityRetained = String(diagnostics.retained)
+    app.canvas.dataset.authoredEntityOwners = String(diagnostics.owners)
+    app.canvas.dataset.authoredEntityDespawned = String(diagnostics.despawned)
+    app.canvas.dataset.authoredEntityConflicts = String(diagnostics.conflicts)
+    app.canvas.dataset.authoredEntityCount = String(diagnostics.active)
+    devPanel?.refreshEntityDiagnostics()
+  }
 
   const saveIdentityMatches = (snapshot: WorldSaveSnapshot) =>
     snapshot.world.seed === worldSeed &&
@@ -378,12 +392,25 @@ export async function createGame(
   const buildSaveSnapshot = (): WorldSaveSnapshot | null => {
     if (!explorer || !explorerMotion || !contentPackSaveMetadata) return null
     let topology: WorldSaveSnapshot['topology']
+    let authoredEntities: WorldSaveSnapshot['authoredEntities']
     try {
       topology = topologyResolver.exportLedger()
+      authoredEntities = authoredEntityLifecycle.snapshot()
     } catch (error) {
       if (error instanceof TopologyLedgerError) {
         throw new WorldSaveError(
           error.code === 'budget-exceeded' ? 'quota-exceeded' : 'corrupt',
+          error.message,
+          error
+        )
+      }
+      if (error instanceof AuthoredEntityLifecycleError) {
+        throw new WorldSaveError(
+          error.code === 'budget-exceeded'
+            ? 'quota-exceeded'
+            : error.code === 'incompatible-version'
+              ? 'unsupported-version'
+              : 'corrupt',
           error.message,
           error
         )
@@ -425,6 +452,7 @@ export async function createGame(
         discoveredChunkKeys: Array.from(discoveredChunks).sort(),
       },
       topology,
+      authoredEntities,
       preferences: {
         locale,
         devMode,
@@ -446,16 +474,7 @@ export async function createGame(
     snapshot: WorldSaveSnapshot,
     slotId: string,
     label: string
-  ): WorldSaveSummary => ({
-    slotId,
-    label,
-    kind: 'imported',
-    savedAt: snapshot.savedAt,
-    seed: snapshot.world.seed,
-    discoveredChunks: snapshot.discovery.discoveredChunkKeys.length,
-    discoveredCells: snapshot.discovery.discoveredCells,
-    resolutionHash: snapshot.contentPacks.resolutionHash,
-  })
+  ): WorldSaveSummary => summarizeSave(slotId, snapshot, { label, kind: 'imported' })
 
   const saveNow = async (
     slotId = 'autosave',
@@ -503,6 +522,8 @@ export async function createGame(
     try {
       applySavedPreferences(snapshot)
       applySavedDiscovery(snapshot)
+      authoredEntityLifecycle.restore(snapshot.authoredEntities)
+      updateAuthoredEntityDiagnostics()
       topologyResolver.rehydrate(snapshot.topology)
       app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
       devPanel?.panel.remove()
@@ -801,6 +822,7 @@ export async function createGame(
             window.localStorage.setItem('alohayo-world:dev-light-level', devLightLevel.toFixed(2))
             markSaveDirty()
           },
+          getEntityDiagnostics: () => authoredEntityLifecycle.diagnostics(),
           teleport: (x, y) => {
             void teleportExplorer(x, y)
           },
@@ -1736,11 +1758,11 @@ export async function createGame(
       .then((chunk) => {
         pendingChunks.delete(key)
         chunks.set(key, chunk)
-        authoredEntityLifecycle.retainChunk(key, chunk.authoredEntities)
-        app.canvas.dataset.authoredEntityRuntime = 'map-lifecycle-v1'
-        app.canvas.dataset.authoredEntityCount = String(
-          authoredEntityLifecycle.activeEntities().length
-        )
+        try {
+          authoredEntityLifecycle.retainChunk(key, chunk.authoredEntities)
+        } finally {
+          updateAuthoredEntityDiagnostics()
+        }
         topologyResolver.add(chunk.topology)
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
@@ -1823,9 +1845,7 @@ export async function createGame(
       }
       chunks.delete(key)
       authoredEntityLifecycle.releaseChunk(key)
-      app.canvas.dataset.authoredEntityCount = String(
-        authoredEntityLifecycle.activeEntities().length
-      )
+      updateAuthoredEntityDiagnostics()
       topologyResolver.release(chunk.chunkX, chunk.chunkY)
       roadMasks.delete(key)
       riverMasks.delete(key)
@@ -2187,6 +2207,8 @@ export async function createGame(
       ) {
         restoredSnapshot = snapshot
         applySavedPreferences(snapshot)
+        authoredEntityLifecycle.restore(snapshot.authoredEntities)
+        updateAuthoredEntityDiagnostics()
         topologyResolver.rehydrate(snapshot.topology)
         app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
         window.localStorage.setItem('alohayo-world:locale', locale)
@@ -2212,7 +2234,7 @@ export async function createGame(
   await ensureChunkNeighborhood(initialChunkCenter.x, initialChunkCenter.y, 0)
   const spawn = await findSpawn()
   explorerMotion = createCharacterMotion(spawn.x, spawn.y)
-  let devPanel = buildDevPanel()
+  devPanel = buildDevPanel()
   minimapControls = createMinimapControls({
     minimapChunkRadius,
     clamp,
@@ -2640,6 +2662,9 @@ export async function createGame(
     async listSaves() {
       return saveStore.list()
     },
+    async listSaveBackups(slotId) {
+      return saveStore.listBackups(slotId)
+    },
     async save(slotId, label) {
       return saveNow(slotId, label)
     },
@@ -2654,6 +2679,13 @@ export async function createGame(
     },
     async duplicateSave(slotId, nextSlotId, label) {
       return saveStore.duplicate(slotId, nextSlotId, label)
+    },
+    async restoreSaveBackup(slotId, backupId) {
+      const summary = await saveStore.restoreBackup(slotId, backupId)
+      const snapshot = await saveStore.load(slotId)
+      if (!snapshot) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+      await restoreSnapshot(snapshot)
+      return summary
     },
     async exportSave(slotId) {
       const snapshot = slotId ? await saveStore.load(slotId) : buildSaveSnapshot()

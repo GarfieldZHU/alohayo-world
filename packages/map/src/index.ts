@@ -51,8 +51,16 @@ export {
 export { extractMaskContours, type MaskContourOptions } from './contours'
 export {
   AUTHORED_ENTITY_CAPABILITY_KINDS,
+  AUTHORED_ENTITY_LIFECYCLE_MAX_BYTES,
+  AUTHORED_ENTITY_LIFECYCLE_MAX_DESPAWNED,
+  AUTHORED_ENTITY_LIFECYCLE_SCHEMA_VERSION,
   AuthoredEntityLifecycleError,
   AuthoredEntityLifecycleRegistry,
+  authoredEntityLifecycleSnapshotBytes,
+  emptyAuthoredEntityLifecycleSnapshot,
+  validateAuthoredEntityLifecycleSnapshot,
+  type AuthoredEntityLifecycleDiagnostics,
+  type AuthoredEntityLifecycleErrorCode,
   type AuthoredEntityLifecycleSnapshot,
   type RuntimeAuthoredEntity,
 } from './authored-entities'

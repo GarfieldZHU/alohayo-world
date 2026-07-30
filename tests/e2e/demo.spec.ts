@@ -42,6 +42,12 @@ test('loads game resources only after start', async ({ page }) => {
     'data-geomorphology',
     'erosion-sediment-deposition-floodplain'
   )
+  await expect(canvas).toHaveAttribute('data-authored-entity-runtime', 'map-lifecycle-v1')
+  await expect(canvas).toHaveAttribute('data-authored-entity-active', /[0-9]+/)
+  await expect(canvas).toHaveAttribute('data-authored-entity-retained', /[0-9]+/)
+  await expect(canvas).toHaveAttribute('data-authored-entity-owners', /[0-9]+/)
+  await expect(canvas).toHaveAttribute('data-authored-entity-despawned', '0')
+  await expect(canvas).toHaveAttribute('data-authored-entity-conflicts', '0')
   await expect(canvas).toHaveAttribute('data-estimated-draw-calls', /[1-9][0-9]*/)
   expect(gameRequests.length).toBeGreaterThan(0)
   await expect(canvas).toBeVisible()
@@ -127,6 +133,14 @@ test('manages named local saves and reports bad imports', async ({ page }) => {
   await page.getByPlaceholder('Save name').fill('Bridge approach')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByLabel('Save slots')).toContainText('Bridge approach')
+  await expect(page.getByText(/World · alohayo/)).toBeVisible()
+  await expect(page.getByText(/cells · .* chunks/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByLabel('Previous save versions')).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Recover previous' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Recover previous' }).click()
+  await expect(page.getByRole('status')).toContainText('Recovered Bridge approach')
 
   await page.getByPlaceholder('Save name').fill('Bridge copy')
   await page.getByRole('button', { name: 'Duplicate' }).click()

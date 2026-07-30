@@ -1,10 +1,18 @@
 import {
   WORLD_SAVE_MIGRATION_REGISTRY_SHAPE,
+  type WorldSaveBackupSummary,
   type WorldSaveErrorCode,
   type WorldSaveSnapshot,
   type WorldSaveSummary,
 } from '@alohayo/config'
-import { TopologyLedgerError, emptyTopologyLedger, validateTopologyLedger } from '@alohayo/map'
+import {
+  AuthoredEntityLifecycleError,
+  TopologyLedgerError,
+  emptyAuthoredEntityLifecycleSnapshot,
+  emptyTopologyLedger,
+  validateAuthoredEntityLifecycleSnapshot,
+  validateTopologyLedger,
+} from '@alohayo/map'
 
 export const WORLD_SAVE_SCHEMA_VERSION = 1
 export const WORLD_SAVE_ENGINE_VERSION = '0.1.0'
@@ -12,12 +20,21 @@ const WORLD_SAVE_DB_NAME = 'alohayo-world'
 const WORLD_SAVE_DB_VERSION = 1
 const WORLD_SAVE_STORE = 'world-saves'
 const WORLD_SAVE_AUTOSAVE_SLOT = 'autosave'
+export const WORLD_SAVE_MAX_BACKUPS = 3
+
+interface PersistedWorldSaveBackup {
+  backupId: string
+  label: string
+  kind: 'autosave' | 'manual' | 'imported'
+  snapshot: WorldSaveSnapshot
+}
 
 interface PersistedWorldSaveRecord {
   slotId: string
   label: string
   kind: 'autosave' | 'manual' | 'imported'
   snapshot: WorldSaveSnapshot
+  backups?: PersistedWorldSaveBackup[]
 }
 
 export interface WorldSaveMetadata {
@@ -27,6 +44,7 @@ export interface WorldSaveMetadata {
 
 export interface WorldSaveStore {
   list(): Promise<WorldSaveSummary[]>
+  listBackups(slotId: string): Promise<WorldSaveBackupSummary[]>
   load(slotId?: string): Promise<WorldSaveSnapshot | null>
   save(
     snapshot: WorldSaveSnapshot,
@@ -35,6 +53,7 @@ export interface WorldSaveStore {
   ): Promise<WorldSaveSummary>
   rename(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
   duplicate(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>
+  restoreBackup(slotId: string, backupId: string): Promise<WorldSaveSummary>
   clear(slotId?: string): Promise<void>
   exportSnapshot(snapshot: WorldSaveSnapshot): string
   importSnapshot(serialized: string): Promise<WorldSaveSnapshot>
@@ -59,8 +78,45 @@ export function createWorldSaveStore(
       const db = await openSaveDatabase(indexedDb)
       const records = await runListRequest(db)
       return records
-        .map((record) => summarizeRecord(normalizeRecord(record)))
+        .map((record) => {
+          try {
+            return summarizeRecord(normalizeRecord(record))
+          } catch (error) {
+            return summarizeCorruptRecord(record, error)
+          }
+        })
         .sort((left, right) => right.savedAt.localeCompare(left.savedAt))
+    },
+    async listBackups(slotId) {
+      const record = await requireRawRecord(await readRawRecord(indexedDb, slotId), slotId)
+      return recordBackups(record)
+        .map((backup) => {
+          try {
+            const snapshot = validateWorldSaveSnapshot(backup.snapshot)
+            return {
+              ...summarizeSave(slotId, snapshot, backup, recordBackups(record).length),
+              backupId: backup.backupId,
+            }
+          } catch (error) {
+            return {
+              ...summarizeCorruptRecord(
+                {
+                  ...record,
+                  label: backup.label,
+                  kind: backup.kind,
+                  snapshot: backup.snapshot,
+                  backups: [],
+                },
+                error
+              ),
+              backupId: backup.backupId,
+            }
+          }
+        })
+        .sort(
+          (left, right) =>
+            right.savedAt.localeCompare(left.savedAt) || left.backupId.localeCompare(right.backupId)
+        )
     },
     async load(slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
       const db = await openSaveDatabase(indexedDb)
@@ -76,8 +132,11 @@ export function createWorldSaveStore(
         label: metadata.label?.trim() || defaultSlotLabel(slotId),
         kind: metadata.kind ?? (slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
         snapshot: normalized,
+        backups: [],
       }
-      await runWriteRequest(db, record)
+      const existing = await runReadonlyRequest<PersistedWorldSaveRecord | undefined>(db, slotId)
+      record.backups = buildRollingBackups(existing)
+      await runWriteWithBackupPruning(db, record)
       return summarizeRecord(record)
     },
     async rename(slotId, nextSlotId, label) {
@@ -88,7 +147,7 @@ export function createWorldSaveStore(
         label: label?.trim() || record.label,
       }
       const db = await openSaveDatabase(indexedDb)
-      await runWriteRequest(db, renamed)
+      await runWriteWithBackupPruning(db, renamed)
       if (renamed.slotId !== slotId) await runDeleteRequest(db, slotId)
       return summarizeRecord(renamed)
     },
@@ -101,8 +160,32 @@ export function createWorldSaveStore(
         kind: 'manual' as const,
       }
       const db = await openSaveDatabase(indexedDb)
-      await runWriteRequest(db, duplicate)
+      await runWriteWithBackupPruning(db, duplicate)
       return summarizeRecord(duplicate)
+    },
+    async restoreBackup(slotId, backupId) {
+      const record = await requireRawRecord(await readRawRecord(indexedDb, slotId), slotId)
+      const storedBackups = recordBackups(record)
+      const backup = storedBackups.find((candidate) => candidate.backupId === backupId)
+      if (!backup) {
+        throw new WorldSaveError('unavailable', `save backup ${backupId} does not exist`)
+      }
+      const restoredSnapshot = validateWorldSaveSnapshot(backup.snapshot)
+      const currentBackup = safeBackupFromRecord(record)
+      const backups = [
+        ...(currentBackup ? [currentBackup] : []),
+        ...storedBackups.filter((candidate) => candidate.backupId !== backupId),
+      ]
+      const restored: PersistedWorldSaveRecord = {
+        slotId,
+        label: backup.label,
+        kind: backup.kind,
+        snapshot: restoredSnapshot,
+        backups: dedupeBackups(backups).slice(0, WORLD_SAVE_MAX_BACKUPS),
+      }
+      const db = await openSaveDatabase(indexedDb)
+      await runWriteWithBackupPruning(db, restored)
+      return summarizeRecord(restored)
     },
     async clear(slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
       const db = await openSaveDatabase(indexedDb)
@@ -148,22 +231,141 @@ export function decodeDiscoveredChunk(serialized: string): Uint8Array {
 export function summarizeSave(
   slotId: string,
   snapshot: WorldSaveSnapshot,
-  metadata: WorldSaveMetadata = {}
+  metadata: WorldSaveMetadata = {},
+  backupCount = 0
 ): WorldSaveSummary {
   return {
     slotId,
     label: metadata.label?.trim() || defaultSlotLabel(slotId),
     kind: metadata.kind ?? (slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
+    health: 'healthy',
+    errorCode: null,
     savedAt: snapshot.savedAt,
     seed: snapshot.world.seed,
+    engineVersion: snapshot.engineVersion,
+    explorerX: snapshot.explorer.x,
+    explorerY: snapshot.explorer.y,
     discoveredChunks: snapshot.discovery.discoveredChunkKeys.length,
     discoveredCells: snapshot.discovery.discoveredCells,
     resolutionHash: snapshot.contentPacks.resolutionHash,
+    backupCount,
+    sizeBytes: serializedBytes(snapshot),
   }
 }
 
 function summarizeRecord(record: PersistedWorldSaveRecord): WorldSaveSummary {
-  return summarizeSave(record.slotId, record.snapshot, record)
+  return summarizeSave(record.slotId, record.snapshot, record, recordBackups(record).length)
+}
+
+function summarizeCorruptRecord(
+  record: Partial<PersistedWorldSaveRecord>,
+  error: unknown
+): WorldSaveSummary {
+  const snapshot = record.snapshot as Partial<WorldSaveSnapshot> | undefined
+  const saveError =
+    error instanceof WorldSaveError
+      ? error
+      : new WorldSaveError('corrupt', error instanceof Error ? error.message : String(error), error)
+  return {
+    slotId: typeof record.slotId === 'string' ? record.slotId : 'corrupt-record',
+    label: typeof record.label === 'string' ? record.label : 'Damaged save',
+    kind:
+      record.kind === 'autosave' || record.kind === 'imported' || record.kind === 'manual'
+        ? record.kind
+        : 'manual',
+    health: 'corrupt',
+    errorCode: saveError.code,
+    savedAt: typeof snapshot?.savedAt === 'string' ? snapshot.savedAt : '',
+    seed: typeof snapshot?.world?.seed === 'string' ? snapshot.world.seed : 'unknown',
+    engineVersion: typeof snapshot?.engineVersion === 'string' ? snapshot.engineVersion : 'unknown',
+    explorerX: typeof snapshot?.explorer?.x === 'number' ? snapshot.explorer.x : 0,
+    explorerY: typeof snapshot?.explorer?.y === 'number' ? snapshot.explorer.y : 0,
+    discoveredChunks: Array.isArray(snapshot?.discovery?.discoveredChunkKeys)
+      ? snapshot.discovery.discoveredChunkKeys.length
+      : 0,
+    discoveredCells:
+      typeof snapshot?.discovery?.discoveredCells === 'number'
+        ? snapshot.discovery.discoveredCells
+        : 0,
+    resolutionHash:
+      typeof snapshot?.contentPacks?.resolutionHash === 'string'
+        ? snapshot.contentPacks.resolutionHash
+        : 'unknown',
+    backupCount: recordBackups(record).length,
+    sizeBytes: serializedBytes(record.snapshot),
+  }
+}
+
+function serializedBytes(value: unknown) {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).byteLength
+  } catch {
+    return 0
+  }
+}
+
+function recordBackups(record: Partial<PersistedWorldSaveRecord>) {
+  return Array.isArray(record.backups) ? record.backups : []
+}
+
+function backupId(snapshot: WorldSaveSnapshot) {
+  const value = JSON.stringify([
+    snapshot.savedAt,
+    snapshot.world.seed,
+    snapshot.explorer.x,
+    snapshot.explorer.y,
+    snapshot.discovery.discoveredCells,
+  ])
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `backup-${snapshot.savedAt}-${(hash >>> 0).toString(16).padStart(8, '0')}`
+}
+
+function safeBackupFromRecord(
+  record: Partial<PersistedWorldSaveRecord>
+): PersistedWorldSaveBackup | null {
+  try {
+    const snapshot = validateWorldSaveSnapshot(record.snapshot)
+    return {
+      backupId: backupId(snapshot),
+      label: record.label?.trim() || 'Recovered save',
+      kind: record.kind ?? 'manual',
+      snapshot,
+    }
+  } catch {
+    return null
+  }
+}
+
+function dedupeBackups(backups: PersistedWorldSaveBackup[]) {
+  const seen = new Set<string>()
+  return backups.filter((backup) => {
+    if (seen.has(backup.backupId)) return false
+    seen.add(backup.backupId)
+    return true
+  })
+}
+
+function buildRollingBackups(
+  existing: PersistedWorldSaveRecord | undefined
+): PersistedWorldSaveBackup[] {
+  if (!existing) return []
+  const current = safeBackupFromRecord(existing)
+  const healthyExisting = recordBackups(existing).filter((backup) => {
+    try {
+      validateWorldSaveSnapshot(backup.snapshot)
+      return true
+    } catch {
+      return false
+    }
+  })
+  return dedupeBackups([...(current ? [current] : []), ...healthyExisting]).slice(
+    0,
+    WORLD_SAVE_MAX_BACKUPS
+  )
 }
 
 function defaultSlotLabel(slotId: string) {
@@ -185,6 +387,7 @@ function normalizeRecord(record: PersistedWorldSaveRecord): PersistedWorldSaveRe
     label: record.label?.trim() || defaultSlotLabel(record.slotId),
     kind: record.kind ?? (record.slotId === WORLD_SAVE_AUTOSAVE_SLOT ? 'autosave' : 'manual'),
     snapshot: validateWorldSaveSnapshot(record.snapshot),
+    backups: recordBackups(record),
   }
 }
 
@@ -197,9 +400,22 @@ async function requireRecord(
 }
 
 async function readRecord(indexedDb: IDBFactory | undefined, slotId: string) {
+  const record = await readRawRecord(indexedDb, slotId)
+  return record ? normalizeRecord(record) : null
+}
+
+async function readRawRecord(indexedDb: IDBFactory | undefined, slotId: string) {
   const db = await openSaveDatabase(indexedDb)
   const record = await runReadonlyRequest<PersistedWorldSaveRecord | undefined>(db, slotId)
-  return record ? normalizeRecord(record) : null
+  return record ?? null
+}
+
+async function requireRawRecord(
+  record: PersistedWorldSaveRecord | null,
+  slotId: string
+): Promise<PersistedWorldSaveRecord> {
+  if (!record) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+  return record
 }
 
 export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot {
@@ -228,6 +444,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     typeof migrated.discovery.discoveredCells !== 'number' ||
     !Array.isArray(migrated.discovery.discoveredChunkKeys) ||
     !migrated.topology ||
+    !migrated.authoredEntities ||
     !migrated.preferences ||
     typeof migrated.preferences.locale !== 'string' ||
     typeof migrated.preferences.devMode !== 'boolean' ||
@@ -251,10 +468,22 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
 
   try {
     validateTopologyLedger(migrated.topology)
+    validateAuthoredEntityLifecycleSnapshot(migrated.authoredEntities)
   } catch (error) {
     if (error instanceof TopologyLedgerError) {
       throw new WorldSaveError(
         error.code === 'incompatible-version' ? 'unsupported-version' : 'corrupt',
+        error.message,
+        error
+      )
+    }
+    if (error instanceof AuthoredEntityLifecycleError) {
+      throw new WorldSaveError(
+        error.code === 'incompatible-version'
+          ? 'unsupported-version'
+          : error.code === 'budget-exceeded'
+            ? 'quota-exceeded'
+            : 'corrupt',
         error.message,
         error
       )
@@ -305,10 +534,14 @@ function migrateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot {
   ) {
     throw new WorldSaveError('unsupported-version', 'current save schema version is not registered')
   }
-  const current = snapshot as WorldSaveSnapshot & { topology?: WorldSaveSnapshot['topology'] }
+  const current = snapshot as WorldSaveSnapshot & {
+    topology?: WorldSaveSnapshot['topology']
+    authoredEntities?: WorldSaveSnapshot['authoredEntities']
+  }
   return {
     ...current,
     topology: current.topology ?? emptyTopologyLedger(),
+    authoredEntities: current.authoredEntities ?? emptyAuthoredEntityLifecycleSnapshot(),
   }
 }
 
@@ -359,6 +592,32 @@ function runWriteRequest(db: IDBDatabase, record: PersistedWorldSaveRecord): Pro
       reject(mapIndexedDbWriteError(transaction.error ?? new Error('failed to write save record')))
     transaction.objectStore(WORLD_SAVE_STORE).put(record)
   })
+}
+
+async function runWriteWithBackupPruning(
+  db: IDBDatabase,
+  record: PersistedWorldSaveRecord
+): Promise<void> {
+  let candidate = record
+  while (true) {
+    try {
+      await runWriteRequest(db, candidate)
+      record.backups = candidate.backups
+      return
+    } catch (error) {
+      if (
+        !(error instanceof WorldSaveError) ||
+        error.code !== 'quota-exceeded' ||
+        !candidate.backups?.length
+      ) {
+        throw error
+      }
+      candidate = {
+        ...candidate,
+        backups: candidate.backups.slice(0, -1),
+      }
+    }
+  }
 }
 
 function runDeleteRequest(db: IDBDatabase, slotId: string): Promise<void> {

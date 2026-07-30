@@ -16,8 +16,15 @@ Current implementation details:
 - content-pack resolution hashes gate restore/import compatibility so stale saves do not
   silently apply to different content.
 - the standalone save inspector supports list, save, load, rename, duplicate, delete,
-  import, and export with visible typed recovery failures.
+  import, and export with visible typed recovery failures;
+- replacing a slot stores up to three rolling previous versions in the same local record;
+- record listing validates each primary independently so one damaged save cannot hide
+  healthy journeys;
+- lightweight summaries expose seed, explorer position, discovery, engine version,
+  approximate serialized size, health, and backup count without decoding render buffers;
+- backup restoration is an explicit user action, and quota retries prune oldest backups
+  first before returning a typed failure.
 
-Future work remains for thumbnails, rolling backups, cross-seed remount prompts, and
-chunk-history compression, but those build on the same snapshot contract rather than
-replacing it.
+Future work remains for optional thumbnails, cross-seed remount prompts, slot-conflict
+transactions, bulk archives, and chunk-history compression. These build on the same
+snapshot/backup contract rather than replacing it; see issues #53 and #54.

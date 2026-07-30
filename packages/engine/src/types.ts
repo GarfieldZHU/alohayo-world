@@ -83,6 +83,8 @@ export interface DevPanelControls {
   lightLevelLabel: HTMLLabelElement
   lightLevelValue: HTMLSpanElement
   lightLevelSlider: HTMLInputElement
+  entityDiagnosticsLabel: HTMLDivElement
+  entityDiagnosticsValue: HTMLDivElement
   teleportX: HTMLInputElement
   teleportY: HTMLInputElement
   teleportButton: HTMLButtonElement
@@ -98,6 +100,7 @@ export interface DevPanelControls {
   dayNightToggle: HTMLInputElement
   fillEquipmentOptions: () => void
   fillItemOptions: () => void
+  refreshEntityDiagnostics: () => void
   setCollapsed: (collapsed: boolean) => void
   isCollapsed: () => boolean
   getActiveTab: () => 'movement' | 'world' | 'gear'

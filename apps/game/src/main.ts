@@ -26,6 +26,14 @@ const saveTitle = document.querySelector<HTMLElement>('#save-title')!
 const saveDescription = document.querySelector<HTMLElement>('#save-description')!
 const saveSlots = document.querySelector<HTMLSelectElement>('#save-slots')!
 const saveName = document.querySelector<HTMLInputElement>('#save-name')!
+const savePreview = document.querySelector<HTMLElement>('#save-preview')!
+const savePreviewSeed = document.querySelector<HTMLElement>('#save-preview-seed')!
+const savePreviewPosition = document.querySelector<HTMLElement>('#save-preview-position')!
+const savePreviewDiscovery = document.querySelector<HTMLElement>('#save-preview-discovery')!
+const savePreviewHealth = document.querySelector<HTMLElement>('#save-preview-health')!
+const saveRecovery = document.querySelector<HTMLElement>('#save-recovery')!
+const saveBackups = document.querySelector<HTMLSelectElement>('#save-backups')!
+const saveRestoreBackup = document.querySelector<HTMLButtonElement>('#save-restore-backup')!
 const saveCreate = document.querySelector<HTMLButtonElement>('#save-create')!
 const saveLoad = document.querySelector<HTMLButtonElement>('#save-load')!
 const saveRename = document.querySelector<HTMLButtonElement>('#save-rename')!
@@ -43,6 +51,7 @@ declare global {
   }
 }
 let handle: GameHandle | null = null
+let saveSummaries: WorldSaveSummary[] = []
 let launcherState: 'idle' | 'loading' | 'running' | 'error' = 'idle'
 const sizePresets = [
   {
@@ -119,6 +128,8 @@ const updateLauncherCopy = () => {
   saveDescription.textContent = uiText('saveDescription')
   saveSlots.ariaLabel = uiText('saveSlots')
   saveName.placeholder = uiText('saveName')
+  saveBackups.ariaLabel = uiText('saveBackups')
+  saveRestoreBackup.textContent = uiText('saveRecover')
   saveCreate.textContent = uiText('saveCreate')
   saveLoad.textContent = uiText('saveLoad')
   saveRename.textContent = uiText('saveRename')
@@ -162,16 +173,21 @@ const setSaveControlsDisabled = (disabled: boolean) => {
   ]) {
     control.disabled = disabled
   }
+  saveBackups.disabled = disabled
+  saveRestoreBackup.disabled =
+    disabled || !Array.from(saveBackups.options).some((option) => !option.disabled)
 }
 
 const renderSaveOptions = (summaries: WorldSaveSummary[]) => {
-  const previous = saveSlots.value
+  saveSummaries = summaries
+  const previous = saveSlots.dataset.nextSelection || saveSlots.value
+  delete saveSlots.dataset.nextSelection
   saveSlots.replaceChildren()
   for (const summary of summaries) {
     const option = document.createElement('option')
     option.value = summary.slotId
     option.dataset.label = summary.label
-    option.textContent = `${summary.label} · ${summary.kind} · ${summary.seed} · ${summary.discoveredCells} cells`
+    option.textContent = `${summary.health === 'corrupt' ? '⚠ ' : ''}${summary.label} · ${summary.seed}`
     saveSlots.appendChild(option)
   }
   if (summaries.some((summary) => summary.slotId === previous)) saveSlots.value = previous
@@ -180,19 +196,40 @@ const renderSaveOptions = (summaries: WorldSaveSummary[]) => {
     : uiText('saveEmpty')
 }
 
+const renderSavePreview = async () => {
+  const summary = saveSummaries.find((candidate) => candidate.slotId === saveSlots.value)
+  const preview = await import('./save-preview')
+  await preview.default(summary, handle, locale, uiText, formatUiText, [
+    savePreview,
+    savePreviewSeed,
+    savePreviewPosition,
+    savePreviewDiscovery,
+    savePreviewHealth,
+    saveRecovery,
+    saveBackups,
+    saveRestoreBackup,
+  ])
+}
+
 const refreshSaves = async () => {
   if (!handle?.listSaves) {
     renderSaveOptions([])
     return
   }
   renderSaveOptions(await handle.listSaves())
+  await renderSavePreview()
 }
 
 const runSaveAction = async (action: () => Promise<void>) => {
   setSaveControlsDisabled(true)
+  const statusBeforeAction = saveStatus.textContent
+  delete saveStatus.dataset.state
   try {
     await action()
+    const actionStatus = saveStatus.textContent
+    const hasActionStatus = actionStatus !== statusBeforeAction
     await refreshSaves()
+    if (hasActionStatus) saveStatus.textContent = actionStatus
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     saveStatus.textContent = formatUiText('saveError', { message })
@@ -249,7 +286,10 @@ saveCreate.addEventListener('click', () =>
   runSaveAction(async () => {
     const { slotId, label } = requestedSlot()
     const summary = await handle?.save?.(slotId, label)
-    if (summary) saveStatus.textContent = formatUiText('saveSuccess', { label: summary.label })
+    if (summary) {
+      saveSlots.dataset.nextSelection = summary.slotId
+      saveStatus.textContent = formatUiText('saveSuccess', { label: summary.label })
+    }
   })
 )
 
@@ -276,7 +316,8 @@ saveDuplicate.addEventListener('click', () =>
     const option = selectedSave()
     if (!option) return
     const { slotId, label } = requestedSlot()
-    await handle?.duplicateSave?.(option.value, slotId, label)
+    const summary = await handle?.duplicateSave?.(option.value, slotId, label)
+    if (summary) saveSlots.dataset.nextSelection = summary.slotId
   })
 )
 
@@ -308,7 +349,24 @@ saveImport.addEventListener('click', () =>
   runSaveAction(async () => {
     const { slotId, label } = requestedSlot()
     const summary = await handle?.importSave?.(saveImportData.value, slotId, label)
-    if (summary) saveStatus.textContent = formatUiText('saveImported', { label: summary.label })
+    if (summary) {
+      saveSlots.dataset.nextSelection = summary.slotId
+      saveStatus.textContent = formatUiText('saveImported', { label: summary.label })
+    }
+  })
+)
+
+saveSlots.addEventListener('change', () => {
+  void renderSavePreview()
+})
+
+saveRestoreBackup.addEventListener('click', () =>
+  runSaveAction(async () => {
+    const option = selectedSave()
+    const backupId = saveBackups.value
+    if (!option || !backupId) return
+    const summary = await handle?.restoreSaveBackup?.(option.value, backupId)
+    if (summary) saveStatus.textContent = formatUiText('saveRecovered', { label: summary.label })
   })
 )
 

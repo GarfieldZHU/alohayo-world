@@ -39,6 +39,20 @@
           <select id="save-slots" aria-label="Save slots"></select>
           <input id="save-name" maxlength="64" placeholder="Save name" />
         </div>
+        <div id="save-preview" class="save-preview" hidden>
+          <div>
+            <span id="save-preview-seed"></span>
+            <strong id="save-preview-position"></strong>
+          </div>
+          <div>
+            <span id="save-preview-discovery"></span>
+            <strong id="save-preview-health"></strong>
+          </div>
+        </div>
+        <div id="save-recovery" class="save-recovery" hidden>
+          <select id="save-backups" aria-label="Save backups"></select>
+          <button id="save-restore-backup" type="button" class="secondary">Recover previous</button>
+        </div>
         <div class="save-actions">
           <button id="save-create" type="button">Save</button>
           <button id="save-load" type="button" class="secondary">Load</button>

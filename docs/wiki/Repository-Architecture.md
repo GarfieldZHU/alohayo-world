@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.0.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-18
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.0.0
+> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.1.0
 
 ## Dependency Direction
 
@@ -33,8 +33,10 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
 4. The worker generates initial center-first chunks and transfers typed arrays.
 5. The engine reveals the canvas only after the first viewport is complete.
 6. Streaming loads nearby chunks and evicts distant chunks within configured radii.
-7. `pause`, `resume`, locale/theme updates, and `destroy` stay host-safe.
-8. `destroy` releases workers, RAF loops, listeners, DOM, and GPU resources.
+7. Map-owned authored entity IDs are retained by chunk owners; logical entities leave
+   only after their final owner releases them.
+8. `pause`, `resume`, locale/theme updates, and `destroy` stay host-safe.
+9. `destroy` releases workers, RAF loops, listeners, DOM, and GPU resources.
 
 ## Rust/Wasm Boundary
 
@@ -48,10 +50,12 @@ coverage, and at least 15% median CPU improvement without more than 5% transfer 
 
 ## Persistence and Local-Only Policy
 
-IndexedDB stores versioned local snapshots, discovery, explorer state, content-pack
-resolution metadata, and named save slots. No account, telemetry, remote save, or network
-gameplay service is part of the architecture. Imports validate schema and compatibility
-before becoming active state.
+IndexedDB stores versioned local snapshots, discovery, explorer state, topology aliases,
+persistent authored-entity despawns, content-pack resolution metadata, and named slots.
+Replacing a slot keeps a bounded rolling history; each record is validated independently,
+and recovery is explicit. Preview summaries read compact metadata rather than render
+buffers. No account, telemetry, remote save, or network gameplay service is part of the
+architecture.
 
 ## Verification Gates
 

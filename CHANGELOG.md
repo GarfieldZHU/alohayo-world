@@ -9,7 +9,11 @@
 - Organize Rust/Wasm typed batch outputs and shared raster-dimension checks into dedicated
   modules while preserving current promoted-batch parity and worker ownership.
 - Add a deterministic, non-executable authored-entity lifecycle registry with streamed
-  retain/release diagnostics, closed capability kinds, respawn policy, and focused tests.
+  reference-counted ownership, closed capability kinds, respawn policy, persistent
+  never-respawn deltas, localized dev diagnostics, and browser/save regression tests.
+- Add compact journey previews, three-version rolling local backups, per-record corruption
+  isolation, deterministic quota pruning, and explicit previous-version recovery to the
+  named save manager.
 
 - Add provisional typed drainage handoff summaries for streamed chunks and deterministic
   seam fixtures; full halo reconciliation remains tracked in #38.
