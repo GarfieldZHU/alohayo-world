@@ -86,6 +86,21 @@ export {
   type ProtectedOverlayKind,
   type ResolvedAuthoredOverlays,
 } from './authored-overlays'
+export {
+  DEFAULT_DYNAMIC_GEOMORPHOLOGY_CONFIG,
+  DYNAMIC_GEOMORPHOLOGY_MAX_ACTIVE_CELLS,
+  DYNAMIC_GEOMORPHOLOGY_SCHEMA_VERSION,
+  createDynamicGeomorphologyCorridor,
+  createDynamicGeomorphologyState,
+  stepDynamicGeomorphology,
+  validateDynamicGeomorphologyConfig,
+  type DynamicGeomorphologyAccounting,
+  type DynamicGeomorphologyConfig,
+  type DynamicGeomorphologyCorridor,
+  type DynamicGeomorphologyForcing,
+  type DynamicGeomorphologyState,
+  type DynamicGeomorphologyStep,
+} from './dynamic-geomorphology'
 
 export const BIOME = {
   deepOcean: 0,

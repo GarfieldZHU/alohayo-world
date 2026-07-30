@@ -1,5 +1,12 @@
 import { expect, it } from 'vitest'
-import { generateChunk, generateWorld } from '../../packages/map/src'
+import {
+  DEFAULT_DYNAMIC_GEOMORPHOLOGY_CONFIG,
+  createDynamicGeomorphologyCorridor,
+  createDynamicGeomorphologyState,
+  generateChunk,
+  generateWorld,
+  stepDynamicGeomorphology,
+} from '../../packages/map/src'
 import {
   createPackedFogMask,
   updatePackedFogMask,
@@ -58,4 +65,37 @@ it('limits retained-horizon fog travel updates to the moving vision corridor', (
 
   expect(fullSamples).toBe(mask.width * mask.height)
   expect(dirtySamples).toBeLessThan(fullSamples * 0.01)
+})
+
+it('steps a representative active geomorphology corridor within its broad CI budget', () => {
+  const width = 128
+  const height = 128
+  const size = width * height
+  const activeIndices = Uint32Array.from({ length: 4096 }, (_, index) => index)
+  const flowDirection = new Int8Array(size)
+  flowDirection.fill(-1)
+  for (let index = 0; index < activeIndices.length - 1; index += 1) {
+    flowDirection[index] = index % width === width - 1 ? 2 : 0
+  }
+  const corridor = createDynamicGeomorphologyCorridor({
+    width,
+    height,
+    activeIndices,
+    flowDirection,
+    erosionPotential: new Uint8Array(size).fill(128),
+    depositionPotential: new Uint8Array(size).fill(96),
+    floodplain: new Uint8Array(size).fill(255),
+  })
+  const started = performance.now()
+  const result = stepDynamicGeomorphology({
+    corridor,
+    state: createDynamicGeomorphologyState(corridor),
+    config: { ...DEFAULT_DYNAMIC_GEOMORPHOLOGY_CONFIG, enabled: true },
+  })
+  const elapsed = performance.now() - started
+
+  expect(result.accounting.processedCells).toBe(activeIndices.length)
+  expect(result.accounting.sedimentResidual).toBe(0)
+  expect(result.accounting.waterResidual).toBe(0)
+  expect(elapsed).toBeLessThan(100)
 })

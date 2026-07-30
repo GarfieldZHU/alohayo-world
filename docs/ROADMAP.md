@@ -60,9 +60,12 @@
       graph segments in issue `#38`.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
-- [ ] Fully natural fog, coastline, lake, and river presentation through contour-driven
-      rendering instead of cell-derived edge decoration.
-- [ ] Seam-safe coastlines across chunk borders plus later erosion and floodplain polish.
+- [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river
+      presentation completed in issue `#41`.
+- [x] Phase-zero deterministic active-corridor erosion/flood/deposition kernel with exact
+      integer accounting and static fallback for issue `#44`.
+- [ ] Canonical cross-chunk erosion/flood history, seasonal recession, channel migration,
+      and persistent delta growth in later issue `#44` phases.
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
       versioned persistent aliases, typed merge/frontier events, legacy-save migration,
       and browser-restart coverage completed in issue `#37`.

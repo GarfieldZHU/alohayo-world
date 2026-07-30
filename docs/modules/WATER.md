@@ -51,6 +51,12 @@ Parameters live under `geomorphology` in `content/core/world.json`. These fields
 metadata for later terrain, roads, towns, ecology, and rendering. They do not mutate
 elevation, simulate time, or claim cross-chunk sediment conservation.
 
+Issue `#44` Phase 0 now adds an optional map-side active-corridor kernel over these fields.
+It uses explicit integer state and exact water/sediment accounting, emits sparse changed
+cells and provisional local outlet exports, and stays disabled by default. See
+`../DYNAMIC_GEOMORPHOLOGY.md`. Cross-chunk persistence remains blocked on canonical `#38`
+drainage identities.
+
 ## Natural Rendering Baseline
 
 1. Smoothed shoreline contours suppress unknown streamed frontiers and refresh only loaded

@@ -1,7 +1,7 @@
 # World and Terrain
 
-> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
-> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.2.0
+> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
+> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.3.0
 
 The map is the central simulation model. Terrain is derived from continuous geography,
 not painted first and rationalized later. The same stable fields support exploration,
@@ -111,6 +111,12 @@ typed pixel preparation uses the same world-space visibility field as CPU action
 smooths discovery memory between cell centers, and updates only the old/new vision union
 during travel. PixiJS owns the texture; map and gameplay state remain renderer-independent.
 
+Dynamic geomorphology starts as a disabled-by-default map simulation over explicitly active
+drainage cells. Its first phase keeps integer sediment, deposited material, water, and tick
+state; every fixed step reports exact retained/exported/saturated mass and sparse changed
+cells. Outlet records are intentionally local and provisional until #38 supplies canonical
+drainage identities. The live terrain and saves do not consume this state yet.
+
 Every chunk also publishes a `ChunkDrainageSummary` with its cardinal flow handoffs. Its
 state is `provisional`: chunks have not yet reconciled a halo or canonical watershed
 identity. Issue [#38](https://github.com/GarfieldZHU/alohayo-world/issues/38) owns
@@ -118,6 +124,9 @@ halo generation, pairwise seam reconciliation, graph identities, persistence, an
 load-order benchmarks. Issue [#41](https://github.com/GarfieldZHU/alohayo-world/issues/41)
 delivered the halo shoreline, GPU fog, specialized water materials, and downstream river
 profile baseline. Never use a local field as proof that a river ends at a chunk edge.
+Issue [#44](https://github.com/GarfieldZHU/alohayo-world/issues/44) owns promotion from the
+local accounting kernel to canonical persistent erosion, flooding, channel evolution, and
+delta growth.
 
 ## Developer Showcase
 

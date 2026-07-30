@@ -72,3 +72,8 @@ This package owns deterministic geography and worker-safe data.
   `sedimentLoad`, `deposition`, and `floodplain`. Include new fields in worker transfer
   lists and deterministic hashes. Do not mutate elevation or imply time evolution in
   this layer.
+- Dynamic geomorphology begins in `dynamic-geomorphology.ts` as an optional integer
+  fixed-step active-corridor kernel. Preserve exact mass accounting, zero-work static
+  fallback, sparse changed-cell output, and explicit provisional outlet records until
+  issue `#38` provides canonical drainage identities. Do not persist or market local outlet
+  indices as cross-chunk conservation.

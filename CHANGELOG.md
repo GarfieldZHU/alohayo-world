@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Start #44 Phase 0 with a disabled-by-default, typed active-corridor erosion/flood/
+  deposition kernel, exact integer water/sediment accounting, deterministic pause/resume,
+  sparse changed-cell output, and explicitly provisional local outlet exports.
 - Complete the #41 natural-rendering pass with loaded-neighbor halo shoreline distances,
   specialized ocean/lake/estuary/delta/marsh/reef materials, downstream river width
   profiles, and one filtered GPU discovery-fog texture whose dirty updates match full
