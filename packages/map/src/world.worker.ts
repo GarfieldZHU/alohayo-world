@@ -28,6 +28,32 @@ type WasmChunkBaseLayers = {
   temperature: Uint8Array
 }
 
+type WasmRenderHints = Omit<
+  ChunkRenderHints,
+  | 'eastBoundaryMask'
+  | 'southBoundaryMask'
+  | 'regionalDetailMask'
+  | 'closeDetailKind'
+  | 'detailOffsetX'
+  | 'detailOffsetY'
+  | 'shoreDistance'
+> & {
+  eastBoundaryMask?: Uint8Array
+  east_boundary_mask?: Uint8Array
+  southBoundaryMask?: Uint8Array
+  south_boundary_mask?: Uint8Array
+  regionalDetailMask?: Uint8Array
+  regional_detail_mask?: Uint8Array
+  closeDetailKind?: Uint8Array
+  close_detail_kind?: Uint8Array
+  detailOffsetX?: Uint8Array
+  detail_offset_x?: Uint8Array
+  detailOffsetY?: Uint8Array
+  detail_offset_y?: Uint8Array
+  shoreDistance?: Int8Array
+  shore_distance?: Int8Array
+}
+
 type WasmWorldCoreModule = {
   default?: (input?: string | URL | WebAssembly.Module) => Promise<unknown>
   generate_chunk_base_layers?: (
@@ -42,7 +68,7 @@ type WasmWorldCoreModule = {
     chunkSize: number,
     originX: number,
     originY: number
-  ) => ChunkRenderHints
+  ) => WasmRenderHints
   build_hydrology_raster?: (
     rawElevation: Float32Array,
     water: Uint8Array,
@@ -54,6 +80,49 @@ type WasmWorldCoreModule = {
     flow_direction?: Int8Array
     flow_accumulation?: Uint32Array
   }
+}
+
+function normalizeWasmRenderHints(hints: WasmRenderHints, size: number): ChunkRenderHints | null {
+  const normalized = {
+    noise: hints.noise,
+    eastBoundaryMask: hints.eastBoundaryMask ?? hints.east_boundary_mask,
+    southBoundaryMask: hints.southBoundaryMask ?? hints.south_boundary_mask,
+    regionalDetailMask: hints.regionalDetailMask ?? hints.regional_detail_mask,
+    closeDetailKind: hints.closeDetailKind ?? hints.close_detail_kind,
+    detailOffsetX: hints.detailOffsetX ?? hints.detail_offset_x,
+    detailOffsetY: hints.detailOffsetY ?? hints.detail_offset_y,
+    shoreDistance: hints.shoreDistance ?? hints.shore_distance,
+  }
+  if (
+    normalized.noise instanceof Uint32Array &&
+    normalized.eastBoundaryMask instanceof Uint8Array &&
+    normalized.southBoundaryMask instanceof Uint8Array &&
+    normalized.regionalDetailMask instanceof Uint8Array &&
+    normalized.closeDetailKind instanceof Uint8Array &&
+    normalized.detailOffsetX instanceof Uint8Array &&
+    normalized.detailOffsetY instanceof Uint8Array &&
+    normalized.shoreDistance instanceof Int8Array &&
+    normalized.noise.length === size &&
+    normalized.eastBoundaryMask.length === size &&
+    normalized.southBoundaryMask.length === size &&
+    normalized.regionalDetailMask.length === size &&
+    normalized.closeDetailKind.length === size &&
+    normalized.detailOffsetX.length === size &&
+    normalized.detailOffsetY.length === size &&
+    normalized.shoreDistance.length === size
+  ) {
+    return {
+      noise: normalized.noise,
+      eastBoundaryMask: normalized.eastBoundaryMask,
+      southBoundaryMask: normalized.southBoundaryMask,
+      regionalDetailMask: normalized.regionalDetailMask,
+      closeDetailKind: normalized.closeDetailKind,
+      detailOffsetX: normalized.detailOffsetX,
+      detailOffsetY: normalized.detailOffsetY,
+      shoreDistance: normalized.shoreDistance,
+    }
+  }
+  return null
 }
 
 let wasmRenderHintsBaseUrl: string | null = null
@@ -295,46 +364,19 @@ async function buildChunkRenderHints(
         chunk.originX,
         chunk.originY
       )
-      const localHints = generateChunkRenderHints({
-        biomes: chunk.biomes,
-        elevation: chunk.elevation,
-        chunkSize: chunk.chunkSize,
-        originX: chunk.originX,
-        originY: chunk.originY,
-      })
+      const hints = normalizeWasmRenderHints(wasmHints, chunk.chunkSize * chunk.chunkSize)
+      if (hints)
+        return { hints, implementation: 'wasm' as const, elapsedMs: performance.now() - started }
       return {
-        hints: {
-          noise: wasmHints.noise,
-          eastBoundaryMask:
-            (wasmHints as ChunkRenderHints & { east_boundary_mask?: Uint8Array })
-              .eastBoundaryMask ??
-            (wasmHints as ChunkRenderHints & { east_boundary_mask?: Uint8Array })
-              .east_boundary_mask!,
-          southBoundaryMask:
-            (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array })
-              .southBoundaryMask ??
-            (wasmHints as ChunkRenderHints & { south_boundary_mask?: Uint8Array })
-              .south_boundary_mask!,
-          regionalDetailMask:
-            (wasmHints as ChunkRenderHints & { regional_detail_mask?: Uint8Array })
-              .regionalDetailMask ??
-            (wasmHints as ChunkRenderHints & { regional_detail_mask?: Uint8Array })
-              .regional_detail_mask!,
-          closeDetailKind:
-            (wasmHints as ChunkRenderHints & { close_detail_kind?: Uint8Array }).closeDetailKind ??
-            (wasmHints as ChunkRenderHints & { close_detail_kind?: Uint8Array }).close_detail_kind!,
-          detailOffsetX:
-            (wasmHints as ChunkRenderHints & { detail_offset_x?: Uint8Array }).detailOffsetX ??
-            (wasmHints as ChunkRenderHints & { detail_offset_x?: Uint8Array }).detail_offset_x!,
-          detailOffsetY:
-            (wasmHints as ChunkRenderHints & { detail_offset_y?: Uint8Array }).detailOffsetY ??
-            (wasmHints as ChunkRenderHints & { detail_offset_y?: Uint8Array }).detail_offset_y!,
-          // The current Wasm ABI predates shoreline fields. Keep the existing Wasm
-          // batches authoritative and supply this small deterministic local hint until
-          // #41 promotes the full signed-distance batch.
-          shoreDistance: localHints.shoreDistance,
-        } satisfies ChunkRenderHints,
-        implementation: 'wasm' as const,
+        hints: generateChunkRenderHints({
+          biomes: chunk.biomes,
+          elevation: chunk.elevation,
+          chunkSize: chunk.chunkSize,
+          originX: chunk.originX,
+          originY: chunk.originY,
+        }),
+        implementation: 'typescript' as const,
+        fallbackReason: 'invalid-wasm-output',
         elapsedMs: performance.now() - started,
       }
     } catch {

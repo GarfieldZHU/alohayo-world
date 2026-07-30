@@ -35,4 +35,5 @@ pub struct ChunkRenderHints {
     pub close_detail_kind: Vec<u8>,
     pub detail_offset_x: Vec<u8>,
     pub detail_offset_y: Vec<u8>,
+    pub shore_distance: Vec<i8>,
 }

@@ -9,13 +9,17 @@ use shape::checked_raster_size;
 const BIOME_DEEP_OCEAN: u8 = 0;
 const BIOME_OCEAN: u8 = 1;
 const BIOME_SHALLOW_SEA: u8 = 2;
+const BIOME_COAST: u8 = 3;
 const BIOME_LAKE: u8 = 4;
+const BIOME_BEACH: u8 = 5;
 const BIOME_FOREST: u8 = 9;
 const BIOME_WETLAND: u8 = 11;
 const BIOME_HIGHLAND: u8 = 12;
 const BIOME_BARE_ROCK: u8 = 13;
 const BIOME_MOUNTAIN: u8 = 14;
 const BIOME_RAINFOREST: u8 = 18;
+const BIOME_MARSH: u8 = 19;
+const BIOME_REEF: u8 = 22;
 
 const CLOSE_DETAIL_WATER: u8 = 1;
 const CLOSE_DETAIL_FOREST: u8 = 2;
@@ -455,6 +459,86 @@ fn close_detail_kind_for_biome(biome: u8) -> u8 {
     }
 }
 
+fn is_water_biome(biome: u8) -> bool {
+    matches!(
+        biome,
+        BIOME_DEEP_OCEAN
+            | BIOME_OCEAN
+            | BIOME_SHALLOW_SEA
+            | BIOME_COAST
+            | BIOME_LAKE
+            | BIOME_BEACH
+            | BIOME_WETLAND
+            | BIOME_MARSH
+            | BIOME_REEF
+    )
+}
+
+fn build_local_shore_distance(biomes: &[u8], chunk_size: usize) -> Vec<i8> {
+    let size = chunk_size * chunk_size;
+    let mut distance = vec![-1_i16; size];
+    let mut queue = vec![0_usize; size];
+    let mut head = 0;
+    let mut tail = 0;
+    const CARDINAL: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+    for y in 0..chunk_size {
+        for x in 0..chunk_size {
+            let index = y * chunk_size + x;
+            let water = is_water_biome(biomes[index]);
+            for (dx, dy) in CARDINAL {
+                let nx = x as i32 + dx;
+                let ny = y as i32 + dy;
+                if nx < 0 || ny < 0 || nx >= chunk_size as i32 || ny >= chunk_size as i32 {
+                    continue;
+                }
+                let neighbor = ny as usize * chunk_size + nx as usize;
+                if water != is_water_biome(biomes[neighbor]) {
+                    distance[index] = 0;
+                    queue[tail] = index;
+                    tail += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    while head < tail {
+        let index = queue[head];
+        head += 1;
+        let next_distance = distance[index] + 1;
+        let x = index % chunk_size;
+        let y = index / chunk_size;
+        for (dx, dy) in CARDINAL {
+            let nx = x as i32 + dx;
+            let ny = y as i32 + dy;
+            if nx < 0 || ny < 0 || nx >= chunk_size as i32 || ny >= chunk_size as i32 {
+                continue;
+            }
+            let neighbor = ny as usize * chunk_size + nx as usize;
+            if distance[neighbor] != -1 {
+                continue;
+            }
+            distance[neighbor] = next_distance;
+            queue[tail] = neighbor;
+            tail += 1;
+        }
+    }
+
+    distance
+        .into_iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let absolute = if value < 0 { 127 } else { value.min(127) };
+            if is_water_biome(biomes[index]) {
+                -(absolute as i8)
+            } else {
+                absolute as i8
+            }
+        })
+        .collect()
+}
+
 #[wasm_bindgen]
 pub fn prepare_chunk_render_hints(
     biomes: &[u8],
@@ -464,6 +548,8 @@ pub fn prepare_chunk_render_hints(
     origin_y: i32,
 ) -> ChunkRenderHints {
     let size = checked_raster_size(chunk_size, chunk_size, "chunk render hints");
+    assert_eq!(biomes.len(), size, "biome length mismatch");
+    assert_eq!(elevation.len(), size, "elevation length mismatch");
     let mut noise = vec![0_u32; size];
     let mut east_boundary_mask = vec![0_u8; size];
     let mut south_boundary_mask = vec![0_u8; size];
@@ -471,6 +557,7 @@ pub fn prepare_chunk_render_hints(
     let mut close_detail_kind = vec![0_u8; size];
     let mut detail_offset_x = vec![0_u8; size];
     let mut detail_offset_y = vec![0_u8; size];
+    let shore_distance = build_local_shore_distance(biomes, chunk_size);
 
     for local_y in 0..chunk_size {
         for local_x in 0..chunk_size {
@@ -507,6 +594,7 @@ pub fn prepare_chunk_render_hints(
         close_detail_kind,
         detail_offset_x,
         detail_offset_y,
+        shore_distance,
     }
 }
 
@@ -532,6 +620,7 @@ mod tests {
         assert_eq!(hints.noise.len(), 9);
         assert_eq!(hints.east_boundary_mask, vec![0, 1, 0, 1, 0, 0, 1, 1, 0]);
         assert_eq!(hints.south_boundary_mask, vec![1, 1, 1, 1, 1, 1, 0, 0, 0]);
+        assert_eq!(hints.shore_distance, vec![0; 9]);
         assert!(hints
             .regional_detail_mask
             .iter()
