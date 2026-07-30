@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BIOME } from '../packages/map/src'
 import {
+  buildHaloShoreDistance,
   CLOSE_DETAIL_KIND,
   generateChunkRenderHints,
   renderHintNoise,
@@ -65,6 +66,45 @@ describe('chunk render hints', () => {
     })
 
     expect(Array.from(hints.shoreDistance)).toEqual([-1, 0, 0, -1, 0, 0, -1, 0, 0])
+  })
+
+  it('uses a loaded one-cell halo without inventing shores at unknown frontiers', () => {
+    const biomes = new Uint8Array(9).fill(BIOME.ocean)
+    const unknown = buildHaloShoreDistance({
+      biomes,
+      chunkSize: 3,
+      biomeAtHalo: () => undefined,
+    })
+    const eastLand = buildHaloShoreDistance({
+      biomes,
+      chunkSize: 3,
+      biomeAtHalo: (x) => (x === 3 ? BIOME.lowland : undefined),
+    })
+
+    expect(Array.from(unknown)).toEqual(new Array(9).fill(-127))
+    expect(Array.from(eastLand)).toEqual([-2, -1, 0, -2, -1, 0, -2, -1, 0])
+  })
+
+  it('produces the same final halo field regardless of neighbor arrival order', () => {
+    const biomes = new Uint8Array(16).fill(BIOME.ocean)
+    const neighbors = new Map<string, number>([
+      ['4,0', BIOME.lowland],
+      ['4,1', BIOME.lowland],
+      ['4,2', BIOME.lowland],
+      ['4,3', BIOME.lowland],
+      ['0,4', BIOME.lowland],
+      ['1,4', BIOME.lowland],
+      ['2,4', BIOME.lowland],
+      ['3,4', BIOME.lowland],
+    ])
+    const build = (entries: Array<[string, number]>) =>
+      buildHaloShoreDistance({
+        biomes,
+        chunkSize: 4,
+        biomeAtHalo: (x, y) => new Map(entries).get(`${x},${y}`),
+      })
+
+    expect(build([...neighbors])).toEqual(build([...neighbors].reverse()))
   })
 
   it('marks local boundaries and close-detail classes predictably', () => {

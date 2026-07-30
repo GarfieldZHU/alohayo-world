@@ -1,7 +1,7 @@
 # Water Module
 
-**Status:** drainage and static geomorphology metadata implemented; natural contour polish
-continues in issue `#41`.
+**Status:** drainage/static geomorphology and the issue `#41` natural-rendering pass are
+implemented; persistent terrain change continues in issue `#44`.
 
 ## Owns
 
@@ -51,15 +51,17 @@ Parameters live under `geomorphology` in `content/core/world.json`. These fields
 metadata for later terrain, roads, towns, ecology, and rendering. They do not mutate
 elevation, simulate time, or claim cross-chunk sediment conservation.
 
-## Next Slice
+## Natural Rendering Baseline
 
-1. Coastline contour extraction rather than only cardinal edge blending.
-2. Lake perimeter treatment distinct from ocean/sea.
-3. Flow-aware river highlight direction and width variation in the renderer.
-4. Distance-to-shore tinting for shallow water and beach shelves.
-5. Cross-chunk watershed identity and seam-safe outlets in issue `#38`.
-6. Seasonal inundation, delta growth, and persistent terrain change in the dedicated
-   dynamic-geomorphology follow-up.
+1. Smoothed shoreline contours suppress unknown streamed frontiers and refresh only loaded
+   cardinal seams.
+2. A signed distance field consumes a one-cell loaded-neighbor halo and drives distinct
+   ocean shelf, beach, cliff, lake-bank, estuary, delta, marsh, and reef materials.
+3. Rivers widen downstream and layer banks, water, and directional highlights.
+4. Discovery fog is one filtered GPU texture with world-space visibility parity and
+   vision-union dirty updates.
+5. Persistent seasonal inundation, erosion, channel migration, and delta growth remain
+   simulation work in issue `#44`, not renderer-owned state.
 
 The cross-chunk implementation contract lives in `../CROSS_CHUNK_HYDROLOGY.md`. Keep
 hydrology truth, river graph identity, and smoothed water presentation as separate layers.
@@ -70,4 +72,6 @@ hydrology truth, river graph identity, and smoothed water presentation as separa
 - chunk-border parity for water-edge rendering helpers
 - generation config compatibility and schema checks
 - visual smoke tests for coast, lake, and river showcase seeds
+- CPU/GPU fog action-threshold parity and dirty-update/full-rebuild byte parity
+- desktop/mobile browser budgets and screenshot review at normal game zoom
 - deterministic and config-sensitive geomorphology arrays with bounded byte values

@@ -32,7 +32,7 @@ records which released behavior the page describes.
 | English page                   | EN version | Chinese page                         | zh-CN version | Source translated | Status |
 | ------------------------------ | ---------: | ------------------------------------ | ------------: | ----------------: | ------ |
 | Home                           |      1.0.0 | Home-zh-CN                           |         1.0.0 |             1.0.0 | synced |
-| World and Terrain              |      1.1.0 | World-and-Terrain-zh-CN              |         1.1.0 |             1.1.0 | synced |
+| World and Terrain              |      1.2.0 | World-and-Terrain-zh-CN              |         1.2.0 |             1.2.0 | synced |
 | Background World               |      1.0.0 | Background-World-zh-CN               |         1.0.0 |             1.0.0 | synced |
 | Character System               |      1.0.0 | Character-System-zh-CN               |         1.0.0 |             1.0.0 | synced |
 | Abilities and Roles            |      1.0.0 | Abilities-and-Roles-zh-CN            |         1.0.0 |             1.0.0 | synced |

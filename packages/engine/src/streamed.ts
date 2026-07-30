@@ -1,11 +1,14 @@
 import {
   Application,
+  BufferImageSource,
   Container,
   CullerPlugin,
   extensions,
   Graphics,
   Rectangle,
+  Sprite,
   Text,
+  Texture,
 } from 'pixi.js'
 import {
   CHARACTER_CELL_FRACTION,
@@ -37,6 +40,7 @@ import {
 import {
   AuthoredEntityLifecycleError,
   AuthoredEntityLifecycleRegistry,
+  buildHaloShoreDistance,
   ChunkTopologyResolver,
   TopologyLedgerError,
   hashSeed,
@@ -80,9 +84,18 @@ import {
   profileById,
   toChunkCoord,
 } from './utils'
-import { redrawSmoothDiscoveryFog, sampleVisionAtPoint } from './visibility'
+import { sampleVisionAtPoint } from './visibility'
+import {
+  createPackedFogMask,
+  fogMaskMatchesBounds,
+  updatePackedFogMask,
+  visionDirtyBounds,
+  type FogMaskVision,
+  type PackedFogMask,
+} from './fog-mask'
 import {
   drawBoundaryBlend,
+  classifyWaterMaterial,
   drawRiver,
   drawWaterCloseDetail,
   drawWaterContours,
@@ -149,10 +162,13 @@ export async function createGame(
   const viewport = new Container()
   const chunkLayer = new Container()
   const discoveryFogLayer = new Container()
-  const discoveryFogFill = new Graphics()
-  const discoveryFogCutout = new Graphics()
-  discoveryFogCutout.blendMode = 'erase'
-  discoveryFogLayer.addChild(discoveryFogFill, discoveryFogCutout)
+  const discoveryFogSprite = new Sprite()
+  discoveryFogSprite.visible = false
+  discoveryFogLayer.addChild(discoveryFogSprite)
+  let packedFogMask: PackedFogMask | null = null
+  let fogMaskSource: BufferImageSource | null = null
+  let fogMaskTexture: Texture | null = null
+  let previousFogVision: FogMaskVision | undefined
   const devLayer = new Graphics()
   const characterLayer = new Graphics()
   const overlay = new Container()
@@ -985,41 +1001,70 @@ export async function createGame(
       .stroke({ color: weapon, width: Math.max(0.5, cellSize * 0.12), alpha: 0.92 })
   }
 
-  const redrawWorldFog = () => {
-    discoveryFogFill.clear()
-    discoveryFogCutout.clear()
+  const redrawWorldFog = (incremental = false) => {
     if (devMode && !devBattleShadow) return
-    for (const [key, view] of chunkViews) {
-      if (!view.container.visible) continue
-      const chunk = chunks.get(key)
-      const discovered = discovery.get(key)
-      if (!chunk || !discovered) continue
-      redrawSmoothDiscoveryFog({
-        fill: discoveryFogFill,
-        cutout: discoveryFogCutout,
-        discovered,
-        chunkSize: chunk.chunkSize,
-        cellSize,
-        chunkOriginX: chunk.originX,
-        chunkOriginY: chunk.originY,
-        fogColor: 0x182434,
-        hiddenAlpha: 0.68,
-        clear: false,
-        offsetX: chunk.originX * cellSize,
-        offsetY: chunk.originY * cellSize,
-        activeVision:
-          explorerMotion && (!devMode || devBattleShadow)
-            ? {
-                sourceX: explorerMotion.x - chunk.originX,
-                sourceY: explorerMotion.y - chunk.originY,
-                radius: content.world.stream.discoveryRadius,
-              }
-            : undefined,
-      })
+    const renderedChunks = [...chunkViews.keys()]
+      .map((key) => chunks.get(key))
+      .filter((chunk): chunk is GeneratedChunk => Boolean(chunk))
+    if (renderedChunks.length === 0) {
+      discoveryFogSprite.visible = false
+      return
     }
+    const minCellX = Math.min(...renderedChunks.map((chunk) => chunk.originX))
+    const minCellY = Math.min(...renderedChunks.map((chunk) => chunk.originY))
+    const maxCellX = Math.max(...renderedChunks.map((chunk) => chunk.originX + chunk.chunkSize))
+    const maxCellY = Math.max(...renderedChunks.map((chunk) => chunk.originY + chunk.chunkSize))
+    const bounds = {
+      minCellX,
+      minCellY,
+      widthCells: maxCellX - minCellX,
+      heightCells: maxCellY - minCellY,
+    }
+    const activeVision =
+      explorerMotion && (!devMode || devBattleShadow)
+        ? {
+            sourceX: explorerMotion.x,
+            sourceY: explorerMotion.y,
+            radius: content.world.stream.discoveryRadius,
+          }
+        : undefined
+    const canUpdate = packedFogMask !== null && fogMaskMatchesBounds(packedFogMask, bounds)
+    if (!canUpdate) {
+      packedFogMask = createPackedFogMask(bounds, 2)
+      fogMaskTexture?.destroy(true)
+      fogMaskSource = new BufferImageSource({
+        resource: packedFogMask.pixels,
+        width: packedFogMask.width,
+        height: packedFogMask.height,
+        format: 'bgra8unorm',
+        alphaMode: 'premultiply-alpha-on-upload',
+        scaleMode: 'linear',
+      })
+      fogMaskTexture = new Texture({ source: fogMaskSource, label: 'discovery-fog-mask' })
+      discoveryFogSprite.texture = fogMaskTexture
+      discoveryFogSprite.position.set(bounds.minCellX * cellSize, bounds.minCellY * cellSize)
+      discoveryFogSprite.width = bounds.widthCells * cellSize
+      discoveryFogSprite.height = bounds.heightCells * cellSize
+    }
+    if (!packedFogMask || !fogMaskSource) return
+    const dirtyBounds =
+      incremental && canUpdate ? visionDirtyBounds(previousFogVision, activeVision) : undefined
+    updatePackedFogMask(packedFogMask, {
+      fogColor: 0x182434,
+      hiddenAlpha: 0.68,
+      memoryAlpha: 0.045,
+      isDiscovered: isDiscoveredCell,
+      activeVision,
+      dirtyBounds,
+    })
+    fogMaskSource.update()
+    previousFogVision = activeVision
+    discoveryFogSprite.visible = true
+    app.canvas.dataset.discoveryFogDirtyUpdate = dirtyBounds ? 'vision-union' : 'full'
+    app.canvas.dataset.discoveryFogTextureSize = `${packedFogMask.width}x${packedFogMask.height}`
   }
 
-  const redrawChunkFog = () => redrawWorldFog()
+  const redrawChunkFog = (incremental = false) => redrawWorldFog(incremental)
 
   const attachDevPanelInteractions = (panelControls: DevPanelControls | null) => {
     if (!panelControls) return
@@ -1041,9 +1086,9 @@ export async function createGame(
     discoveryFogLayer.visible = fogVisible
     app.canvas.dataset.devBattleShadow = devMode && devBattleShadow ? 'true' : 'false'
     app.canvas.dataset.visionBoundary = 'continuous'
-    app.canvas.dataset.discoveryFogRenderer = 'adaptive-subcell'
-    app.canvas.dataset.discoveryFogComposite = 'unfiltered-chunks-global-vision'
-    app.canvas.dataset.discoveryFogCoverage = 'global-world-graphics'
+    app.canvas.dataset.discoveryFogRenderer = 'gpu-mask-texture'
+    app.canvas.dataset.discoveryFogComposite = 'single-bgra-texture'
+    app.canvas.dataset.discoveryFogCoverage = 'retained-world-texture'
     app.canvas.dataset.discoveryFogCoordinates = 'world-space'
   }
 
@@ -1515,6 +1560,16 @@ export async function createGame(
     view.landmarks.clear()
     rebuildRoadMask(chunk)
     rebuildRiverMask(chunk)
+    const haloShoreDistance = buildHaloShoreDistance({
+      biomes: chunk.biomes,
+      chunkSize: chunk.chunkSize,
+      biomeAtHalo: (localX, localY) => {
+        if (localX >= 0 && localY >= 0 && localX < chunk.chunkSize && localY < chunk.chunkSize) {
+          return chunk.biomes[localY * chunk.chunkSize + localX]
+        }
+        return biomeAtCell(chunk.originX + localX, chunk.originY + localY)?.code
+      },
+    })
 
     for (let localY = 0; localY < chunk.chunkSize; localY += 1) {
       for (let localX = 0; localX < chunk.chunkSize; localX += 1) {
@@ -1527,13 +1582,21 @@ export async function createGame(
           .rect(originX - 0.4, originY - 0.4, cellSize + 0.8, cellSize + 0.8)
           .fill(biome.color)
         if (isWaterBiome(biome)) {
+          const river = Boolean(riverMasks.get(key)?.[index])
           drawWaterMaterialBand(
             view.transitions,
             originX,
             originY,
             cellSize,
-            chunk.renderHints.shoreDistance[index]!,
-            colorFromHex(biome.accent, 0x7bd3f7)
+            haloShoreDistance[index]!,
+            colorFromHex(biome.accent, 0x7bd3f7),
+            classifyWaterMaterial(biome, haloShoreDistance[index]!, {
+              slope: chunk.slope[index]!,
+              deposition: chunk.deposition[index]!,
+              floodplain: chunk.floodplain[index]!,
+              river,
+            }),
+            noise
           )
         }
 
@@ -1638,6 +1701,7 @@ export async function createGame(
     })
     app.canvas.dataset.shorelineRenderer = 'smoothed-contours'
     app.canvas.dataset.shorelineFrontier = 'known-neighbors-only'
+    app.canvas.dataset.shorelineDistance = 'one-cell-loaded-halo'
 
     for (const river of chunk.rivers) {
       drawRiver(view.rivers, river, chunk.originX, chunk.originY, cellSize, content.world.rivers)
@@ -1831,6 +1895,7 @@ export async function createGame(
   }
 
   const evictFarChunks = (centerChunkX: number, centerChunkY: number) => {
+    let evicted = false
     for (const [key, chunk] of chunks) {
       const distance = Math.max(
         Math.abs(chunk.chunkX - centerChunkX),
@@ -1851,8 +1916,9 @@ export async function createGame(
       riverMasks.delete(key)
       bridgeMasks.delete(key)
       dirtyFog.delete(key)
+      evicted = true
     }
-    redrawWorldFog()
+    if (evicted) redrawWorldFog()
   }
 
   const getChunkForCell = (cellX: number, cellY: number) => {
@@ -2042,8 +2108,8 @@ export async function createGame(
     })
   }
 
-  const refreshFog = () => {
-    redrawChunkFog()
+  const refreshFog = (incremental = false) => {
+    redrawChunkFog(incremental)
   }
 
   const sampleBattleVisibility = (cellX: number, cellY: number) => {
@@ -2099,7 +2165,7 @@ export async function createGame(
         affected.add(location.key)
       }
     }
-    if (affected.size > 0) redrawChunkFog()
+    if (affected.size > 0) redrawChunkFog(true)
     if (affected.size) {
       drawMinimap()
       markSaveDirty()
@@ -2292,6 +2358,9 @@ export async function createGame(
   app.canvas.style.visibility = 'visible'
   initialLoading.remove()
   options.container.setAttribute('aria-busy', 'false')
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => performanceTracker.resetRuntimeWindow())
+  })
   applyCurrentDevPanelTheme(devPanel)
   applyCurrentMinimapTheme(minimapControls)
   attachDevPanelInteractions(devPanel)
@@ -2543,7 +2612,7 @@ export async function createGame(
     evictFarChunks(centerChunkX, centerChunkY)
     revealAroundExplorer()
     if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
-      refreshFog()
+      refreshFog(true)
       if (devMode) {
         viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
         viewport.y -= (explorerMotion.y - previousY) * cellSize * scale

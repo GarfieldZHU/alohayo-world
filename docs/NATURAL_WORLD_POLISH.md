@@ -31,13 +31,19 @@ removed after they proved to sample transparent pixels beyond each finite chunk 
 bright horizontal/vertical seams. The current renderer keeps chunk masks unfiltered and
 uses the global screen-space vision layer for the soft active boundary.
 
-This is a coherent continuous-shape baseline. The map now also emits a deterministic
-signed local shoreline-distance hint: negative values are water, positive values land,
-zero touches a water/land edge, and `+/-127` means no local shore. The engine uses the
-nearest water bands only as a subtle material tint beneath the existing contour renderer.
-It is intentionally local until #41 adds a halo-aware field and seam refresh contract.
-GPU-backed fog masks, delta/estuary forms, and cross-chunk hydrology identities remain
-later refinement rather than reasons to reintroduce cell-edge drawing.
+This is now a coherent continuous-shape renderer. Worker render hints still carry the
+deterministic local shoreline field, while the retained renderer rebuilds its signed field
+from a one-cell loaded-neighbor halo whenever a seam gains context. Unknown samples remain
+unknown, so load order cannot invent a coast. Water presentation classifies deep ocean,
+ocean shelf, beach, cliff, lake bank, estuary, delta, marsh, and reef materials from stable
+biome, distance, slope, river, deposition, and floodplain hints.
+
+Discovery fog is packed into one BGRA texture over the rendered neighborhood and composed
+by PixiJS on the GPU. The texture samples the same world-space visibility function as the
+CPU action reference, interpolates discovered memory between cell centers, and updates only
+the union of the previous and current vision envelopes during travel. A two-samples-per-cell
+texture with linear GPU filtering preserves the soft frontier without the cost of uploading
+per-cell Graphics geometry.
 
 ## Fog Compositing Architecture
 
@@ -64,22 +70,21 @@ the existing cardinal-neighbor refresh draws the real coast, lake bank, or conti
 water surface. This tri-state contract (`water`, `land`, `unknown`) must survive any future
 worker/Wasm contour batch as an explicit known-data mask or halo.
 
-The production target tracked in issue `#41` builds on this single-layer baseline:
+The production implementation completed in issue `#41` follows this split:
 
-1. Map/worker code packs discovered and active-visibility samples for the visible chunk
-   neighborhood with a one-cell halo.
-2. Rust/Wasm may accelerate deterministic halo packing, distance-field generation, and
-   dirty-rectangle updates as coarse typed-array batches.
-3. PixiJS/WebGL owns one mask texture or render texture and one fragment-shader composite
-   across the viewport.
-4. The shader applies hidden, explored, current-vision, and feathered mist values without
-   knowing chunk borders.
+1. Map code owns the one-cell halo shoreline field; worker/Wasm owns the initial typed
+   render-hint batch and keeps a byte-identical TypeScript fallback.
+2. Engine preparation packs discovered and active-visibility alpha into one coarse typed
+   pixel buffer for the retained rendered neighborhood.
+3. PixiJS/WebGL owns one filtered BGRA mask texture across that neighborhood.
+4. Texture alpha applies hidden, explored, current-vision, and feathered mist values
+   without knowing chunk borders.
 5. Gameplay legality continues to query the CPU visibility field; the shader is
    presentation only.
 
-Wasm should not issue draw calls or own GPU resources. Promotion requires TypeScript
-parity, seam screenshots, dirty-update benchmarks, transfer budgets, and context-loss
-recovery.
+Wasm does not issue draw calls or own GPU resources. The render-hint Wasm candidate remains
+capability-gated, with TypeScript fallback; contour segment promotion remains isolated in
+its dedicated measurement track.
 
 ## Fully Natural Plan
 

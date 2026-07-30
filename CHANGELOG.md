@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete the #41 natural-rendering pass with loaded-neighbor halo shoreline distances,
+  specialized ocean/lake/estuary/delta/marsh/reef materials, downstream river width
+  profiles, and one filtered GPU discovery-fog texture whose dirty updates match full
+  rebuilds and the CPU action threshold.
 - Fix visible world seams by removing isolated per-chunk fog blur and suppressing false
   shoreline contours where streamed neighbor geography is still unknown; discovery fog now
   uses one world-space graphics layer and world-coordinate visibility noise.

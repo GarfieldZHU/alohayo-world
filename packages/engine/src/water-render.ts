@@ -20,6 +20,41 @@ export function isBeachBiome(biome: BiomeDefinition | null | undefined) {
   return Boolean(biome && (biome.id.includes('beach') || biome.id.includes('coast')))
 }
 
+export type WaterMaterialKind =
+  | 'deep-ocean'
+  | 'ocean-shelf'
+  | 'beach'
+  | 'cliff'
+  | 'lake-bank'
+  | 'estuary'
+  | 'delta'
+  | 'marsh'
+  | 'reef'
+
+export function classifyWaterMaterial(
+  biome: BiomeDefinition,
+  shoreDistance: number,
+  context: {
+    slope: number
+    deposition: number
+    floodplain: number
+    river: boolean
+  }
+): WaterMaterialKind {
+  const nearShore = shoreDistance >= -3
+  if (biome.id.includes('reef')) return 'reef'
+  if (biome.id.includes('marsh') || biome.id.includes('wetland')) return 'marsh'
+  if (context.river && nearShore && context.deposition >= 144 && context.floodplain > 0) {
+    return 'delta'
+  }
+  if (context.river && nearShore) return 'estuary'
+  if (nearShore && context.slope >= 144) return 'cliff'
+  if (biome.id.includes('lake') && nearShore) return 'lake-bank'
+  if (isBeachBiome(biome)) return 'beach'
+  if (biome.id.includes('shallow-sea') || nearShore) return 'ocean-shelf'
+  return 'deep-ocean'
+}
+
 function drawContourPath(graphics: Graphics, contour: Float32Array, cellSize: number) {
   if (contour.length < 4) return false
   graphics.moveTo(contour[0]! * cellSize, contour[1]! * cellSize)
@@ -197,13 +232,41 @@ export function drawWaterMaterialBand(
   originY: number,
   cellSize: number,
   shoreDistance: number,
-  accentColor: number
+  accentColor: number,
+  material: WaterMaterialKind,
+  noise: number
 ) {
-  if (shoreDistance > 0 || shoreDistance <= -4) return
+  if (shoreDistance > 0) return
   const depth = Math.abs(shoreDistance)
+  const materialStyle: Record<WaterMaterialKind, { color: number; alpha: number }> = {
+    'deep-ocean': { color: accentColor, alpha: 0.018 },
+    'ocean-shelf': { color: accentColor, alpha: depth === 0 ? 0.065 : 0.036 },
+    beach: { color: 0xf5e5b8, alpha: 0.064 },
+    cliff: { color: 0x16384d, alpha: 0.11 },
+    'lake-bank': { color: 0x8ed4d8, alpha: 0.052 },
+    estuary: { color: 0x83c7bf, alpha: 0.064 },
+    delta: { color: 0xc7ad78, alpha: 0.082 },
+    marsh: { color: 0x789d78, alpha: 0.07 },
+    reef: { color: 0x71e0cf, alpha: 0.075 },
+  }
+  const style = materialStyle[material]
   graphics
     .rect(originX, originY, cellSize, cellSize)
-    .fill({ color: depth === 0 ? 0xf5f2e6 : accentColor, alpha: depth === 0 ? 0.055 : 0.028 })
+    .fill({ color: style.color, alpha: style.alpha })
+
+  if (material === 'reef' || material === 'marsh' || material === 'delta') {
+    const radius = Math.max(0.3, cellSize * (material === 'reef' ? 0.08 : 0.055))
+    const x = originX + cellSize * (0.25 + ((noise >>> 5) % 50) / 100)
+    const y = originY + cellSize * (0.25 + ((noise >>> 11) % 50) / 100)
+    graphics.circle(x, y, radius).fill({
+      color: material === 'delta' ? 0xe4cf9d : material === 'reef' ? 0xb9fff1 : 0xb6cf9a,
+      alpha: 0.22,
+    })
+  } else if (material === 'cliff' && depth <= 1) {
+    graphics
+      .rect(originX, originY, cellSize, Math.max(0.35, cellSize * 0.08))
+      .fill({ color: 0x0e2637, alpha: 0.2 })
+  }
 }
 
 function catmullRom(a: number, b: number, c: number, d: number, t: number) {
@@ -243,21 +306,31 @@ export function drawRiver(
 ) {
   const smoothingSamples = riverSystem?.generation.smoothingSamples ?? 2
   const points = smoothPolyline(river.points, Math.max(2, smoothingSamples))
-  let started = false
-  for (const point of points) {
-    const x = (point.x - originX) * cellSize + cellSize / 2
-    const y = (point.y - originY) * cellSize + cellSize / 2
-    if (!started) {
-      graphics.moveTo(x, y)
-      started = true
-    } else {
-      graphics.lineTo(x, y)
-    }
+  if (points.length < 2) return
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]!
+    const point = points[index]!
+    const progress = index / Math.max(1, points.length - 1)
+    const profileWidth = river.width * (0.72 + progress * (0.38 + river.flow * 0.16))
+    const startX = (previous.x - originX) * cellSize + cellSize / 2
+    const startY = (previous.y - originY) * cellSize + cellSize / 2
+    const endX = (point.x - originX) * cellSize + cellSize / 2
+    const endY = (point.y - originY) * cellSize + cellSize / 2
+    const bankWidth = profileWidth + 0.42
+    const highlightWidth = Math.max(0.22, profileWidth * 0.28)
+    graphics
+      .moveTo(startX, startY)
+      .lineTo(endX, endY)
+      .stroke({ color: 0x123f66, width: bankWidth, alpha: 0.92 })
+      .moveTo(startX, startY)
+      .lineTo(endX, endY)
+      .stroke({ color: 0x4da6d8, width: profileWidth, alpha: 0.95 })
+      .moveTo(startX, startY)
+      .lineTo(endX, endY)
+      .stroke({
+        color: 0xb9e9ff,
+        width: highlightWidth,
+        alpha: 0.24 + river.flow * 0.2 + progress * 0.08,
+      })
   }
-  if (!started) return
-  const bankWidth = river.width + 0.42
-  const highlightWidth = Math.max(0.24, river.width * 0.34)
-  graphics.stroke({ color: 0x123f66, width: bankWidth, alpha: 0.92 })
-  graphics.stroke({ color: 0x4da6d8, width: river.width, alpha: 0.95 })
-  graphics.stroke({ color: 0xb9e9ff, width: highlightWidth, alpha: 0.3 + river.flow * 0.18 })
 }

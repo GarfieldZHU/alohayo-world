@@ -1,7 +1,7 @@
 # World and Terrain
 
-> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-23
-> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.1.0
+> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
+> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.2.0
 
 The map is the central simulation model. Terrain is derived from continuous geography,
 not painted first and rationalized later. The same stable fields support exploration,
@@ -100,18 +100,24 @@ Water has three different authorities which must not be collapsed into one biome
 | Which way does local drainage flow?        | hydrology raster  | D8 direction, accumulation, local watershed component |
 | How should the renderer soften a shore?    | render hint       | local signed shoreline distance and contours          |
 
-The current shoreline field is signed: negative for water, positive for land, zero on a
-water/land boundary, and `+/-127` when no local shoreline is present. It drives a subtle
-water material band under the contour renderer; it does not change terrain IDs, movement,
-or topology.
+The shoreline field is signed: negative for water, positive for land, zero on a water/land
+boundary, and `+/-127` when no known shoreline is present. The initial worker hint is local;
+the renderer rebuilds it from a one-cell loaded-neighbor halo when seam context arrives.
+It drives ocean shelf, beach, cliff, lake-bank, estuary, delta, marsh, and reef materials
+under the contour renderer; it never changes terrain IDs, movement, or topology.
+
+Discovery fog is one linearly filtered GPU texture over the rendered neighborhood. Its
+typed pixel preparation uses the same world-space visibility field as CPU action checks,
+smooths discovery memory between cell centers, and updates only the old/new vision union
+during travel. PixiJS owns the texture; map and gameplay state remain renderer-independent.
 
 Every chunk also publishes a `ChunkDrainageSummary` with its cardinal flow handoffs. Its
 state is `provisional`: chunks have not yet reconciled a halo or canonical watershed
 identity. Issue [#38](https://github.com/GarfieldZHU/alohayo-world/issues/38) owns
 halo generation, pairwise seam reconciliation, graph identities, persistence, and
 load-order benchmarks. Issue [#41](https://github.com/GarfieldZHU/alohayo-world/issues/41)
-owns the halo-aware shoreline field, GPU fog mask, and specialized lake/estuary/delta
-materials. Never use a local field as proof that a river ends at a chunk edge.
+delivered the halo shoreline, GPU fog, specialized water materials, and downstream river
+profile baseline. Never use a local field as proof that a river ends at a chunk edge.
 
 ## Developer Showcase
 

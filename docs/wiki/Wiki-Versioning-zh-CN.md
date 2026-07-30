@@ -22,7 +22,7 @@ Wiki 页面版本不是游戏包版本；“产品基线”说明页面描述的
 | 英文页面                       |    EN | 中文页面                             | zh-CN | 翻译自 | 状态   |
 | ------------------------------ | ----: | ------------------------------------ | ----: | -----: | ------ |
 | Home                           | 1.0.0 | Home-zh-CN                           | 1.0.0 |  1.0.0 | 已同步 |
-| World and Terrain              | 1.0.0 | World-and-Terrain-zh-CN              | 1.0.0 |  1.0.0 | 已同步 |
+| World and Terrain              | 1.2.0 | World-and-Terrain-zh-CN              | 1.2.0 |  1.2.0 | 已同步 |
 | Background World               | 1.0.0 | Background-World-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Character System               | 1.0.0 | Character-System-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Abilities and Roles            | 1.0.0 | Abilities-and-Roles-zh-CN            | 1.0.0 |  1.0.0 | 已同步 |

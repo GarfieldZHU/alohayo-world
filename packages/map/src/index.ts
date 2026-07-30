@@ -50,6 +50,11 @@ export {
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
 export {
+  buildHaloShoreDistance,
+  buildSignedShoreDistance,
+  type ChunkRenderHints,
+} from './render-hints'
+export {
   AUTHORED_ENTITY_CAPABILITY_KINDS,
   AUTHORED_ENTITY_LIFECYCLE_MAX_BYTES,
   AUTHORED_ENTITY_LIFECYCLE_MAX_DESPAWNED,

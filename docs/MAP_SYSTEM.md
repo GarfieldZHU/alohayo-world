@@ -109,11 +109,10 @@ Current behavior:
 
 Still pending:
 
-- seam-safe coastline blending at chunk borders;
-- cross-chunk watershed identity and continuous river graphs;
+- canonical cross-chunk watershed identity and continuous river graphs;
 - optional generated-chunk payload caching beyond the compact topology/discovery save state;
 - benchmarked memory budgets for larger retention radii;
-- contour-based fog and shoreline rendering that no longer reads as cell-decorated edges.
+- persistent erosion, flood recession, channel migration, and delta growth.
 
 ## Hydrology
 
@@ -127,8 +126,9 @@ The terrain pipeline now runs a deterministic hydrology pass after elevation/top
 6. classify basin, wetland, marsh, and river candidates from slope, accumulation, and
    depression evidence instead of moisture alone.
 
-Issue `#38` owns cross-chunk watershed identity and river graph continuity. Stronger
-river/lake visual seams remain in `#20`; erosion and floodplain modeling remain in `#29`.
+Issue `#38` owns cross-chunk watershed identity and river graph continuity. Issue `#41`
+completed the halo-aware shoreline and GPU fog presentation baseline. Static erosion and
+floodplain metadata comes from `#29`; time-evolving geomorphology remains in `#44`.
 
 ## Rendering and LOD
 

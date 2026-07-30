@@ -31,13 +31,11 @@ test('loads game resources only after start', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
   await expect(canvas).toHaveAttribute('data-shoreline-renderer', 'smoothed-contours')
   await expect(canvas).toHaveAttribute('data-shoreline-frontier', 'known-neighbors-only')
-  await expect(canvas).toHaveAttribute('data-discovery-fog-renderer', 'adaptive-subcell')
-  await expect(canvas).toHaveAttribute(
-    'data-discovery-fog-composite',
-    'unfiltered-chunks-global-vision'
-  )
-  await expect(canvas).toHaveAttribute('data-discovery-fog-coverage', 'global-world-graphics')
+  await expect(canvas).toHaveAttribute('data-discovery-fog-renderer', 'gpu-mask-texture')
+  await expect(canvas).toHaveAttribute('data-discovery-fog-composite', 'single-bgra-texture')
+  await expect(canvas).toHaveAttribute('data-discovery-fog-coverage', 'retained-world-texture')
   await expect(canvas).toHaveAttribute('data-discovery-fog-coordinates', 'world-space')
+  await expect(canvas).toHaveAttribute('data-shoreline-distance', 'one-cell-loaded-halo')
   await expect(canvas).toHaveAttribute(
     'data-geomorphology',
     'erosion-sediment-deposition-floodplain'

@@ -77,8 +77,14 @@ function isWaterBiomeCode(biome: number): boolean {
   )
 }
 
-function buildLocalShoreDistance(biomes: Uint8Array, chunkSize: number): Int8Array {
-  const size = chunkSize * chunkSize
+export function buildSignedShoreDistance(args: {
+  width: number
+  height: number
+  isKnown: (x: number, y: number) => boolean
+  isWater: (x: number, y: number) => boolean
+}): Int8Array {
+  const { width, height, isKnown, isWater } = args
+  const size = width * height
   const distance = new Int16Array(size)
   distance.fill(-1)
   const queue = new Int32Array(size)
@@ -91,16 +97,15 @@ function buildLocalShoreDistance(biomes: Uint8Array, chunkSize: number): Int8Arr
     [-1, 0],
   ]
 
-  for (let y = 0; y < chunkSize; y += 1) {
-    for (let x = 0; x < chunkSize; x += 1) {
-      const index = y * chunkSize + x
-      const water = isWaterBiomeCode(biomes[index]!)
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x
+      const water = isWater(x, y)
       for (const [dx, dy] of neighbors) {
         const neighborX = x + dx
         const neighborY = y + dy
-        if (neighborX < 0 || neighborY < 0 || neighborX >= chunkSize || neighborY >= chunkSize)
-          continue
-        if (water !== isWaterBiomeCode(biomes[neighborY * chunkSize + neighborX]!)) {
+        if (!isKnown(neighborX, neighborY)) continue
+        if (water !== isWater(neighborX, neighborY)) {
           distance[index] = 0
           queue[tail++] = index
           break
@@ -112,14 +117,13 @@ function buildLocalShoreDistance(biomes: Uint8Array, chunkSize: number): Int8Arr
   while (head < tail) {
     const index = queue[head++]!
     const nextDistance = distance[index]! + 1
-    const x = index % chunkSize
-    const y = Math.floor(index / chunkSize)
+    const x = index % width
+    const y = Math.floor(index / width)
     for (const [dx, dy] of neighbors) {
       const neighborX = x + dx
       const neighborY = y + dy
-      if (neighborX < 0 || neighborY < 0 || neighborX >= chunkSize || neighborY >= chunkSize)
-        continue
-      const neighbor = neighborY * chunkSize + neighborX
+      if (neighborX < 0 || neighborY < 0 || neighborX >= width || neighborY >= height) continue
+      const neighbor = neighborY * width + neighborX
       if (distance[neighbor] !== -1) continue
       distance[neighbor] = nextDistance
       queue[tail++] = neighbor
@@ -129,9 +133,41 @@ function buildLocalShoreDistance(biomes: Uint8Array, chunkSize: number): Int8Arr
   const signed = new Int8Array(size)
   for (let index = 0; index < size; index += 1) {
     const absolute = distance[index] === -1 ? 127 : Math.min(127, distance[index]!)
-    signed[index] = isWaterBiomeCode(biomes[index]!) ? -absolute : absolute
+    const x = index % width
+    const y = Math.floor(index / width)
+    signed[index] = isWater(x, y) ? -absolute : absolute
   }
   return signed
+}
+
+function buildLocalShoreDistance(biomes: Uint8Array, chunkSize: number): Int8Array {
+  return buildSignedShoreDistance({
+    width: chunkSize,
+    height: chunkSize,
+    isKnown: (x, y) => x >= 0 && y >= 0 && x < chunkSize && y < chunkSize,
+    isWater: (x, y) => isWaterBiomeCode(biomes[y * chunkSize + x]!),
+  })
+}
+
+export function buildHaloShoreDistance(args: {
+  biomes: Uint8Array
+  chunkSize: number
+  biomeAtHalo: (x: number, y: number) => number | undefined
+}): Int8Array {
+  const { biomes, chunkSize, biomeAtHalo } = args
+  return buildSignedShoreDistance({
+    width: chunkSize,
+    height: chunkSize,
+    isKnown: (x, y) =>
+      (x >= 0 && y >= 0 && x < chunkSize && y < chunkSize) || biomeAtHalo(x, y) !== undefined,
+    isWater: (x, y) => {
+      const biome =
+        x >= 0 && y >= 0 && x < chunkSize && y < chunkSize
+          ? biomes[y * chunkSize + x]
+          : biomeAtHalo(x, y)
+      return biome !== undefined && isWaterBiomeCode(biome)
+    },
+  })
 }
 
 export function generateChunkRenderHints(args: {

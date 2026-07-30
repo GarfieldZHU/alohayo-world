@@ -30,6 +30,7 @@ export interface RuntimePerformanceTracker {
   destroy(): void
   frame(nowMs: number, fps: number): void
   markChunkGeneration(durationMs: number): void
+  resetRuntimeWindow(nowMs?: number): void
 }
 
 const globalPerformanceKey = '__ALOHAYO_WORLD_PERF__'
@@ -56,11 +57,13 @@ export function createRuntimePerformanceTracker({
   let frameSamples = 0
   let lastFrameNow: number | null = null
   let longTaskObserver: PerformanceObserver | null = null
+  let runtimeWindowStartedAt = performance.now()
 
   if (typeof PerformanceObserver !== 'undefined') {
     try {
       longTaskObserver = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
+          if (entry.startTime < runtimeWindowStartedAt) continue
           metrics.longTaskCount += 1
           metrics.maxLongTaskMs = Math.max(metrics.maxLongTaskMs, entry.duration)
         }
@@ -135,6 +138,17 @@ export function createRuntimePerformanceTracker({
     markChunkGeneration(durationMs) {
       metrics.lastChunkGenerationMs = durationMs
       metrics.maxChunkGenerationMs = Math.max(metrics.maxChunkGenerationMs, durationMs)
+      sync()
+    },
+    resetRuntimeWindow(nowMs = performance.now()) {
+      runtimeWindowStartedAt = nowMs
+      frameSamples = 0
+      lastFrameNow = null
+      metrics.avgFrameMs = 0
+      metrics.maxFrameMs = 0
+      metrics.fps = 0
+      metrics.longTaskCount = 0
+      metrics.maxLongTaskMs = 0
       sync()
     },
   }
