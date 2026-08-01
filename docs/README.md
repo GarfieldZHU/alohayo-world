@@ -22,6 +22,8 @@ blindly.
 - `DYNAMIC_GEOMORPHOLOGY.md`: persistent erosion/flood/delta authority, accounting, active
   corridor kernel, and staged promotion plan.
 - `PERFORMANCE_BUDGETS.md`: enforced runtime, benchmark, and bundle-size budgets.
+- `JRPG_UI_SYSTEM.md`: configurable splash, HUD, menu, visual language, input gating, and
+  extension contracts.
 - `NATURAL_WORLD_POLISH.md`: the path from blended prototype visuals to natural fog,
   shoreline, lake, and river presentation.
 - `TERRAIN_RULES.md`: terrain material rules, i18n contract, surface effects, physics,
