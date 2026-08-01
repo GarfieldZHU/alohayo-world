@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add the first #56 Wayfinder Relic UI slice: configurable game-only splash, light HUD,
+  six-tab JRPG menu, bilingual copy, modal input gating, responsive layout, lifecycle
+  controls, visual concept boards, architecture documentation, and browser regression tests.
+
 - Start #44 Phase 0 with a disabled-by-default, typed active-corridor erosion/flood/
   deposition kernel, exact integer water/sediment accounting, deterministic pause/resume,
   sparse changed-cell output, and explicitly provisional local outlet exports.

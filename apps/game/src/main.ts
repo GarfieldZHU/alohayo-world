@@ -48,6 +48,7 @@ declare global {
   interface Window {
     __ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__?: import('@alohayo/config').WorldWorkerCapabilities
     __ALOHAYO_WORLD_E2E_ASSET_BASE_URL__?: string
+    __ALOHAYO_WORLD_E2E_UI_OPTIONS__?: boolean | import('@alohayo/config').GameUiOptions
   }
 }
 let handle: GameHandle | null = null
@@ -254,6 +255,10 @@ const launch = async () => {
           ? window.__ALOHAYO_WORLD_E2E_ASSET_BASE_URL__
           : new URL('./embed/', window.location.href).toString(),
       locale,
+      ui:
+        import.meta.env.MODE === 'test'
+          ? (window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ ?? false)
+          : undefined,
       workerCapabilities:
         import.meta.env.MODE === 'test'
           ? window.__ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__

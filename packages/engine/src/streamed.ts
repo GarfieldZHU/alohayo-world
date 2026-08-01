@@ -21,6 +21,7 @@ import {
 } from '@alohayo/character'
 import type {
   BiomeDefinition,
+  GameUiTab,
   LocaleCode,
   GameHandle,
   MountGameOptions,
@@ -104,6 +105,9 @@ import {
 } from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
 import { sampleWeatherSurface } from './weather'
+import { createGameUi, type GameUiController, type GameUiSnapshot } from './game-ui'
+import { resolveGameUiOptions } from './game-ui-config'
+import './game-ui.css'
 import {
   assertCompatibleContentPackState,
   createWorldSaveStore,
@@ -266,6 +270,8 @@ export async function createGame(
     ? clamp(storedDevLightLevel, 0, 1)
     : clamp((content.world.dayNight?.fixedHour ?? 8.5) / 12, 0, 1)
   let devMode = Boolean(options.devMode)
+  let gameUiConfig = resolveGameUiOptions(options.ui, devMode)
+  let gameUi: GameUiController | null = null
   let devFastMove = false
   let devFly = false
   let devBattleShadow = true
@@ -2083,6 +2089,9 @@ export async function createGame(
 
   const updateStatus = () => {
     if (!explorerMotion) return
+    app.canvas.dataset.explorerX = explorerMotion.x.toFixed(3)
+    app.canvas.dataset.explorerY = explorerMotion.y.toFixed(3)
+    gameUi?.setSnapshot(buildGameUiSnapshot())
     if (actionMessage && performance.now() < actionMessageUntil) {
       status.text = actionMessage
       return
@@ -2106,6 +2115,45 @@ export async function createGame(
       zoomLabel: catalog().hud.zoom,
       zoomValue: scale.toFixed(2),
     })
+  }
+
+  const buildGameUiSnapshot = (): GameUiSnapshot => {
+    const cellX = explorerMotion ? Math.floor(explorerMotion.x) : 0
+    const cellY = explorerMotion ? Math.floor(explorerMotion.y) : 0
+    const cell = getCellData(cellX, cellY)
+    const gear = (explorer?.equipment ?? [])
+      .filter((selection) => selection.itemId)
+      .slice(0, 5)
+      .map((selection) => {
+        const item = content.characters.items.find((candidate) => candidate.id === selection.itemId)
+        return item && selection.itemId
+          ? translateItemName(selection.itemId, item.name)
+          : (selection.itemId ?? '')
+      })
+    return {
+      explorerName: translatedExplorerName(),
+      state: explorerMotion ? translatedState(explorerMotion.state) : catalog().hud.states.idle!,
+      biome: cell ? translateBiomeName(cell.biome) : catalog().hud.surveyingFrontier,
+      region: cell ? translatedRegion(cell.region) : '—',
+      worldSeed,
+      discoveredCells,
+      discoveredChunks: discoveredChunks.size,
+      loadedChunks: chunks.size,
+      fps,
+      position: `${cellX}, ${cellY}`,
+      gear,
+      restoredSave: Boolean(restoredSnapshot),
+    }
+  }
+
+  const applyGameUiState = () => {
+    app.canvas.dataset.gameUiEnabled = String(gameUiConfig.enabled)
+    app.canvas.dataset.gameUiSplash = String(gameUiConfig.splash)
+    app.canvas.dataset.gameUiHud = String(gameUiConfig.hud)
+    app.canvas.dataset.gameUiMenu = String(gameUiConfig.menu)
+    status.visible = !gameUiConfig.enabled || devMode
+    if (minimapControls)
+      minimapControls.panel.style.display = gameUiConfig.enabled ? 'none' : 'block'
   }
 
   const refreshFog = (incremental = false) => {
@@ -2358,6 +2406,25 @@ export async function createGame(
   app.canvas.style.visibility = 'visible'
   initialLoading.remove()
   options.container.setAttribute('aria-busy', 'false')
+  if (!options.container.hasAttribute('tabindex')) options.container.tabIndex = -1
+  gameUiConfig = resolveGameUiOptions(options.ui, devMode)
+  gameUi = createGameUi({
+    container: options.container,
+    config: gameUiConfig,
+    locale,
+    snapshot: buildGameUiSnapshot(),
+    onBlockingChange: (blocked) => {
+      pressedKeys.clear()
+      dragging = false
+      app.canvas.dataset.gameUiModal = blocked ? 'open' : 'closed'
+    },
+    onConfigChange: (nextConfig) => {
+      gameUiConfig = nextConfig
+      applyGameUiState()
+    },
+  })
+  gameUi.setTheme(theme)
+  applyGameUiState()
   requestAnimationFrame(() => {
     requestAnimationFrame(() => performanceTracker.resetRuntimeWindow())
   })
@@ -2377,6 +2444,7 @@ export async function createGame(
   updateStatus()
 
   const onPointerDown = (event: PointerEvent) => {
+    if (gameUi?.isBlockingInput()) return
     if (devMode && event.shiftKey) {
       const bounds = app.canvas.getBoundingClientRect()
       const cellX = Math.floor((event.clientX - bounds.left - viewport.x) / scale / cellSize)
@@ -2392,6 +2460,7 @@ export async function createGame(
   }
 
   const onPointerMove = (event: PointerEvent) => {
+    if (gameUi?.isBlockingInput()) return
     if (dragging) {
       viewport.x += event.clientX - lastX
       viewport.y += event.clientY - lastY
@@ -2424,6 +2493,7 @@ export async function createGame(
   }
 
   const onWheel = (event: WheelEvent) => {
+    if (gameUi?.isBlockingInput()) return
     if (!devMode) return
     event.preventDefault()
     const bounds = app.canvas.getBoundingClientRect()
@@ -2509,6 +2579,11 @@ export async function createGame(
     ) {
       return
     }
+    if (gameUi?.handleKeyDown(event)) {
+      event.preventDefault()
+      pressedKeys.clear()
+      return
+    }
     const key = event.key.toLowerCase()
     if (movementKeys.has(key)) {
       event.preventDefault()
@@ -2579,6 +2654,7 @@ export async function createGame(
 
   const stepSimulation = (deltaSeconds: number) => {
     if (!explorer || !explorerMotion) return
+    if (gameUi?.isBlockingInput()) return
     const inputX =
       Number(pressedKeys.has('d') || pressedKeys.has('arrowright')) -
       Number(pressedKeys.has('a') || pressedKeys.has('arrowleft'))
@@ -2681,10 +2757,13 @@ export async function createGame(
       drawDayNightOverlay()
       drawBattleShadow()
       applyCurrentMinimapTheme(minimapControls)
+      gameUi?.setLocale(locale)
+      gameUi?.setSnapshot(buildGameUiSnapshot())
       markSaveDirty()
     },
     setDevMode(enabled) {
       devMode = enabled
+      gameUiConfig = resolveGameUiOptions(options.ui, devMode)
       if (!devMode) {
         devFastMove = false
         devBattleShadow = true
@@ -2708,6 +2787,8 @@ export async function createGame(
       drawBattleShadow()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
+      gameUi?.setConfig(gameUiConfig)
+      applyGameUiState()
       if (devPanel) {
         devPanel.fastMoveToggle.checked = devFastMove
         devPanel.flyToggle.checked = devFly
@@ -2727,6 +2808,18 @@ export async function createGame(
       drawDayNightOverlay()
       applyCurrentDevPanelTheme(devPanel)
       applyCurrentMinimapTheme(minimapControls)
+      gameUi?.setTheme(theme)
+    },
+    setUiEnabled(enabled) {
+      gameUiConfig = resolveGameUiOptions(enabled, devMode)
+      gameUi?.setConfig(gameUiConfig)
+      applyGameUiState()
+    },
+    openMenu(tab?: GameUiTab) {
+      gameUi?.openMenu(tab)
+    },
+    closeMenu() {
+      gameUi?.closeMenu()
     },
     async listSaves() {
       return saveStore.list()
@@ -2794,6 +2887,7 @@ export async function createGame(
       resizeObserver.disconnect()
       devPanel?.panel.remove()
       minimapControls?.panel.remove()
+      gameUi?.destroy()
       app.canvas.removeEventListener('pointerdown', onPointerDown)
       app.canvas.removeEventListener('pointermove', onPointerMove)
       app.canvas.removeEventListener('pointerup', onPointerUp)

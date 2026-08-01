@@ -805,12 +805,26 @@ export interface WorldWorkerCapabilities {
   }
 }
 
+export interface GameUiOptions {
+  enabled?: boolean
+  splash?: boolean
+  hud?: boolean
+  menu?: boolean
+}
+
+export type GameUiTab = 'journey' | 'party' | 'gear' | 'bestiary' | 'map' | 'settings'
+
 export interface MountGameOptions {
   container: HTMLElement
   assetBaseUrl?: string
   devMode?: boolean
   locale?: LocaleCode
   theme?: 'light' | 'dark'
+  /**
+   * Player-facing JRPG chrome. Omitted options enable it in game mode and keep it
+   * disabled in dev mode; pass `true` to preview it in dev mode.
+   */
+  ui?: boolean | GameUiOptions
   workerCapabilities?: WorldWorkerCapabilities
   initialWorld?: {
     seed?: string
@@ -829,6 +843,9 @@ export interface GameHandle {
   setDevMode?(enabled: boolean): void
   setLocale?(locale: LocaleCode): void
   setTheme?(theme: 'light' | 'dark'): void
+  setUiEnabled?(enabled: boolean): void
+  openMenu?(tab?: GameUiTab): void
+  closeMenu?(): void
   listSaves?(): Promise<WorldSaveSummary[]>
   listSaveBackups?(slotId: string): Promise<WorldSaveBackupSummary[]>
   save?(slotId?: string, label?: string): Promise<WorldSaveSummary>
