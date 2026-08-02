@@ -7,12 +7,14 @@ describe('game UI configuration', () => {
       enabled: true,
       splash: true,
       hud: true,
+      minimap: true,
       menu: true,
     })
     expect(resolveGameUiOptions(undefined, true)).toEqual({
       enabled: false,
       splash: false,
       hud: false,
+      minimap: false,
       menu: false,
     })
   })
@@ -24,6 +26,7 @@ describe('game UI configuration', () => {
       enabled: true,
       splash: false,
       hud: true,
+      minimap: true,
       menu: true,
     })
   })

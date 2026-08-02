@@ -87,7 +87,23 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   const compassButton = button('aw-game-ui__compass', 'menu-map')
   compassButton.setAttribute('aria-label', 'Open world map')
   compassButton.innerHTML = '<span aria-hidden="true">N</span><i aria-hidden="true"></i>'
-  hud.append(identity, location, compassButton)
+  const controlsHint = document.createElement('aside')
+  controlsHint.className = 'aw-game-ui__controls-hint'
+  controlsHint.setAttribute('aria-label', 'Game shortcuts')
+  const shortcutHint = (key: string, label: string) => {
+    const item = document.createElement('span')
+    const keycap = document.createElement('kbd')
+    keycap.textContent = key
+    const copy = document.createElement('span')
+    copy.textContent = label
+    item.append(keycap, copy)
+    return item
+  }
+  const menuHint = shortcutHint('M', '')
+  const hudHint = shortcutHint('H', '')
+  const minimapHint = shortcutHint('N', '')
+  controlsHint.append(menuHint, hudHint, minimapHint)
+  hud.append(identity, location, compassButton, controlsHint)
 
   const splash = document.createElement('section')
   splash.className = 'aw-game-ui__splash'
@@ -211,12 +227,21 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       const hudToggle = button('aw-game-ui__secondary aw-game-ui__panel-action', 'toggle-hud')
       hudToggle.textContent = config.hud ? text('HideHud') : text('ShowHud')
       panel.appendChild(hudToggle)
+      const minimapToggle = button(
+        'aw-game-ui__secondary aw-game-ui__panel-action',
+        'toggle-minimap'
+      )
+      minimapToggle.textContent = config.minimap ? text('HideMinimap') : text('ShowMinimap')
+      panel.appendChild(minimapToggle)
     }
   }
 
   const renderCopy = () => {
     hud.setAttribute('aria-label', text('HudLabel'))
     compassButton.setAttribute('aria-label', text('OpenMap'))
+    menuHint.lastElementChild!.textContent = text('ShortcutMenu')
+    hudHint.lastElementChild!.textContent = text('ShortcutHud')
+    minimapHint.lastElementChild!.textContent = text('ShortcutMinimap')
     eyebrow.textContent = text('Eyebrow')
     splashTitle.textContent = text('Title')
     splashIntro.textContent = text('Intro')
@@ -255,6 +280,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     root.dataset.gameUiModal = splashOpen ? 'splash' : menuOpen ? 'menu' : 'none'
     options.container.dataset.gameUiEnabled = String(config.enabled)
     options.container.dataset.gameUiModal = root.dataset.gameUiModal
+    options.container.dataset.gameUiMinimap = String(config.minimap && config.hud)
     tabButtons.forEach((tabButton, tab) => {
       const selected = tab === activeTab
       tabButton.setAttribute('aria-selected', String(selected))
@@ -325,6 +351,11 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       options.onConfigChange(config)
       renderCopy()
       renderState()
+    } else if (action === 'toggle-minimap') {
+      config = { ...config, minimap: !config.minimap }
+      options.onConfigChange(config)
+      renderCopy()
+      renderState()
     } else if (action?.startsWith('tab-')) {
       activeTab = action.slice(4) as GameUiTab
       renderCopy()
@@ -370,6 +401,20 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
         openMenu()
         return true
       }
+      if (key === 'h' && !event.repeat) {
+        config = { ...config, hud: !config.hud }
+        options.onConfigChange(config)
+        renderCopy()
+        renderState()
+        return true
+      }
+      if (key === 'n' && !event.repeat) {
+        config = { ...config, minimap: !config.minimap }
+        options.onConfigChange(config)
+        renderCopy()
+        renderState()
+        return true
+      }
       return false
     },
     setConfig(nextConfig) {
@@ -400,6 +445,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       root.remove()
       delete options.container.dataset.gameUiEnabled
       delete options.container.dataset.gameUiModal
+      delete options.container.dataset.gameUiMinimap
     },
   }
 }

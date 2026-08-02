@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restore the playable field map as a first-class Wayfinder HUD surface, add visible
+  `M`/`H`/`N` shortcut hints and settings controls, and refine the edge treatment into a
+  darker brass-and-cartography presentation that stays readable in either host theme.
+
 - Add the first #56 Wayfinder Relic UI slice: configurable game-only splash, light HUD,
   six-tab JRPG menu, bilingual copy, modal input gating, responsive layout, lifecycle
   controls, visual concept boards, architecture documentation, and browser regression tests.

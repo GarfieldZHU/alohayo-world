@@ -2150,10 +2150,13 @@ export async function createGame(
     app.canvas.dataset.gameUiEnabled = String(gameUiConfig.enabled)
     app.canvas.dataset.gameUiSplash = String(gameUiConfig.splash)
     app.canvas.dataset.gameUiHud = String(gameUiConfig.hud)
+    app.canvas.dataset.gameUiMinimap = String(gameUiConfig.minimap && gameUiConfig.hud)
     app.canvas.dataset.gameUiMenu = String(gameUiConfig.menu)
     status.visible = !gameUiConfig.enabled || devMode
-    if (minimapControls)
-      minimapControls.panel.style.display = gameUiConfig.enabled ? 'none' : 'block'
+    if (minimapControls) {
+      minimapControls.panel.style.display =
+        gameUiConfig.enabled && gameUiConfig.hud && gameUiConfig.minimap ? 'block' : 'none'
+    }
   }
 
   const refreshFog = (incremental = false) => {

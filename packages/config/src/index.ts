@@ -809,6 +809,7 @@ export interface GameUiOptions {
   enabled?: boolean
   splash?: boolean
   hud?: boolean
+  minimap?: boolean
   menu?: boolean
 }
 

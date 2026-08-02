@@ -116,6 +116,7 @@ interface GameUiOptions {
   enabled?: boolean
   splash?: boolean
   hud?: boolean
+  minimap?: boolean
   menu?: boolean
 }
 
@@ -126,16 +127,17 @@ interface MountGameOptions {
 
 Resolution is deterministic:
 
-| Launch state              | Resolved behavior                                 |
-| ------------------------- | ------------------------------------------------- |
-| normal game, `ui` omitted | splash, HUD, and menu enabled                     |
-| dev mode, `ui` omitted    | all three disabled                                |
-| `ui: false`               | all three disabled                                |
-| `ui: true`                | all three enabled, including explicit dev preview |
-| object                    | `enabled` plus individual surface flags           |
+| Launch state              | Resolved behavior                                |
+| ------------------------- | ------------------------------------------------ |
+| normal game, `ui` omitted | splash, HUD, minimap, and menu enabled           |
+| dev mode, `ui` omitted    | all four disabled                                |
+| `ui: false`               | all four disabled                                |
+| `ui: true`                | all four enabled, including explicit dev preview |
+| object                    | `enabled` plus individual surface flags          |
 
-The object form defaults `enabled` to normal-game behavior. A host that wants a dev-mode
-preview must set `enabled: true` explicitly.
+The object form defaults `enabled` to normal-game behavior. `minimap` is independently
+switchable, while HUD visibility remains the parent visibility gate for the field map. A
+host that wants a dev-mode preview must set `enabled: true` explicitly.
 
 ## Runtime ownership
 
@@ -182,6 +184,7 @@ slice maps existing systems as follows:
 - menu is an `aria-modal` dialog with a labelled tablist and tabpanels;
 - selected tabs use `aria-selected` and roving `tabindex`;
 - `Escape` and `M` toggle the game menu in normal game mode;
+- `H` toggles the HUD (and hides the map with it); `N` toggles the integrated field map;
 - `Q`/`E`, arrows, Home/End, pointer, and touch switch tabs while the menu is open;
 - visible `:focus-visible` treatment uses teal plus a light outline;
 - input fields and content-editable hosts retain normal typing behavior;
@@ -212,7 +215,7 @@ default. Explicitly enabling game UI in dev mode gives the menu priority.
 
 ## Acceptance checklist
 
-- default normal game exposes all three surfaces;
+- default normal game exposes the splash, HUD, integrated field map, and menu;
 - dev mode and `ui: false` preserve the previous world-first presentation;
 - Escape/M opens and closes the menu without leaked movement;
 - all six initial tabs are keyboard and pointer navigable;
