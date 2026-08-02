@@ -137,7 +137,8 @@ Resolution is deterministic:
 
 The object form defaults `enabled` to normal-game behavior. `minimap` is independently
 switchable, while HUD visibility remains the parent visibility gate for the field map. A
-host that wants a dev-mode preview must set `enabled: true` explicitly.
+host that wants a dev-mode preview must set `enabled: true` explicitly. Entering the game
+HUD also expands a legacy collapsed map once, so the restored map never reads as missing.
 
 ## Runtime ownership
 

@@ -2411,6 +2411,12 @@ export async function createGame(
   options.container.setAttribute('aria-busy', 'false')
   if (!options.container.hasAttribute('tabindex')) options.container.tabIndex = -1
   gameUiConfig = resolveGameUiOptions(options.ui, devMode)
+  // A previous world-first session may have left the legacy map collapsed. The game HUD
+  // makes it a deliberate surface, so reveal it on entry rather than presenting only a
+  // stray expand control to first-time game-UI players.
+  if (gameUiConfig.enabled && gameUiConfig.hud && gameUiConfig.minimap && minimapCollapsed) {
+    minimapControls?.setCollapsed(false)
+  }
   gameUi = createGameUi({
     container: options.container,
     config: gameUiConfig,

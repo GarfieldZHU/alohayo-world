@@ -9,6 +9,7 @@ const launch = async (page: import('@playwright/test').Page) => {
 test('moves from splash to a light HUD and keyboard-safe menu', async ({ page }) => {
   await page.addInitScript(() => {
     window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
+    window.localStorage.setItem('alohayo-world:minimap-collapsed', 'true')
   })
   await launch(page)
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
@@ -29,6 +30,7 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page })
   const minimap = page.locator('[data-alohayo-world-minimap="true"]')
   await expect(hud).toBeVisible()
   await expect(minimap).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Hide', exact: true })).toBeVisible()
   await expect(hud.getByText('Journal', { exact: true })).toBeVisible()
   await page.keyboard.press('n')
   await expect(minimap).toBeHidden()
