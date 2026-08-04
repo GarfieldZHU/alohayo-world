@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.1.0
+> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-05
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.2.0
 
 ## Dependency Direction
 
@@ -39,6 +39,22 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
    the bounded ledger is the only cross-chunk handoff store and can be evicted/rehydrated.
 9. `pause`, `resume`, locale/theme updates, and `destroy` stay host-safe.
 10. `destroy` releases workers, RAF loops, listeners, DOM, and GPU resources.
+
+## Recent Runtime Contracts
+
+- Dynamic geomorphology cross-chunk outlets now pass through the bounded
+  `DynamicGeomorphologyLedger`. It aggregates canonical topology identities atomically,
+  folds resolver aliases on merge, and supports bounded eviction/rehydration without
+  making terrain rendering authoritative. Seasonal flooding, delta growth, and save
+  promotion remain in follow-up #57.
+- Movement keeps the fixed-step simulation but gates neighborhood streaming and eviction
+  to chunk crossings, and discovery/fog/minimap rebuilds to cell crossings. The engine
+  emits `alohayo-world:lifecycle` (`starting`, `active`, `paused`, `destroyed`) so hosts
+  can suspend competing animation; the blog uses it alongside its loading/running state
+  to suspend Live2D. Hardware trace and adaptive-quality work remains in follow-up #58.
+- The closeable slices were verified with 124 Vitest tests, 9 Playwright E2E checks,
+  lint/typecheck, production build, Wiki validation, green Pages/CI, and a READY Vercel
+  deployment. These are regression gates, not a replacement for #57/#58 evidence.
 
 ## Rust/Wasm Boundary
 

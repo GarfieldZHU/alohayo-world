@@ -1,7 +1,7 @@
 # 仓库架构
 
-> **Wiki 页面版本：** zh-CN 1.1.0 · **英文源版本：** EN 1.1.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-07-30
-> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.1.0
+> **Wiki 页面版本：** zh-CN 1.2.0 · **英文源版本：** EN 1.2.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-05
+> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.2.0
 
 ## 依赖方向
 
@@ -32,6 +32,19 @@
 DOM 与 GPU 资源。地图层的自定义实体由区块所有者引用计数；只有最后一个所有者释放后，
 逻辑实体才会离开运行时。动态地貌出口必须先经过规范拓扑解析器；有界账本是唯一的跨区块
 交接存储，并支持驱逐与重新加载。
+
+## 最近的运行时契约
+
+- 动态地貌跨区块出口现在统一进入有界的 `DynamicGeomorphologyLedger`：它以原子方式
+  聚合规范拓扑身份，在解析器合并时折叠别名，并支持有界驱逐与重新加载，同时不让渲染层
+  成为地形权威。季节洪水、三角洲生长和存档升级已拆分到后续 #57。
+- 移动仍使用固定步长模拟，但区块邻域请求与驱逐只在跨区块时执行，探索迷雾/小地图重建
+  只在跨格时执行。引擎发布 `alohayo-world:lifecycle`（`starting`、`active`、`paused`、
+  `destroyed`），宿主可据此暂停竞争性的动画；博客结合加载/运行状态暂停 Live2D。
+  硬件追踪与自适应画质保留在后续 #58。
+- 这些可关闭切片已通过 124 个 Vitest 测试、9 个 Playwright E2E、lint/typecheck、生产
+  构建、Wiki 校验、绿色 Pages/CI 和 READY 的 Vercel 部署验证；这不是对 #57/#58 后续证据
+  的替代。
 
 ## Rust/Wasm 边界
 
