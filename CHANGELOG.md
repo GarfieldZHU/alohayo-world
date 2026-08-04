@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Align the DOM minimap controls with the Pixi field-map frame and hide the full minimap
+  surface during the splash for a cleaner game start.
+
 - Restore the playable field map as a first-class Wayfinder HUD surface, add visible
   `M`/`H`/`N` shortcut hints and settings controls, and refine the edge treatment into a
   darker brass-and-cartography presentation that stays readable in either host theme.

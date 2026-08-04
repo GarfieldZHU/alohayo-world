@@ -144,6 +144,10 @@ HUD also expands a legacy collapsed map once, so the restored map never reads as
 
 DOM owns text, focus, buttons, menus, responsive layout, and accessibility. PixiJS owns
 terrain, character rendering, world-space effects, lighting, fog, and the minimap drawing.
+The field map is one visual surface: Pixi owns its frame and map pixels while the DOM
+layer only supplies accessible zoom/fit controls in the same coordinate system. Both
+layers are hidden together while the splash blocks the game, then return after the player
+begins the journey; this prevents a second, offset frame from competing with the HUD.
 The UI consumes a read-only `GameUiSnapshot` assembled by the engine. It never mutates
 simulation state directly.
 
@@ -186,6 +190,8 @@ slice maps existing systems as follows:
 - selected tabs use `aria-selected` and roving `tabindex`;
 - `Escape` and `M` toggle the game menu in normal game mode;
 - `H` toggles the HUD (and hides the map with it); `N` toggles the integrated field map;
+- the integrated field map and its controls are hidden during the splash and reappear
+  together after `Begin journey`;
 - `Q`/`E`, arrows, Home/End, pointer, and touch switch tabs while the menu is open;
 - visible `:focus-visible` treatment uses teal plus a light outline;
 - input fields and content-editable hosts retain normal typing behavior;
@@ -223,4 +229,5 @@ default. Explicitly enabling game UI in dev mode gives the menu priority.
 - all visible values are real or explicitly unavailable;
 - locale, theme, resize, pause/resume, remount, and destroy are safe;
 - screenshots still read first as a game world;
+- the splash has no persistent minimap chrome;
 - fog, shoreline, minimap, and rendering behavior do not regress.

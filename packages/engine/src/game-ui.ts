@@ -280,7 +280,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     root.dataset.gameUiModal = splashOpen ? 'splash' : menuOpen ? 'menu' : 'none'
     options.container.dataset.gameUiEnabled = String(config.enabled)
     options.container.dataset.gameUiModal = root.dataset.gameUiModal
-    options.container.dataset.gameUiMinimap = String(config.minimap && config.hud)
+    options.container.dataset.gameUiMinimap = String(config.minimap && config.hud && !splashOpen)
     tabButtons.forEach((tabButton, tab) => {
       const selected = tab === activeTab
       tabButton.setAttribute('aria-selected', String(selected))

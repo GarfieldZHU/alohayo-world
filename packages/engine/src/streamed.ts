@@ -2023,6 +2023,7 @@ export async function createGame(
 
   const drawMinimap = () => {
     minimapLayer.clear()
+    if (options.container.dataset.gameUiMinimap === 'false') return
     if (!explorerMotion || !minimapEnabled() || minimapCollapsed) return
     const bounds = discoveredCellBounds()
     const frameX = app.screen.width - MINIMAP_FRAME_SIZE - 18
@@ -2147,16 +2148,19 @@ export async function createGame(
   }
 
   const applyGameUiState = () => {
+    const splashOpen = options.container.dataset.gameUiModal === 'splash'
+    const minimapVisible =
+      gameUiConfig.enabled && gameUiConfig.hud && gameUiConfig.minimap && !splashOpen
     app.canvas.dataset.gameUiEnabled = String(gameUiConfig.enabled)
     app.canvas.dataset.gameUiSplash = String(gameUiConfig.splash)
     app.canvas.dataset.gameUiHud = String(gameUiConfig.hud)
-    app.canvas.dataset.gameUiMinimap = String(gameUiConfig.minimap && gameUiConfig.hud)
+    app.canvas.dataset.gameUiMinimap = String(minimapVisible)
     app.canvas.dataset.gameUiMenu = String(gameUiConfig.menu)
     status.visible = !gameUiConfig.enabled || devMode
     if (minimapControls) {
-      minimapControls.panel.style.display =
-        gameUiConfig.enabled && gameUiConfig.hud && gameUiConfig.minimap ? 'block' : 'none'
+      minimapControls.panel.style.display = minimapVisible ? 'block' : 'none'
     }
+    drawMinimap()
   }
 
   const refreshFog = (incremental = false) => {
@@ -2426,6 +2430,7 @@ export async function createGame(
       pressedKeys.clear()
       dragging = false
       app.canvas.dataset.gameUiModal = blocked ? 'open' : 'closed'
+      applyGameUiState()
     },
     onConfigChange: (nextConfig) => {
       gameUiConfig = nextConfig
