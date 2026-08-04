@@ -13,17 +13,17 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
 
 ## Workspace Ownership
 
-| Path                       | Owns                                                        | Must not own                     |
-| -------------------------- | ----------------------------------------------------------- | -------------------------------- |
-| `apps/game`                | standalone launcher, Pages shell                            | simulation rules                 |
-| `packages/config`          | public types, schemas, catalogs, i18n contracts             | rendering or executable content  |
-| `packages/map`             | deterministic fields, chunks, topology, hydrology, overlays | DOM/PixiJS objects               |
-| `packages/character`       | identity, appearance, slots, fixed-step motion              | host UI and map mutation         |
-| `packages/character-rules` | optional pure resource/equipment/terrain queries            | saves, input, workers, rendering |
-| `packages/engine`          | runtime, PixiJS, camera, input, HUD, diagnostics, cleanup   | content-pack authority           |
-| `packages/embed`           | `mountGame`, lazy assets, public lifecycle                  | host navigation or theme policy  |
-| `crates/world-core`        | profiled deterministic typed-array batches                  | per-frame scene ownership        |
-| `content`                  | validated data packs and authored areas                     | arbitrary scripts                |
+| Path                       | Owns                                                                                 | Must not own                     |
+| -------------------------- | ------------------------------------------------------------------------------------ | -------------------------------- |
+| `apps/game`                | standalone launcher, Pages shell                                                     | simulation rules                 |
+| `packages/config`          | public types, schemas, catalogs, i18n contracts                                      | rendering or executable content  |
+| `packages/map`             | deterministic fields, chunks, topology, hydrology, overlays, dynamic corridor ledger | DOM/PixiJS objects               |
+| `packages/character`       | identity, appearance, slots, fixed-step motion                                       | host UI and map mutation         |
+| `packages/character-rules` | optional pure resource/equipment/terrain queries                                     | saves, input, workers, rendering |
+| `packages/engine`          | runtime, PixiJS, camera, input, HUD, diagnostics, cleanup                            | content-pack authority           |
+| `packages/embed`           | `mountGame`, lazy assets, public lifecycle                                           | host navigation or theme policy  |
+| `crates/world-core`        | profiled deterministic typed-array batches                                           | per-frame scene ownership        |
+| `content`                  | validated data packs and authored areas                                              | arbitrary scripts                |
 
 ## Runtime Lifecycle
 
@@ -35,8 +35,10 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
 6. Streaming loads nearby chunks and evicts distant chunks within configured radii.
 7. Map-owned authored entity IDs are retained by chunk owners; logical entities leave
    only after their final owner releases them.
-8. `pause`, `resume`, locale/theme updates, and `destroy` stay host-safe.
-9. `destroy` releases workers, RAF loops, listeners, DOM, and GPU resources.
+8. Dynamic geomorphology outlets are batched through the canonical topology resolver;
+   the bounded ledger is the only cross-chunk handoff store and can be evicted/rehydrated.
+9. `pause`, `resume`, locale/theme updates, and `destroy` stay host-safe.
+10. `destroy` releases workers, RAF loops, listeners, DOM, and GPU resources.
 
 ## Rust/Wasm Boundary
 

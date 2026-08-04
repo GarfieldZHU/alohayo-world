@@ -101,6 +101,22 @@ export {
   type DynamicGeomorphologyState,
   type DynamicGeomorphologyStep,
 } from './dynamic-geomorphology'
+export {
+  DYNAMIC_GEOMORPHOLOGY_LEDGER_MAX_BYTES,
+  DYNAMIC_GEOMORPHOLOGY_LEDGER_MAX_ENTRIES,
+  DYNAMIC_GEOMORPHOLOGY_LEDGER_MAX_HANDOFFS_PER_TICK,
+  DYNAMIC_GEOMORPHOLOGY_LEDGER_SCHEMA_VERSION,
+  DynamicGeomorphologyLedger,
+  DynamicGeomorphologyLedgerError,
+  dynamicGeomorphologyLedgerBytes,
+  emptyDynamicGeomorphologyLedgerSnapshot,
+  validateDynamicGeomorphologyLedgerSnapshot,
+  type DynamicGeomorphologyHandoff,
+  type DynamicGeomorphologyLedgerEntry,
+  type DynamicGeomorphologyLedgerErrorCode,
+  type DynamicGeomorphologyLedgerSnapshot,
+  type DynamicGeomorphologyLedgerStats,
+} from './dynamic-geomorphology-ledger'
 
 export const BIOME = {
   deepOcean: 0,

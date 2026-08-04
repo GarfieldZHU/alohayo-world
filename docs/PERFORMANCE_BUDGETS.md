@@ -41,6 +41,24 @@ Tracked fields:
 - `memoryUsedMB`
 - `memoryLimitMB`
 
+## Movement frame pacing
+
+The fixed-step movement loop keeps visual interpolation on the ticker, but schedules
+world work by the smallest state boundary that can change it:
+
+- neighborhood requests and far-chunk eviction run only when the explorer enters a new
+  chunk, not on every 60 Hz simulation step;
+- discovery fog and the 26×26 minimap sample run only when the explorer enters a new cell
+  (or an explicit UI/theme/resize action requests a redraw);
+- sub-cell movement still advances the character and camera every fixed step, preserving
+  smooth motion without rebuilding world overlays.
+
+The engine also emits `alohayo-world:lifecycle` (`starting`, `active`, `paused`,
+`destroyed`) on the mount container. Hosts can use this signal to suspend decorative
+canvases while the world is active. The blog host hides Live2D during `loading`/`running`
+and restores it when the game is left, avoiding a second animated canvas competing for
+compositing time.
+
 Notes:
 
 - `estimatedDrawCalls` is intentionally named as an estimate. For the current PixiJS
@@ -108,3 +126,5 @@ Future iterations can tighten this system by:
 - storing benchmark history per release
 - splitting budgets by renderer backend or device tier
 - adding explicit regression comments to release notes and roadmap entries
+- capturing a hardware/GPU matrix for movement p50/p95/p99 and the 1%-low target in #55's
+  follow-up issue, then selecting adaptive quality tiers from those traces

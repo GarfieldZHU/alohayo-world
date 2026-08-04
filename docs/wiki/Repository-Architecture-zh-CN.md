@@ -12,17 +12,17 @@
 
 ## 工作区职责
 
-| 路径                       | 负责                                  | 禁止负责                 |
-| -------------------------- | ------------------------------------- | ------------------------ |
-| `apps/game`                | 独立启动器和 Pages 外壳               | 模拟规则                 |
-| `packages/config`          | 公共类型、schema、目录与 i18n 契约    | 渲染或可执行内容         |
-| `packages/map`             | 地理字段、区块、拓扑、水文、覆盖层    | DOM/PixiJS 对象          |
-| `packages/character`       | 身份、外观、槽位、固定步长运动        | 宿主 UI 与地图改写       |
-| `packages/character-rules` | 可选的资源/装备/地形纯查询            | 存档、输入、Worker、渲染 |
-| `packages/engine`          | 运行时、PixiJS、镜头、输入、HUD、清理 | 内容包权威               |
-| `packages/embed`           | `mountGame`、懒加载资源、公共生命周期 | 宿主导航与主题政策       |
-| `crates/world-core`        | 经测量的确定性 typed-array 热循环     | 每帧场景所有权           |
-| `content`                  | 经过校验的内容包和自定义区域          | 任意脚本                 |
+| 路径                       | 负责                                             | 禁止负责                 |
+| -------------------------- | ------------------------------------------------ | ------------------------ |
+| `apps/game`                | 独立启动器和 Pages 外壳                          | 模拟规则                 |
+| `packages/config`          | 公共类型、schema、目录与 i18n 契约               | 渲染或可执行内容         |
+| `packages/map`             | 地理字段、区块、拓扑、水文、覆盖层、动态走廊账本 | DOM/PixiJS 对象          |
+| `packages/character`       | 身份、外观、槽位、固定步长运动                   | 宿主 UI 与地图改写       |
+| `packages/character-rules` | 可选的资源/装备/地形纯查询                       | 存档、输入、Worker、渲染 |
+| `packages/engine`          | 运行时、PixiJS、镜头、输入、HUD、清理            | 内容包权威               |
+| `packages/embed`           | `mountGame`、懒加载资源、公共生命周期            | 宿主导航与主题政策       |
+| `crates/world-core`        | 经测量的确定性 typed-array 热循环                | 每帧场景所有权           |
+| `content`                  | 经过校验的内容包和自定义区域                     | 任意脚本                 |
 
 ## 运行生命周期
 
@@ -30,7 +30,8 @@
 `GameHandle`、引擎、Worker、Canvas、覆盖层与输入。Worker 先生成中心视口，完整后再
 显示画面；随后流式加载近区块并驱逐远区块。`destroy` 必须释放 Worker、RAF、监听器、
 DOM 与 GPU 资源。地图层的自定义实体由区块所有者引用计数；只有最后一个所有者释放后，
-逻辑实体才会离开运行时。
+逻辑实体才会离开运行时。动态地貌出口必须先经过规范拓扑解析器；有界账本是唯一的跨区块
+交接存储，并支持驱逐与重新加载。
 
 ## Rust/Wasm 边界
 

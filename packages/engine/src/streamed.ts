@@ -124,6 +124,11 @@ export async function createGame(
   options: MountGameOptions,
   content: EngineContent
 ): Promise<GameHandle> {
+  const emitLifecycle = (state: 'starting' | 'active' | 'paused' | 'destroyed') => {
+    options.container.dispatchEvent(
+      new CustomEvent('alohayo-world:lifecycle', { detail: { state } })
+    )
+  }
   let theme: UiTheme = normalizeTheme(options.theme)
   let locale: LocaleCode = normalizeLocale(
     options.locale ?? window.localStorage.getItem('alohayo-world:locale')
@@ -158,6 +163,7 @@ export async function createGame(
   } satisfies Partial<CSSStyleDeclaration>)
   options.container.replaceChildren(app.canvas, initialLoading)
   options.container.setAttribute('aria-busy', 'true')
+  emitLifecycle('starting')
   app.canvas.className = 'alohayo-world-canvas'
   app.canvas.setAttribute('aria-label', 'Alohayo World map')
 
@@ -258,6 +264,10 @@ export async function createGame(
   const discoveredChunks = new Set<string>()
   let explorer: GeneratedCharacter | null = null
   let explorerMotion: CharacterMotionState | null = null
+  let lastStreamCenterChunkX: number | null = null
+  let lastStreamCenterChunkY: number | null = null
+  let lastExplorerCellX: number | null = null
+  let lastExplorerCellY: number | null = null
   let scale = 1
   let weatherTick = -1
   let nextDayNightRenderMs = 0
@@ -2199,7 +2209,7 @@ export async function createGame(
   }
 
   const revealAroundExplorer = () => {
-    if (!explorerMotion) return
+    if (!explorerMotion) return false
     const radius = content.world.stream.discoveryRadius
     const affected = new Set<string>()
     for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
@@ -2225,6 +2235,7 @@ export async function createGame(
       drawMinimap()
       markSaveDirty()
     }
+    return affected.size > 0
   }
 
   const cameraTarget = () => {
@@ -2408,6 +2419,10 @@ export async function createGame(
   drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
   drawMinimap()
+  lastStreamCenterChunkX = Math.floor(explorerMotion.x / chunkSize)
+  lastStreamCenterChunkY = Math.floor(explorerMotion.y / chunkSize)
+  lastExplorerCellX = Math.floor(explorerMotion.x)
+  lastExplorerCellY = Math.floor(explorerMotion.y)
   app.renderer.render(app.stage)
   app.canvas.dataset.initialPresentation = 'complete'
   app.canvas.style.visibility = 'visible'
@@ -2456,6 +2471,7 @@ export async function createGame(
   }
   status.text = uiText('surveying')
   updateStatus()
+  emitLifecycle('active')
 
   const onPointerDown = (event: PointerEvent) => {
     if (gameUi?.isBlockingInput()) return
@@ -2696,18 +2712,32 @@ export async function createGame(
     })
     const centerChunkX = Math.floor(explorerMotion.x / chunkSize)
     const centerChunkY = Math.floor(explorerMotion.y / chunkSize)
-    void ensureChunkNeighborhood(centerChunkX, centerChunkY, activeChunkRadius).catch((error) => {
-      app.canvas.dataset.streamingError = error instanceof Error ? error.message : String(error)
-    })
-    evictFarChunks(centerChunkX, centerChunkY)
-    revealAroundExplorer()
-    if (explorerMotion.x !== previousX || explorerMotion.y !== previousY) {
-      refreshFog(true)
+    const moved = explorerMotion.x !== previousX || explorerMotion.y !== previousY
+    const centerChanged =
+      centerChunkX !== lastStreamCenterChunkX || centerChunkY !== lastStreamCenterChunkY
+    if (centerChanged) {
+      lastStreamCenterChunkX = centerChunkX
+      lastStreamCenterChunkY = centerChunkY
+      void ensureChunkNeighborhood(centerChunkX, centerChunkY, activeChunkRadius).catch((error) => {
+        app.canvas.dataset.streamingError = error instanceof Error ? error.message : String(error)
+      })
+      evictFarChunks(centerChunkX, centerChunkY)
+    }
+    const cellX = Math.floor(explorerMotion.x)
+    const cellY = Math.floor(explorerMotion.y)
+    const cellChanged = cellX !== lastExplorerCellX || cellY !== lastExplorerCellY
+    if (cellChanged) {
+      lastExplorerCellX = cellX
+      lastExplorerCellY = cellY
+    }
+    const discoveryChanged = cellChanged ? revealAroundExplorer() : false
+    if (moved) {
+      if (cellChanged && !discoveryChanged) refreshFog(true)
       if (devMode) {
         viewport.x -= (explorerMotion.x - previousX) * cellSize * scale
         viewport.y -= (explorerMotion.y - previousY) * cellSize * scale
       }
-      drawMinimap()
+      if (cellChanged && !discoveryChanged) drawMinimap()
       markSaveDirty()
     }
   }
@@ -2752,11 +2782,13 @@ export async function createGame(
     pause() {
       paused = true
       app.ticker.stop()
+      emitLifecycle('paused')
     },
     resume() {
       paused = false
       simulationStarted = performance.now()
       app.ticker.start()
+      emitLifecycle('active')
     },
     setLocale(nextLocale) {
       locale = normalizeLocale(nextLocale)
@@ -2883,6 +2915,7 @@ export async function createGame(
     async destroy() {
       if (destroyed) return
       destroyed = true
+      emitLifecycle('destroyed')
       if (autosaveTimer !== null) {
         window.clearTimeout(autosaveTimer)
         autosaveTimer = null

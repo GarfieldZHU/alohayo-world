@@ -60,14 +60,36 @@ Phase 0 intentionally does not read the live clock or weather system.
   guard; normal streamed corridors should be materially smaller.
 - Static fallback: zero processed cells and no allocation of next-step buffers.
 
-These are safety ceilings, not targets. Phase 1 must add tighter serialized-byte and
-per-tick propagation limits for the canonical cross-chunk ledger.
+These are safety ceilings, not targets. The canonical handoff ledger applies tighter
+serialized-byte and per-tick propagation limits before any data crosses a chunk boundary.
+
+## Phase 1: canonical cross-chunk ledger
+
+`packages/map/src/dynamic-geomorphology-ledger.ts` is the closeable Phase 1 contract.
+It is deliberately a pure state container; the streamed engine decides when to batch a
+tick and the topology resolver remains the authority for identity resolution.
+
+1. `DynamicGeomorphologyLedger.ingestStep` maps every local outlet cell through a
+   `ChunkTopologyResolver` callback. A missing or provisional mapping rejects the whole
+   batch, so material is retryable rather than silently discarded.
+2. `ingest` groups canonical identities and commits the aggregate atomically. The sorted
+   snapshot is identical for either chunk arrival order and carries the source tick.
+3. `applyTopologyEvent` folds alias mass into a resolver merge's canonical identity.
+   `evict` and `rehydrate` make chunk eviction/restart explicit and preserve the ledger's
+   serialized form.
+4. Every batch is bounded to 16,384 handoffs; the ledger is bounded to 16,384 identities
+   and 512 KiB serialized bytes. Uint32 mass overflow and schema/resolver mismatches are
+   typed errors. These limits are checked before state is committed.
+
+The ledger does not yet invent seasonal forcing, mutate terrain, or promote a delta to a
+renderer-owned feature. Those behaviors are intentionally moved to the follow-up issue
+for Phase 2–4 so the static fallback and topology authority remain reversible.
 
 ## Planned promotion
 
 1. **Phase 1:** replace provisional local outlet indices with `#38` canonical drainage
-   identities and add bounded eviction/rehydration.
-2. **Phase 2:** deterministic seasonal inundation, residence, and recession.
+   identities and add bounded eviction/rehydration. **Implemented in the ledger module.**
+2. **Phase 2:** deterministic seasonal inundation, residence, and recession (follow-up).
 3. **Phase 3:** persistent delta/fan accumulation, channel pressure, migration, and
    terrain-transition proposals with hysteresis.
 4. **Phase 4:** save migration, consumers, dev-only visualization, desktop/mobile

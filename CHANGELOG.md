@@ -20,6 +20,12 @@
 - Start #44 Phase 0 with a disabled-by-default, typed active-corridor erosion/flood/
   deposition kernel, exact integer water/sediment accounting, deterministic pause/resume,
   sparse changed-cell output, and explicitly provisional local outlet exports.
+- Complete the closeable #44 Phase 1 handoff contract with canonical topology identities,
+  atomic order-independent aggregation, alias merge reconciliation, eviction/rehydration,
+  and bounded per-tick/entry/serialized-byte budgets.
+- Reduce #55 movement-loop contention by gating chunk streaming to chunk crossings and
+  discovery/fog/minimap work to cell crossings; add a mount lifecycle signal and suspend
+  the blog's decorative Live2D canvas while the world is active.
 - Complete the #41 natural-rendering pass with loaded-neighbor halo shoreline distances,
   specialized ocean/lake/estuary/delta/marsh/reef materials, downstream river width
   profiles, and one filtered GPU discovery-fog texture whose dirty updates match full
