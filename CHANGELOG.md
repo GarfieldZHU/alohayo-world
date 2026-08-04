@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Polish the splash and HUD toward a blog-adapted fantasy language: rounded slate cards,
+  cyan focus states, quiet brass compass details, responsive light/dark tokens, and one
+  clear field-map surface. Add the ImageGen direction board to the UI design references.
+
 - Align the DOM minimap controls with the Pixi field-map frame and hide the full minimap
   surface during the splash for a cleaner game start.
 

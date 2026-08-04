@@ -16,6 +16,15 @@ the visual authority.
 The studies were generated with the built-in ImageGen workflow on 2026-08-01. They are
 directional references only and are deliberately excluded from the runtime bundle.
 
+The 2026-08-05 polish pass adds a blog-adapted direction board that keeps the fantasy
+signals while borrowing the host's quieter slate, cyan, rounded-surface language:
+
+![Blog-adapted splash and HUD polish reference](design/jrpg-ui/ui-polish-reference.png)
+
+The production rule is simple: use the image for hierarchy and mood, not as a bitmap
+skin. Keep the map dominant, use one calm splash card, keep HUD information at the edge,
+and let brass appear as a trace accent rather than a heavy frame.
+
 ### Splash: the threshold
 
 ![JRPG splash concept](design/jrpg-ui/splash-concept.png)
@@ -48,14 +57,14 @@ systems use explicit empty states.
 
 | Token         | Dark value                 | Purpose                        |
 | ------------- | -------------------------- | ------------------------------ |
-| `--aw-ink`    | `#071718`                  | primary-action ink             |
-| `--aw-deep`   | `rgba(5, 20, 22, 0.94)`    | deepest modal and edge field   |
-| `--aw-panel`  | `rgba(10, 39, 39, 0.90)`   | smoky vellum surface           |
-| `--aw-teal`   | `#82d7c8`                  | interactive emphasis           |
-| `--aw-mint`   | `#d2f5df`                  | focus and compass gem          |
-| `--aw-silver` | `#e8efe4`                  | primary readable text          |
-| `--aw-brass`  | `#cbb06a`                  | restrained frame and separator |
-| `--aw-line`   | `rgba(174, 225, 205, .28)` | quiet dividers                 |
+| `--aw-ink`    | `#07111f`                  | primary-action ink             |
+| `--aw-deep`   | `rgba(8, 18, 34, 0.94)`    | deepest modal and edge field   |
+| `--aw-panel`  | `rgba(15, 34, 55, 0.82)`   | smoky vellum surface           |
+| `--aw-teal`   | `#8fe4dc`                  | interactive emphasis           |
+| `--aw-mint`   | `#d7f5e6`                  | focus and compass gem          |
+| `--aw-silver` | `#edf4f6`                  | primary readable text          |
+| `--aw-brass`  | `#c6a86b`                  | restrained frame and separator |
+| `--aw-line`   | `rgba(143, 228, 220, .25)` | quiet dividers                 |
 
 Light theme keeps the fantasy material language but increases backing opacity and uses
 dark ink text. Theme values remain scoped to `.aw-game-ui`.
@@ -63,7 +72,8 @@ dark ink text. Theme values remain scoped to `.aw-game-ui`.
 ### Materials and shapes
 
 - smoky vellum: layered translucent navy gradients without runtime blur;
-- aged brass: one-pixel borders, corner cuts, and restrained selection lines;
+- rounded host surfaces: 12–22px radii echo the blog's cards without flattening the map;
+- aged brass: one-pixel borders and restrained selection lines, without ornate chrome;
 - compass gem: a small rotated square used as the common focus/wayfinding anchor;
 - cartography: low-opacity contour lines and grid marks created with CSS gradients;
 - folio: a single layered menu plane, never a wall of equal-weight cards.

@@ -1,29 +1,43 @@
 .aw-game-ui {
-  --aw-ink: #071718;
-  --aw-deep: rgba(5, 20, 22, 0.94);
-  --aw-panel: rgba(10, 39, 39, 0.9);
-  --aw-teal: #82d7c8;
-  --aw-mint: #d2f5df;
-  --aw-silver: #e8efe4;
-  --aw-brass: #cbb06a;
-  --aw-line: rgba(174, 225, 205, 0.28);
+  --aw-ink: #07111f;
+  --aw-deep: rgba(8, 18, 34, 0.94);
+  --aw-panel: rgba(15, 34, 55, 0.82);
+  --aw-panel-soft: rgba(8, 18, 34, 0.66);
+  --aw-teal: #8fe4dc;
+  --aw-mint: #d7f5e6;
+  --aw-silver: #edf4f6;
+  --aw-muted: rgba(237, 244, 246, 0.68);
+  --aw-faint: rgba(237, 244, 246, 0.46);
+  --aw-brass: #c6a86b;
+  --aw-line: rgba(143, 228, 220, 0.25);
+  --aw-shadow: rgba(1, 8, 18, 0.52);
   position: absolute;
   inset: 0;
   z-index: 20;
   color: var(--aw-silver);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   pointer-events: none;
 }
 
 .aw-game-ui[data-theme='light'] {
-  --aw-ink: #071718;
-  --aw-deep: rgba(5, 20, 22, 0.94);
-  --aw-panel: rgba(10, 39, 39, 0.9);
-  --aw-teal: #82d7c8;
-  --aw-mint: #d2f5df;
-  --aw-silver: #e8efe4;
-  --aw-brass: #cbb06a;
-  --aw-line: rgba(174, 225, 205, 0.28);
+  --aw-ink: #102238;
+  --aw-deep: rgba(248, 251, 255, 0.94);
+  --aw-panel: rgba(241, 247, 253, 0.9);
+  --aw-panel-soft: rgba(248, 251, 255, 0.78);
+  --aw-teal: #157f86;
+  --aw-mint: #164e5d;
+  --aw-silver: #102238;
+  --aw-muted: rgba(16, 34, 56, 0.68);
+  --aw-faint: rgba(16, 34, 56, 0.48);
+  --aw-brass: #8a651b;
+  --aw-line: rgba(21, 127, 134, 0.25);
+  --aw-shadow: rgba(24, 47, 72, 0.22);
 }
 
 [data-game-ui-enabled='true'][data-game-ui-minimap='true'] > [data-alohayo-world-minimap='true'] {
@@ -53,7 +67,7 @@
     monospace;
   letter-spacing: 0.16em;
   content: 'FIELD MAP';
-  background: rgba(5, 20, 22, 0.88);
+  background: var(--aw-deep);
 }
 
 [data-game-ui-enabled='true'][data-game-ui-minimap='false'] > [data-alohayo-world-minimap='true'] {
@@ -73,15 +87,17 @@
 .aw-game-ui__hud {
   position: absolute;
   inset: 18px;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 8px 18px var(--aw-shadow));
 }
 
 .aw-game-ui__identity,
 .aw-game-ui__location,
 .aw-game-ui__compass {
   border: 1px solid var(--aw-line);
-  background: linear-gradient(135deg, rgba(130, 215, 200, 0.09), transparent 48%), var(--aw-deep);
-  box-shadow: inset 0 0 0 1px rgba(203, 176, 106, 0.08);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aw-teal) 11%, transparent), transparent 52%),
+    var(--aw-deep);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--aw-brass) 10%, transparent);
 }
 
 .aw-game-ui__identity {
@@ -91,9 +107,9 @@
   display: flex;
   align-items: center;
   min-width: 194px;
-  padding: 10px 20px 10px 10px;
-  border-color: rgba(203, 176, 106, 0.56);
-  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
+  padding: 9px 16px 9px 9px;
+  border-color: color-mix(in srgb, var(--aw-brass) 62%, transparent);
+  border-radius: 14px;
 }
 
 .aw-game-ui__sigil {
@@ -102,10 +118,15 @@
   height: 34px;
   margin-right: 10px;
   place-items: center;
-  border: 1px solid var(--aw-brass);
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 82%, transparent);
   border-radius: 50%;
   color: var(--aw-mint);
-  background: radial-gradient(circle, rgba(130, 215, 200, 0.3), transparent 66%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--aw-teal) 28%, transparent),
+    transparent 66%
+  );
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aw-teal) 7%, transparent);
 }
 
 .aw-game-ui__identity strong,
@@ -123,7 +144,7 @@
 .aw-game-ui__identity small,
 .aw-game-ui__location span {
   margin-top: 2px;
-  color: rgba(232, 239, 228, 0.66);
+  color: var(--aw-muted);
   font:
     10px/1.2 ui-monospace,
     SFMono-Regular,
@@ -137,17 +158,10 @@
   position: absolute;
   top: 0;
   left: 50%;
-  padding: 9px 22px;
+  padding: 8px 18px;
   text-align: center;
   transform: translateX(-50%);
-  clip-path: polygon(
-    10px 0,
-    calc(100% - 10px) 0,
-    100% 50%,
-    calc(100% - 10px) 100%,
-    10px 100%,
-    0 50%
-  );
+  border-radius: 999px;
 }
 
 .aw-game-ui__compass {
@@ -163,6 +177,7 @@
   color: var(--aw-mint);
   cursor: pointer;
   pointer-events: auto;
+  background: color-mix(in srgb, var(--aw-panel) 84%, transparent);
 }
 
 .aw-game-ui__controls-hint {
@@ -171,10 +186,15 @@
   left: 0;
   display: flex;
   gap: 6px;
-  padding: 7px 9px;
-  border: 1px solid rgba(174, 225, 205, 0.18);
-  color: rgba(232, 239, 228, 0.76);
-  background: linear-gradient(90deg, rgba(5, 20, 22, 0.9), rgba(5, 20, 22, 0.56));
+  padding: 6px 9px;
+  border: 1px solid var(--aw-line);
+  border-radius: 999px;
+  color: var(--aw-muted);
+  background: linear-gradient(
+    90deg,
+    var(--aw-panel-soft),
+    color-mix(in srgb, var(--aw-panel-soft) 54%, transparent)
+  );
   font:
     9px/1 ui-monospace,
     SFMono-Regular,
@@ -192,20 +212,23 @@
 
 .aw-game-ui__controls-hint kbd {
   min-width: 16px;
-  padding: 2px 3px;
-  border: 1px solid rgba(203, 176, 106, 0.52);
-  border-radius: 2px;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 58%, transparent);
+  border-radius: 5px;
   color: var(--aw-mint);
   font: inherit;
   text-align: center;
-  background: rgba(130, 215, 200, 0.08);
+  background: color-mix(in srgb, var(--aw-teal) 10%, transparent);
 }
 
 .aw-game-ui__compass i {
   position: absolute;
   width: 2px;
   height: 24px;
-  background: linear-gradient(var(--aw-brass) 50%, rgba(232, 239, 228, 0.35) 50%);
+  background: linear-gradient(
+    var(--aw-brass) 50%,
+    color-mix(in srgb, var(--aw-silver) 36%, transparent) 50%
+  );
   transform: rotate(24deg);
 }
 
@@ -213,7 +236,7 @@
   position: absolute;
   top: 4px;
   font:
-    8px ui-monospace,
+    700 8px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
@@ -228,8 +251,15 @@
   overflow: auto;
   padding: 28px;
   background:
-    radial-gradient(circle at 50% 38%, rgba(55, 132, 119, 0.22), transparent 38%),
-    linear-gradient(rgba(3, 13, 15, 0.38), rgba(3, 13, 15, 0.82));
+    radial-gradient(
+      circle at 50% 35%,
+      color-mix(in srgb, var(--aw-teal) 22%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--aw-ink) 32%, transparent),
+      color-mix(in srgb, var(--aw-ink) 84%, transparent)
+    );
   pointer-events: auto;
 }
 
@@ -237,25 +267,23 @@
   position: relative;
   box-sizing: border-box;
   width: min(520px, calc(100% - 20px));
-  padding: 46px 50px 38px;
+  padding: 48px 44px 34px;
   border: 1px solid var(--aw-line);
+  border-radius: 22px;
   text-align: center;
   background:
-    linear-gradient(90deg, transparent 49.8%, rgba(203, 176, 106, 0.14) 50%, transparent 50.2%),
-    linear-gradient(160deg, rgba(130, 215, 200, 0.08), transparent 42%), var(--aw-deep);
+    linear-gradient(
+      90deg,
+      transparent 49.8%,
+      color-mix(in srgb, var(--aw-brass) 14%, transparent) 50%,
+      transparent 50.2%
+    ),
+    linear-gradient(160deg, color-mix(in srgb, var(--aw-teal) 10%, transparent), transparent 42%),
+    var(--aw-deep);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.52),
-    inset 0 0 40px rgba(130, 215, 200, 0.04);
-  clip-path: polygon(
-    18px 0,
-    calc(100% - 18px) 0,
-    100% 18px,
-    100% calc(100% - 18px),
-    calc(100% - 18px) 100%,
-    18px 100%,
-    0 calc(100% - 18px),
-    0 18px
-  );
+    0 24px 80px var(--aw-shadow),
+    0 0 0 1px color-mix(in srgb, var(--aw-teal) 7%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--aw-teal) 5%, transparent);
   animation: aw-ui-arrive 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
@@ -263,14 +291,20 @@
   display: grid;
   width: 58px;
   height: 58px;
-  margin: 0 auto 20px;
+  margin: -76px auto 22px;
   place-items: center;
-  border: 1px solid var(--aw-brass);
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 86%, transparent);
   border-radius: 50%;
   color: var(--aw-mint);
   font-size: 25px;
-  background: radial-gradient(circle, rgba(130, 215, 200, 0.2), transparent 66%);
-  box-shadow: 0 0 32px rgba(130, 215, 200, 0.16);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--aw-teal) 24%, transparent),
+    var(--aw-deep) 68%
+  );
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--aw-deep) 86%, transparent),
+    0 0 34px color-mix(in srgb, var(--aw-teal) 16%, transparent);
 }
 
 .aw-game-ui__eyebrow {
@@ -289,20 +323,21 @@
 .aw-game-ui__menu h2,
 .aw-game-ui__panel h3 {
   margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
 
 .aw-game-ui__splash h1 {
   font-size: clamp(32px, 6vw, 58px);
-  line-height: 0.95;
-  text-shadow: 0 5px 28px rgba(0, 0, 0, 0.72);
+  line-height: 1;
+  text-shadow: 0 5px 28px var(--aw-shadow);
 }
 
 .aw-game-ui__intro {
   max-width: 42ch;
   margin: 18px auto 26px;
-  color: rgba(232, 239, 228, 0.7);
+  color: var(--aw-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -319,7 +354,8 @@
 .aw-game-ui__text-button {
   min-height: 42px;
   border: 1px solid var(--aw-line);
-  background: rgba(8, 30, 31, 0.72);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--aw-panel) 88%, transparent);
   cursor: pointer;
 }
 
@@ -330,12 +366,21 @@
 }
 
 .aw-game-ui__primary {
-  border-color: rgba(203, 176, 106, 0.62);
+  min-height: 46px;
+  border-color: color-mix(in srgb, var(--aw-brass) 72%, transparent);
+  border-radius: 999px;
   color: var(--aw-ink);
-  background: linear-gradient(90deg, #a7d5bd, #d6e5bd, #a7d5bd);
+  background: linear-gradient(100deg, var(--aw-teal), var(--aw-mint) 50%, var(--aw-teal));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--aw-teal) 22%, transparent);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.aw-game-ui__primary:hover {
+  border-color: var(--aw-mint);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--aw-teal) 34%, transparent);
+  transform: translateY(-1px);
 }
 
 .aw-game-ui__secondary:hover,
@@ -347,14 +392,14 @@
 
 .aw-game-ui__text-button {
   border-color: transparent;
-  color: rgba(232, 239, 228, 0.62);
+  color: var(--aw-faint);
   background: transparent;
   font-size: 12px;
 }
 
 .aw-game-ui__controls {
   margin: 24px 0 0;
-  color: rgba(232, 239, 228, 0.44);
+  color: var(--aw-faint);
   font:
     9px/1.5 ui-monospace,
     SFMono-Regular,
@@ -366,7 +411,7 @@
 
 .aw-game-ui__menu {
   padding: 18px;
-  background: rgba(2, 12, 14, 0.76);
+  background: color-mix(in srgb, var(--aw-ink) 76%, transparent);
 }
 
 .aw-game-ui__menu-frame {
@@ -374,11 +419,17 @@
   width: min(920px, 100%);
   min-height: min(560px, calc(100vh - 36px));
   border: 1px solid var(--aw-line);
+  border-radius: 18px;
   background:
-    radial-gradient(circle at 80% 20%, rgba(130, 215, 200, 0.08), transparent 25%), var(--aw-deep);
+    radial-gradient(
+      circle at 80% 20%,
+      color-mix(in srgb, var(--aw-teal) 8%, transparent),
+      transparent 25%
+    ),
+    var(--aw-deep);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.58),
-    inset 0 0 50px rgba(130, 215, 200, 0.025);
+    0 24px 80px var(--aw-shadow),
+    inset 0 0 50px color-mix(in srgb, var(--aw-teal) 3%, transparent);
   animation: aw-ui-arrive 260ms ease-out both;
 }
 
@@ -399,7 +450,7 @@
   width: 38px;
   height: 38px;
   border: 1px solid transparent;
-  color: rgba(232, 239, 228, 0.64);
+  color: var(--aw-muted);
   font-size: 28px;
   background: transparent;
   cursor: pointer;
@@ -423,7 +474,7 @@
   padding: 0 30px;
   border: 0;
   border-left: 2px solid transparent;
-  color: rgba(232, 239, 228, 0.66);
+  color: var(--aw-muted);
   text-align: left;
   background: transparent;
   cursor: pointer;
@@ -432,7 +483,11 @@
 .aw-game-ui__tab[aria-selected='true'] {
   border-left-color: var(--aw-brass);
   color: var(--aw-mint);
-  background: linear-gradient(90deg, rgba(130, 215, 200, 0.13), transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--aw-teal) 13%, transparent),
+    transparent
+  );
 }
 
 .aw-game-ui__panel {
@@ -447,7 +502,7 @@
 .aw-game-ui__panel-lead {
   max-width: 56ch;
   margin: 10px 0 28px;
-  color: rgba(232, 239, 228, 0.62);
+  color: var(--aw-muted);
   line-height: 1.55;
 }
 
@@ -467,7 +522,7 @@
 }
 
 .aw-game-ui__stats dt {
-  color: rgba(232, 239, 228, 0.5);
+  color: var(--aw-faint);
   font:
     10px/1.4 ui-monospace,
     SFMono-Regular,
@@ -490,7 +545,7 @@
   gap: 14px;
   padding: 10px 24px;
   border-top: 1px solid var(--aw-line);
-  color: rgba(232, 239, 228, 0.4);
+  color: var(--aw-faint);
   font:
     9px ui-monospace,
     SFMono-Regular,
@@ -541,7 +596,7 @@
 
   .aw-game-ui__splash-card {
     width: min(440px, 100%);
-    padding: 34px 24px 28px;
+    padding: 42px 24px 28px;
   }
 
   .aw-game-ui__menu {
@@ -576,7 +631,11 @@
   .aw-game-ui__tab[aria-selected='true'] {
     border-bottom-color: var(--aw-brass);
     border-left: 0;
-    background: linear-gradient(0deg, rgba(130, 215, 200, 0.13), transparent);
+    background: linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--aw-teal) 13%, transparent),
+      transparent
+    );
   }
 
   .aw-game-ui__panel {
