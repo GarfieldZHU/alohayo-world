@@ -179,8 +179,10 @@ export function computeGameCameraScale(
   screenHeight: number,
   cellSize: number
 ) {
-  const targetVisibleCellsX = 32
-  const targetVisibleCellsY = 22
+  // Game mode should read as a close exploration camera rather than a survey map.
+  // Keep the dev camera unchanged; this scale only applies to the player-follow view.
+  const targetVisibleCellsX = 28
+  const targetVisibleCellsY = 18
   return clamp(
     Math.min(
       screenWidth / (cellSize * targetVisibleCellsX),

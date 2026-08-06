@@ -140,6 +140,7 @@ export function createMinimapControls(args: CreateMinimapControlsArgs): MinimapC
       'transform 140ms ease, background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
   } satisfies Partial<CSSStyleDeclaration>)
   compass.setAttribute('role', 'img')
+  compass.dataset.alohayoWorldMinimapCompass = 'true'
   frame.appendChild(compass)
 
   const body = document.createElement('div')
