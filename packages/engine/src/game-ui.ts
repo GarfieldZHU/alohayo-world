@@ -280,7 +280,11 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     root.dataset.gameUiModal = splashOpen ? 'splash' : menuOpen ? 'menu' : 'none'
     options.container.dataset.gameUiEnabled = String(config.enabled)
     options.container.dataset.gameUiModal = root.dataset.gameUiModal
-    options.container.dataset.gameUiMinimap = String(config.minimap && config.hud && !splashOpen)
+    // Menus are a full-screen reading surface. Keep the field-map chrome (including
+    // its clock and close affordance) out of the menu's top-right corner.
+    options.container.dataset.gameUiMinimap = String(
+      config.minimap && config.hud && !splashOpen && !menuOpen
+    )
     tabButtons.forEach((tabButton, tab) => {
       const selected = tab === activeTab
       tabButton.setAttribute('aria-selected', String(selected))
