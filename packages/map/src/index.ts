@@ -1296,6 +1296,12 @@ function populateChunkFeatures(
       } satisfies TransportCellSample
     },
     transportSystem
+  ).filter(
+    (structure) =>
+      structure.x >= chunk.originX &&
+      structure.y >= chunk.originY &&
+      structure.x < chunk.originX + chunk.chunkSize &&
+      structure.y < chunk.originY + chunk.chunkSize
   )
   chunk.settlements = settlements.filter(
     (settlement) =>
