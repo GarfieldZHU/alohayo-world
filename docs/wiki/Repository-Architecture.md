@@ -52,9 +52,13 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
   emits `alohayo-world:lifecycle` (`starting`, `active`, `paused`, `destroyed`) so hosts
   can suspend competing animation; the blog uses it alongside its loading/running state
   to suspend Live2D. Hardware trace and adaptive-quality work remains in follow-up #58.
-- The closeable slices were verified with 124 Vitest tests, 9 Playwright E2E checks,
+- The closeable slices were verified with 130 Vitest tests, 9 Playwright E2E checks,
   lint/typecheck, production build, Wiki validation, green Pages/CI, and a READY Vercel
   deployment. These are regression gates, not a replacement for #57/#58 evidence.
+- Regional weather sampling, transport structure records, capability-aware traversal,
+  aggregate settlement traffic, and mount/vehicle profiles are now deterministic map
+  consumers. Their diagnostics stay on the canvas dataset and do not add normal HUD
+  chrome; moving traffic remains an optional follow-up (#60).
 
 ## Rust/Wasm Boundary
 

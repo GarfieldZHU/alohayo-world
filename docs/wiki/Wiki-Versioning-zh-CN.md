@@ -1,6 +1,6 @@
 # Wiki 版本管理
 
-> **Wiki 页面版本：** zh-CN 1.1.0 · **英文源版本：** EN 1.1.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-07-30
+> **Wiki 页面版本：** zh-CN 1.2.0 · **英文源版本：** EN 1.2.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-08
 > **English:** [Wiki Versioning](Wiki-Versioning) · **同步状态：** 已同步至 EN 1.1.0
 
 英文是编辑基准语言，简体中文是一等翻译版本。两者分别记录版本，使读者能直接知道中文
@@ -22,13 +22,13 @@ Wiki 页面版本不是游戏包版本；“产品基线”说明页面描述的
 | 英文页面                       |    EN | 中文页面                             | zh-CN | 翻译自 | 状态   |
 | ------------------------------ | ----: | ------------------------------------ | ----: | -----: | ------ |
 | Home                           | 1.0.0 | Home-zh-CN                           | 1.0.0 |  1.0.0 | 已同步 |
-| World and Terrain              | 1.3.0 | World-and-Terrain-zh-CN              | 1.3.0 |  1.3.0 | 已同步 |
+| World and Terrain              | 1.4.0 | World-and-Terrain-zh-CN              | 1.4.0 |  1.4.0 | 已同步 |
 | Background World               | 1.0.0 | Background-World-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Character System               | 1.0.0 | Character-System-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Abilities and Roles            | 1.0.0 | Abilities-and-Roles-zh-CN            | 1.0.0 |  1.0.0 | 已同步 |
 | Weapons, Armor, and Items      | 1.0.0 | Weapons-Armor-and-Items-zh-CN        | 1.0.0 |  1.0.0 | 已同步 |
-| Character and Map Interactions | 1.0.0 | Character-and-Map-Interactions-zh-CN | 1.0.0 |  1.0.0 | 已同步 |
-| Repository Architecture        | 1.1.0 | Repository-Architecture-zh-CN        | 1.1.0 |  1.1.0 | 已同步 |
+| Character and Map Interactions | 1.2.0 | Character-and-Map-Interactions-zh-CN | 1.2.0 |  1.2.0 | 已同步 |
+| Repository Architecture        | 1.3.0 | Repository-Architecture-zh-CN        | 1.3.0 |  1.3.0 | 已同步 |
 | Content and Modding            | 1.2.0 | Content-and-Modding-zh-CN            | 1.2.0 |  1.2.0 | 已同步 |
 | Sources and Design Boundaries  | 1.0.0 | Sources-and-Design-Boundaries-zh-CN  | 1.0.0 |  1.0.0 | 已同步 |
 

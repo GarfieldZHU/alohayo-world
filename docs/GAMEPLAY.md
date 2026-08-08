@@ -8,10 +8,13 @@
 - Walk with WASD/arrow keys; hold Shift to run.
 - Use E or Space to interact with a nearby landmark.
 - In game mode, the camera stays centered on the explorer with a tight locked zoom tuned
-  for traversal and encounters.
+  for traversal and encounters (about 22 x 15 terrain cells at the desktop reference
+  viewport; a bounded floor keeps narrow screens usable).
 - In dev mode, drag pans the camera and wheel/trackpad zooms toward the pointer.
 - Hover/click cells to inspect biome, elevation, moisture, temperature, and coordinates.
 - Discover nearby cells as you travel; the minimap fills only from discovered chunk data.
+- Regional weather and aggregate settlement traffic are deterministic developer
+  diagnostics; they do not add chrome to the normal game HUD.
 - Regenerate or enlarge without reloading. The last seed is remembered locally.
 
 The character occupies one ninth of a terrain cell's area and moves continuously within

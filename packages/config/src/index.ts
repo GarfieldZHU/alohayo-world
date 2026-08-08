@@ -225,6 +225,9 @@ export interface WorldDefinition {
   generator: 'continental-v1'
   stream: WorldStreamDefinition
   roads: WorldRoadSystemDefinition
+  transport?: WorldTransportSystemDefinition
+  traffic?: WorldTrafficDefinition
+  vehicles?: WorldVehicleProfileDefinition[]
   rivers?: WorldRiverSystemDefinition
   geomorphology?: WorldGeomorphologyDefinition
   weather?: WorldWeatherDefinition
@@ -296,6 +299,46 @@ export interface WorldRoadSystemDefinition {
   profiles: WorldRoadProfileDefinition[]
   conditions: WorldRoadConditionDefinition[]
   generation: WorldRoadGenerationDefinition
+}
+
+export type WorldTransportStructureKind = 'bridge' | 'causeway' | 'ferry' | 'switchback'
+
+export interface WorldTransportStructureProfileDefinition {
+  id: WorldTransportStructureKind
+  requiredTags: string[]
+  movementMultiplier: number
+  maintenanceRate: number
+}
+
+export interface WorldTransportGenerationDefinition {
+  enabled: boolean
+  waterDistance: number
+  causewayMoistureMin: number
+  switchbackRuggednessMin: number
+  ferryTrafficMin: number
+}
+
+export interface WorldTransportSystemDefinition {
+  profiles: WorldTransportStructureProfileDefinition[]
+  generation: WorldTransportGenerationDefinition
+}
+
+export interface WorldTrafficDefinition {
+  enabled: boolean
+  tickSeconds: number
+  congestionScale: number
+  maintenanceScale: number
+  supplyScale: number
+}
+
+export interface WorldVehicleProfileDefinition {
+  id: string
+  kind: 'mount' | 'vehicle'
+  capabilityTags: string[]
+  roadKinds: WorldRoadProfileId[]
+  speedMultiplier: number
+  capacity: number
+  maintenanceRate: number
 }
 
 export interface WorldRiverGenerationDefinition {

@@ -1,6 +1,6 @@
 # Vehicle Module
 
-**Status:** deferred plugin.
+**Status:** profile contract active; occupancy and simulation deferred.
 
 ## Owns
 
@@ -11,6 +11,13 @@ compatibility, and route constraints.
 
 Enter one configurable vehicle and drive along an authored road with distinct handling
 on road, lowland, wetland, and water.
+
+## Current Contract
+
+Content now defines mount and vehicle profiles with stable IDs, capability tags, compatible
+road kinds, speed multipliers, capacity, and maintenance rates. Profiles use the #47
+transport traversal query rather than reading rendered road geometry. Enter/exit,
+occupancy, fuel, steering, and moving agents remain future work in #60.
 
 ## Dependencies and Tests
 

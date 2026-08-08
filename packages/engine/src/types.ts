@@ -31,6 +31,7 @@ export interface ChunkView {
   surfaces: Graphics
   rivers: Graphics
   roads: Graphics
+  transport: Graphics
   settlements: Graphics
   landmarks: Graphics
 }

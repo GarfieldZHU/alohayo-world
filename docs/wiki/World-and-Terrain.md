@@ -1,7 +1,7 @@
 # World and Terrain
 
-> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-30
-> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.3.0
+> **Wiki page version:** EN 1.4.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.4.0
 
 The map is the central simulation model. Terrain is derived from continuous geography,
 not painted first and rationalized later. The same stable fields support exploration,
@@ -89,6 +89,20 @@ Chunks are deterministic for generator version, seed, coordinates, size, and res
 content. Nearby chunks are retained, distant chunks evicted, and topology summaries kept
 beyond the render horizon. Negative coordinates and load order must not change output.
 The same seed reproduces hashes and fields; authored overlays apply in stable pack order.
+
+## Transport, Weather, and Traffic Features
+
+Road generation can emit one deterministic sparse structure per qualifying route:
+bridges, causeways, ferries, and switchbacks carry stable IDs, midpoint coordinates,
+required capability tags, movement multipliers, and maintenance rates. These records are
+part of streamed chunk/world hashes and are consumed by a shared traversal query; PixiJS
+markers are presentation only.
+
+`sampleRegionalWeather` provides a region identity, front strength, wind, precipitation,
+accumulation, visibility, comfort, and a short forecast from seed, position, and the
+simulation clock. Aggregate settlement traffic consumes the same weather sample and
+transport records for bounded demand, congestion, maintenance, and supply diagnostics.
+The normal game HUD stays quiet; these values are developer-facing canvas diagnostics.
 
 ## Water Terrain and Seams
 

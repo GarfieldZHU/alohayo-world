@@ -195,3 +195,10 @@ or rock accents without rewriting the authoritative road network.
 This is intentionally a first-pass transport model, not a final civil-engineering or
 historical simulation. It creates believable travel corridors that later vehicles, trade,
 quests, and faction control can reuse.
+
+Transport structure records are deterministic sparse feature data. Each qualifying road
+may receive one bridge, causeway, ferry, or switchback record with a stable ID, midpoint,
+required capability tags, movement multiplier, and maintenance rate. Records are included
+in streamed chunk/world hashes and consumed by the shared traversal query. Aggregate
+settlement traffic consumes these records and regional weather; moving agents remain a
+separate optional layer.

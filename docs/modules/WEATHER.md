@@ -1,6 +1,6 @@
 # Weather Module
 
-**Status:** deterministic surface-and-condition foundation active.
+**Status:** deterministic surface, regional query, and consumer handoff active (`#46` complete).
 
 ## Owns
 
@@ -36,22 +36,24 @@ The current runtime uses deterministic weather phases and derived local surface 
 - intensity fades through the cycle instead of switching abruptly.
 
 The shared surface query now returns local `dry`, `wet`, `muddy`, `snowy`, `slushy`, or
-`flooded` condition from seed, clock phase, biome, and world cell. It is reversible and
-does not mutate base terrain. Roads consume the same query for movement and rendering;
-traffic, settlements, creatures, and saves remain the next modular consumers.
+`flooded` condition from seed, clock phase, biome, and world cell. A separate
+`sampleRegionalWeather` query returns a stable front identity, wind vector,
+precipitation, accumulation, visibility, comfort, and three-step forecast for a world
+position. The engine exposes these values as canvas diagnostics and feeds the same sample
+to aggregate settlement traffic; no consumer reads renderer state or invents a clock.
 
 ## Planned Vertical Slices
 
 1. Complete: visual surface cycle over terrain and roads.
 2. Complete: movement and road-condition modifiers from weather state.
-3. Settlement traffic and supply effects.
-4. Region-scale fronts, wind, and drainage feedback.
+3. Complete: region-scale fronts, wind, forecast, and settlement traffic/supply handoff.
+4. Settlement/creature behavior and drainage feedback.
 5. Saveable world weather history and forecast surfaces.
 
 The broad design tracker `#31` is decomposed into `#45` for the deterministic regional
 state/persistence core and `#46` for settlement, creature, visibility, drainage, HUD, and
-developer consumers. Implement `#45` first; consumers must query its stable API instead
-of reading renderer state or inventing separate clocks.
+developer consumers. The closeable #46 slice ships the regional query, diagnostics, and
+aggregate traffic feed; future creature/drainage persistence remains tracked separately.
 
 ## Dependencies and Tests
 

@@ -1,6 +1,7 @@
 # Character System Blueprint
 
-**Status:** design baseline and optional rules delta in progress (`#39`).
+**Status:** design baseline and optional rules delta in progress (`#39`); presentation
+extraction planned in `#59`.
 
 ## Product Goal
 
@@ -24,6 +25,10 @@ This document defines direction. Current executable behavior is listed in
 - Players, NPCs, and enemies use the same abilities, slots, resources, and item rules.
 - The first delta does not migrate saves or change the live explorer. It can be removed
   by deleting one optional pack/package with no renderer rollback.
+- Character presentation is a separate concern: #59 extracts a deterministic pose/layer
+  contract for base appearance, equipment/weapon overlays, and action states. PixiJS is
+  an adapter and never becomes simulation authority; directional sprite or GLB adapters
+  can be added without changing movement or saves.
 
 ## Rules Model
 

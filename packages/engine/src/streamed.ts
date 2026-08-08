@@ -47,6 +47,8 @@ import {
   hashSeed,
   type GeneratedChunk,
   type GeneratedLandmark,
+  sampleRegionalWeather,
+  simulateSettlementTraffic,
 } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 import { CLOSE_DETAIL_KIND } from '../../map/src/render-hints'
@@ -247,6 +249,8 @@ export async function createGame(
   let actionMessage = ''
   let actionMessageUntil = 0
   let lastChunkGenerationMs = 0
+  let regionalWeather: ReturnType<typeof sampleRegionalWeather> | null = null
+  let trafficTick = -1
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
   const authoredEntityLifecycle = new AuthoredEntityLifecycleRegistry()
@@ -1218,6 +1222,52 @@ export async function createGame(
     return { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 }
   }
 
+  const refreshRegionalDiagnostics = (nowMs = performance.now()) => {
+    if (!explorerMotion) return
+    regionalWeather = sampleRegionalWeather({
+      seed: worldSeed,
+      x: explorerMotion.x,
+      y: explorerMotion.y,
+      elapsedSeconds: nowMs / 1000,
+      weather: content.world.weather,
+    })
+    app.canvas.dataset.weatherRegion = regionalWeather.regionId
+    app.canvas.dataset.weatherFront = regionalWeather.front.toFixed(3)
+    app.canvas.dataset.weatherState = regionalWeather.stateId
+    app.canvas.dataset.weatherWind = regionalWeather.wind.speed.toFixed(3)
+    app.canvas.dataset.weatherPrecipitation = regionalWeather.precipitation.toFixed(3)
+    app.canvas.dataset.weatherAccumulation = regionalWeather.accumulation.toFixed(3)
+    app.canvas.dataset.weatherVisibility = regionalWeather.visibility.toFixed(3)
+    app.canvas.dataset.weatherForecast = regionalWeather.forecast
+      .map((entry) => `${entry.stateId}:${entry.precipitation.toFixed(2)}`)
+      .join('|')
+    const nextTrafficTick = Math.floor(
+      nowMs / 1000 / Math.max(1, content.world.traffic?.tickSeconds ?? 12)
+    )
+    if (nextTrafficTick === trafficTick) return
+    trafficTick = nextTrafficTick
+    const allSettlements = [...chunks.values()].flatMap((chunk) => chunk.settlements)
+    const allRoads = [...chunks.values()].flatMap((chunk) => chunk.roads)
+    const allStructures = [...chunks.values()].flatMap((chunk) => chunk.transportStructures)
+    const traffic = simulateSettlementTraffic(
+      allSettlements,
+      allRoads,
+      allStructures,
+      nextTrafficTick,
+      regionalWeather,
+      content.world.traffic
+    )
+    const averageCongestion = traffic.length
+      ? traffic.reduce((sum, sample) => sum + sample.congestion, 0) / traffic.length
+      : 0
+    const averageSupply = traffic.length
+      ? traffic.reduce((sum, sample) => sum + sample.supplyAccess, 0) / traffic.length
+      : 0
+    app.canvas.dataset.trafficSettlements = String(traffic.length)
+    app.canvas.dataset.trafficCongestion = averageCongestion.toFixed(3)
+    app.canvas.dataset.trafficSupply = averageSupply.toFixed(3)
+  }
+
   const roadProfile = (id: WorldRoadProfileId) =>
     roadProfiles.get(id) ?? content.world.roads.profiles[0]!
 
@@ -1525,6 +1575,7 @@ export async function createGame(
       const surfaces = new Graphics()
       const rivers = new Graphics()
       const roads = new Graphics()
+      const transport = new Graphics()
       const settlements = new Graphics()
       const landmarks = new Graphics()
       container.cullable = true
@@ -1543,6 +1594,7 @@ export async function createGame(
         surfaces,
         rivers,
         roads,
+        transport,
         settlements,
         landmarks
       )
@@ -1557,6 +1609,7 @@ export async function createGame(
         surfaces,
         rivers,
         roads,
+        transport,
         settlements,
         landmarks,
       }
@@ -1572,6 +1625,7 @@ export async function createGame(
     view.surfaces.clear()
     view.rivers.clear()
     view.roads.clear()
+    view.transport.clear()
     view.settlements.clear()
     view.landmarks.clear()
     rebuildRoadMask(chunk)
@@ -1737,6 +1791,23 @@ export async function createGame(
       }
     }
 
+    for (const structure of chunk.transportStructures) {
+      const x = (structure.x - chunk.originX) * cellSize + cellSize / 2
+      const y = (structure.y - chunk.originY) * cellSize + cellSize / 2
+      const marker =
+        structure.kind === 'ferry'
+          ? 0x7bd3f7
+          : structure.kind === 'switchback'
+            ? 0xf0d79b
+            : structure.kind === 'causeway'
+              ? 0x84df9f
+              : 0xd8f3ff
+      view.transport
+        .circle(x, y, Math.max(0.7, cellSize * 0.18))
+        .fill({ color: marker, alpha: 0.9 })
+        .stroke({ color: 0x10222f, width: 0.42, alpha: 0.85 })
+    }
+
     for (const settlement of chunk.settlements) {
       const x = (settlement.x - chunk.originX) * cellSize + cellSize / 2
       const y = (settlement.y - chunk.originY) * cellSize + cellSize / 2
@@ -1831,6 +1902,7 @@ export async function createGame(
           biomeDefinitions: content.biomes,
           riverSystem: content.world.rivers,
           roadSystem: content.world.roads,
+          transportSystem: content.world.transport,
           geomorphology: content.world.geomorphology,
           wasmBaseUrl: options.assetBaseUrl,
         })
@@ -2418,6 +2490,7 @@ export async function createGame(
   drawDayNightOverlay()
   drawBattleShadow()
   refreshWeatherLayers(performance.now(), true)
+  refreshRegionalDiagnostics(performance.now())
   drawMinimap()
   lastStreamCenterChunkX = Math.floor(explorerMotion.x / chunkSize)
   lastStreamCenterChunkY = Math.floor(explorerMotion.y / chunkSize)
@@ -2764,6 +2837,7 @@ export async function createGame(
     if (!devMode) updateCamera()
     renderVisibleChunks()
     refreshWeatherLayers(simulationNow)
+    refreshRegionalDiagnostics(simulationNow)
     drawExplorer(simulationNow / 1000)
     drawDayNightOverlay(simulationNow, false)
     drawBattleShadow()

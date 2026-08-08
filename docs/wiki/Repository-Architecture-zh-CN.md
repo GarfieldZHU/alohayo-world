@@ -42,9 +42,12 @@ DOM 与 GPU 资源。地图层的自定义实体由区块所有者引用计数�
   只在跨格时执行。引擎发布 `alohayo-world:lifecycle`（`starting`、`active`、`paused`、
   `destroyed`），宿主可据此暂停竞争性的动画；博客结合加载/运行状态暂停 Live2D。
   硬件追踪与自适应画质保留在后续 #58。
-- 这些可关闭切片已通过 124 个 Vitest 测试、9 个 Playwright E2E、lint/typecheck、生产
+- 这些可关闭切片已通过 130 个 Vitest 测试、9 个 Playwright E2E、lint/typecheck、生产
   构建、Wiki 校验、绿色 Pages/CI 和 READY 的 Vercel 部署验证；这不是对 #57/#58 后续证据
   的替代。
+- 区域天气采样、运输结构记录、按能力通行查询、聚落交通聚合以及坐骑/载具 profile 现在都是
+  确定性的地图消费者。诊断留在 canvas dataset，不增加普通 HUD 负担；移动交通仍由可选后续
+  #60 跟踪。
 
 ## Rust/Wasm 边界
 

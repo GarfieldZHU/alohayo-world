@@ -407,7 +407,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.biomeDefinitions,
       event.data.riverSystem,
       event.data.roadSystem,
-      event.data.geomorphology
+      event.data.geomorphology,
+      event.data.transportSystem
     )
     if (event.data.mapAreas?.length && event.data.terrainCodes) {
       world = applyMapAreas(
@@ -417,7 +418,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         event.data.biomeDefinitions,
         event.data.riverSystem,
         event.data.roadSystem,
-        event.data.geomorphology
+        event.data.geomorphology,
+        event.data.transportSystem
       )
     }
     workerScope.postMessage(
@@ -464,7 +466,8 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.roadSystem,
       event.data.geomorphology,
       baseLayers.layers,
-      hydrology.builder
+      hydrology.builder,
+      event.data.transportSystem
     )
     const renderHints = await buildChunkRenderHints(
       chunk,

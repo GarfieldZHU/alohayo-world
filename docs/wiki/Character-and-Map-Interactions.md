@@ -1,7 +1,7 @@
 # Character and Map Interactions
 
-> **Wiki page version:** EN 1.1.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-07-23
-> **中文:** [角色与地图交互](Character-and-Map-Interactions-zh-CN) · **Translation status:** synced with EN 1.1.0
+> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [角色与地图交互](Character-and-Map-Interactions-zh-CN) · **Translation status:** synced with EN 1.2.0
 
 Terrain interaction is a pure query over stable terrain IDs, active surfaces, structures,
 weather, character roles, body state, and equipment capabilities. It returns movement,
@@ -22,6 +22,19 @@ these rules.
 
 This prevents equipment from rewriting the map and prevents the renderer from becoming a
 physics authority.
+
+## Transport and Vehicle Capabilities
+
+The map emits deterministic bridge, causeway, ferry, and switchback records. Each record
+can require explicit tags such as `traversal:ferry` or `traversal:vehicle`. The pure
+transport query returns `allowed`, a movement multiplier, missing tags, and a reason.
+Walking, mounts, vehicles, AI, and settlement traffic consume this same result; none infer
+passability from road colors or PixiJS geometry. Aggregate traffic is intentionally bounded
+and developer-diagnostic only; moving agents are tracked in #60.
+
+Character presentation is also separate from this query. Issue #59 defines the future
+layered role/equipment/weapon/action renderer so visual adapters can evolve without
+changing movement, saves, or map authority.
 
 ## Equipment Capability Adapter
 

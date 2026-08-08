@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Complete #46/#47/#48 with deterministic regional weather sampling, shared bridge/
+  causeway/ferry/switchback traversal records, aggregate settlement traffic diagnostics,
+  and config-driven mount/vehicle profiles. Narrow game-mode camera framing to roughly
+  22 x 15 terrain cells and document the standalone character presentation follow-up
+  in #59.
+
 - Polish the splash and HUD toward a blog-adapted fantasy language: rounded slate cards,
   cyan focus states, quiet brass compass details, responsive light/dark tokens, and one
   clear field-map surface. Add the ImageGen direction board to the UI design references.

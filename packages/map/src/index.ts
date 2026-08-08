@@ -5,6 +5,7 @@ import type {
   WorldGeomorphologyDefinition,
   WorldRiverSystemDefinition,
   WorldRoadSystemDefinition,
+  WorldTransportSystemDefinition,
   WorldWorkerCapabilities,
   WorldWorkerWasmBatch,
 } from '@alohayo/config'
@@ -27,6 +28,7 @@ import {
 } from './authored-overlays'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
 import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
+import { buildTransportStructures, type TransportCellSample } from './transport'
 
 export {
   ChunkTopologyResolver,
@@ -49,6 +51,23 @@ export {
   type TopologyMedium,
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
+export {
+  buildTransportStructures,
+  DEFAULT_TRANSPORT_SYSTEM,
+  evaluateTransportTraversal,
+  resolveTransportSystem,
+  type TransportCellSample,
+  type TraversalQuery,
+  type TraversalResult,
+} from './transport'
+export {
+  DEFAULT_TRAFFIC_SYSTEM,
+  DEFAULT_VEHICLE_PROFILES,
+  simulateSettlementTraffic,
+  type SettlementTrafficSnapshot,
+  type VehicleTraversalProfile,
+} from './traffic'
+export { sampleRegionalWeather, type RegionalWeatherSample } from './regional-weather'
 export {
   buildHaloShoreDistance,
   buildSignedShoreDistance,
@@ -185,6 +204,7 @@ export interface GeneratedWorld {
   settlements: GeneratedSettlement[]
   rivers: GeneratedRiver[]
   roads: GeneratedRoad[]
+  transportStructures: GeneratedTransportStructure[]
 }
 
 export interface GeneratedChunk {
@@ -222,6 +242,7 @@ export interface GeneratedChunk {
   settlements: GeneratedSettlement[]
   rivers: GeneratedRiver[]
   roads: GeneratedRoad[]
+  transportStructures: GeneratedTransportStructure[]
   workerDiagnostics?: WorldWorkerDiagnostics
 }
 
@@ -275,6 +296,20 @@ export interface GeneratedRoad {
   points: Array<{ x: number; y: number }>
 }
 
+export type TransportStructureKind = 'bridge' | 'causeway' | 'ferry' | 'switchback'
+
+export interface GeneratedTransportStructure {
+  id: string
+  kind: TransportStructureKind
+  roadId: string
+  x: number
+  y: number
+  roadPointIndex: number
+  requiredTags: string[]
+  movementMultiplier: number
+  maintenanceRate: number
+}
+
 export interface GeneratedRiver {
   id: string
   width: number
@@ -295,6 +330,7 @@ export interface GenerateWorldRequest {
   biomeDefinitions?: BiomeDefinition[]
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
+  transportSystem?: WorldTransportSystemDefinition
   geomorphology?: WorldGeomorphologyDefinition
 }
 
@@ -312,6 +348,7 @@ export interface GenerateChunkRequest {
   biomeDefinitions?: BiomeDefinition[]
   riverSystem?: WorldRiverSystemDefinition
   roadSystem?: WorldRoadSystemDefinition
+  transportSystem?: WorldTransportSystemDefinition
   geomorphology?: WorldGeomorphologyDefinition
   wasmBaseUrl?: string
   capabilities?: WorldWorkerCapabilities
@@ -1159,7 +1196,8 @@ function populateChunkFeatures(
   seedText: string,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
   const roadsConfig = resolveRoadSystem(roadSystem)
@@ -1247,6 +1285,18 @@ function populateChunkFeatures(
       roadTouchesChunk(road, chunk.originX, chunk.originY, chunk.chunkSize) &&
       !pathBlockedByProtectedRegion(road.points, 'roads', overlays)
   )
+  const transportStructures = buildTransportStructures(
+    roads,
+    (x, y) => {
+      const cell = evaluate(x, y)
+      return {
+        nearWater: cell.nearWater,
+        moisture: cell.moistureValue,
+        ruggedness: cell.ruggednessValue,
+      } satisfies TransportCellSample
+    },
+    transportSystem
+  )
   chunk.settlements = settlements.filter(
     (settlement) =>
       settlement.x >= chunk.originX &&
@@ -1256,6 +1306,8 @@ function populateChunkFeatures(
   )
   chunk.rivers = rivers
   chunk.roads = roads
+  chunk.transportStructures = transportStructures
+  chunk.hash = mixStructureHash(chunk.hash, transportStructures)
   chunk.landmarks = [
     ...chunk.landmarks,
     ...chunk.authoredEntities.map(authoredEntityToLandmark),
@@ -1269,7 +1321,8 @@ function populateWorldFeatures(
   seedText: string,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
-  roadSystem?: WorldRoadSystemDefinition
+  roadSystem?: WorldRoadSystemDefinition,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedWorld {
   const biomeMap = buildBiomeDefinitionMap(biomeDefinitions)
   const roadsConfig = resolveRoadSystem(roadSystem)
@@ -1334,12 +1387,41 @@ function populateWorldFeatures(
   world.roads = buildRoadNetwork(settlements, evaluate, biomeMap, roadsConfig).filter(
     (road) => !pathBlockedByProtectedRegion(road.points, 'roads', overlays)
   )
+  world.transportStructures = buildTransportStructures(
+    world.roads,
+    (x, y) => {
+      const cell = evaluate(x, y)
+      return {
+        nearWater: cell.nearWater,
+        moisture: cell.moistureValue,
+        ruggedness: cell.ruggednessValue,
+      } satisfies TransportCellSample
+    },
+    transportSystem
+  )
+  world.hash = mixStructureHash(world.hash, world.transportStructures)
   world.landmarks = [
     ...world.landmarks,
     ...world.authoredEntities.map(authoredEntityToLandmark),
     ...settlements.map(settlementToLandmark),
   ]
   return world
+}
+
+function mixStructureHash(
+  baseHash: string,
+  structures: readonly GeneratedTransportStructure[]
+): string {
+  let hash = Number.parseInt(baseHash, 16) >>> 0
+  for (const structure of structures) {
+    for (let index = 0; index < structure.id.length; index += 1) {
+      hash ^= structure.id.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    hash ^= Math.round(structure.x * 10) + Math.round(structure.y * 10)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 function scoreSettlementSite(
@@ -2096,7 +2178,8 @@ export function applyMapAreas(
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
-  geomorphology?: WorldGeomorphologyDefinition
+  geomorphology?: WorldGeomorphologyDefinition,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedWorld {
   const authoredArea = new Uint16Array(world.biomes.length)
   const areaIds = ['']
@@ -2206,7 +2289,14 @@ export function applyMapAreas(
   world.settlements = []
   world.rivers = []
   world.roads = []
-  populateWorldFeatures(world, world.seed, biomeDefinitions, riverSystem, roadSystem)
+  populateWorldFeatures(
+    world,
+    world.seed,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem,
+    transportSystem
+  )
 
   let worldHash = 2166136261
   for (let index = 0; index < world.biomes.length; index += 1) {
@@ -2224,7 +2314,10 @@ export function applyMapAreas(
     worldHash = Math.imul(worldHash, 16777619)
   }
   worldHash = mixOverlayHash(worldHash, overlays)
-  world.hash = (worldHash >>> 0).toString(16).padStart(8, '0')
+  world.hash = mixStructureHash(
+    (worldHash >>> 0).toString(16).padStart(8, '0'),
+    world.transportStructures
+  )
   return world
 }
 
@@ -2238,7 +2331,8 @@ function applyAreasToChunk(
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
   geomorphology?: WorldGeomorphologyDefinition,
-  hydrologyCoreBuilder?: HydrologyCoreBuilder
+  hydrologyCoreBuilder?: HydrologyCoreBuilder,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const areaIds = ['']
   const landmarks: GeneratedLandmark[] = []
@@ -2393,7 +2487,15 @@ function applyAreasToChunk(
   chunk.settlements = []
   chunk.rivers = []
   chunk.roads = []
-  populateChunkFeatures(chunk, chunk.seed, biomeDefinitions, riverSystem, roadSystem)
+  chunk.transportStructures = []
+  populateChunkFeatures(
+    chunk,
+    chunk.seed,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem,
+    transportSystem
+  )
 
   let chunkHash = 2166136261
   for (let index = 0; index < chunk.biomes.length; index += 1) {
@@ -2412,7 +2514,10 @@ function applyAreasToChunk(
     chunkHash = Math.imul(chunkHash, 16777619)
   }
   chunkHash = mixOverlayHash(chunkHash, overlays)
-  chunk.hash = (chunkHash >>> 0).toString(16).padStart(8, '0')
+  chunk.hash = mixStructureHash(
+    (chunkHash >>> 0).toString(16).padStart(8, '0'),
+    chunk.transportStructures
+  )
   return chunk
 }
 
@@ -2444,7 +2549,8 @@ export function generateWorld(
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
-  geomorphology?: WorldGeomorphologyDefinition
+  geomorphology?: WorldGeomorphologyDefinition,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedWorld {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -2560,8 +2666,16 @@ export function generateWorld(
     settlements: [],
     rivers: [],
     roads: [],
+    transportStructures: [],
   }
-  return populateWorldFeatures(world, seedText, biomeDefinitions, riverSystem, roadSystem)
+  return populateWorldFeatures(
+    world,
+    seedText,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem,
+    transportSystem
+  )
 }
 
 export function generateChunk(
@@ -2574,7 +2688,8 @@ export function generateChunk(
   roadSystem?: WorldRoadSystemDefinition,
   geomorphology?: WorldGeomorphologyDefinition,
   baseLayers?: ChunkBaseLayers,
-  hydrologyCoreBuilder?: HydrologyCoreBuilder
+  hydrologyCoreBuilder?: HydrologyCoreBuilder,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
   const seed = hashSeed(seedText)
@@ -2686,8 +2801,16 @@ export function generateChunk(
     settlements: [],
     rivers: [],
     roads: [],
+    transportStructures: [],
   }
-  return populateChunkFeatures(chunk, seedText, biomeDefinitions, riverSystem, roadSystem)
+  return populateChunkFeatures(
+    chunk,
+    seedText,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem,
+    transportSystem
+  )
 }
 
 export function generateChunkWithAreas(
@@ -2704,7 +2827,8 @@ export function generateChunkWithAreas(
   roadSystem?: WorldRoadSystemDefinition,
   geomorphology?: WorldGeomorphologyDefinition,
   baseLayers?: ChunkBaseLayers,
-  hydrologyCoreBuilder?: HydrologyCoreBuilder
+  hydrologyCoreBuilder?: HydrologyCoreBuilder,
+  transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const chunk = generateChunk(
     seedText,
@@ -2716,7 +2840,8 @@ export function generateChunkWithAreas(
     roadSystem,
     geomorphology,
     baseLayers,
-    hydrologyCoreBuilder
+    hydrologyCoreBuilder,
+    transportSystem
   )
   return applyAreasToChunk(
     chunk,
@@ -2728,6 +2853,7 @@ export function generateChunkWithAreas(
     riverSystem,
     roadSystem,
     geomorphology,
-    hydrologyCoreBuilder
+    hydrologyCoreBuilder,
+    transportSystem
   )
 }

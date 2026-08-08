@@ -10,6 +10,10 @@
       TypeScript fallback, measured promotion gates, and live browser diagnostics.
 - [x] Weather, transport, render-hint, and contour expansion decomposed into ordered,
       independently closeable issues.
+- [x] Regional weather diagnostics, transport structure/traversal records, aggregate
+      settlement traffic, and mount/vehicle profile contracts (`#46`, `#47`, `#48`).
+- [ ] Worker promotion evidence for Rust contour geometry (`#61`) and standalone
+      character presentation (`#59`).
 
 ## v0.1.2-foundation-checkpoint
 

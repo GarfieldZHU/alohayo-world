@@ -1,6 +1,6 @@
 # Roads Module
 
-**Status:** active foundation.
+**Status:** active foundation with deterministic transport structures (`#47` complete).
 
 ## Owns
 
@@ -17,6 +17,10 @@ rendering, traversal, and future traffic consumers.
 - terrain-aware road texturing and deterministic dry/wet/muddy/snowy/slushy/flooded
   conditions shared with weather;
 - condition-tuned movement and traffic multipliers from `content/core/world.json`.
+- deterministic bridge, causeway, ferry, and switchback markers in streamed chunks;
+- one shared capability-aware traversal query for walking, mounts, vehicles, and AI;
+- transport IDs and stable structure fields included in chunk/world hashes and rendered as
+  low-cost markers without making Pixi geometry authoritative.
 
 ## Middle-Age Magic World Guidance
 
@@ -31,7 +35,6 @@ passes or major routes.
 
 ## Next Work
 
-- explicit bridges, ferries, causeways, and switchbacks;
 - settlement traffic and route choice consuming the existing condition multipliers;
 - city-street interiors and paving quality;
 - vehicles and mounts consuming the same road-profile queries.
@@ -44,5 +47,6 @@ The broad `#32` tracker is decomposed into two independently testable stages:
 - `#48` consumes that stable structure/traversal API for settlement demand, route choice,
   congestion, maintenance, supply, mounts, vehicles, and terrain-specific paving assets.
 
-Implement `#47` first. Traffic must consume the same traversal query as player and NPC
-movement; it must not infer passability from rendered road color or PixiJS geometry.
+`#47` is complete for the deterministic structure/traversal contract. Traffic must consume
+the same traversal query as player and NPC movement; it must not infer passability from
+rendered road color or PixiJS geometry. Fully simulated route agents remain in #60.

@@ -49,11 +49,14 @@ Movement input is normalized, so diagonal travel is not faster. Each update:
 5. update position, facing, locomotion state, and distance;
 6. offset the camera to follow the character.
 
-Game mode uses a tight follow camera with locked zoom so the visible area stays useful
-for exploration and encounters. Dev mode keeps the free camera for inspection, replay,
-and map debugging.
+Game mode uses a tight follow camera with locked zoom (approximately 22 x 15 terrain cells
+at the desktop reference viewport) so the visible area stays useful for exploration and
+encounters. Dev mode keeps the free camera for inspection, replay, and map debugging.
 
 Water terrain currently has movement cost `7+` and rejects occupancy in normal gameplay.
+Road structures expose a shared capability query: bridges, ferries, causeways, and
+switchbacks can require explicit traversal tags supplied by equipment, mounts, vehicles,
+or future character profiles.
 Land terrain is traversable but high-cost terrain slows movement. Dev flight can ignore
 terrain blocking for testing, but future locomotion profiles should replace this debug
 override for swimming, boats, flying, climbing, and vehicles.
@@ -122,7 +125,7 @@ items, doors, resources, combat targets, and context-sensitive selection.
 
 - Character and landmark spawn configs.
 - Context-sensitive action selection and an interaction prompt.
-- Layered directional sprites and animation clips.
+- Standalone layered directional role/equipment/weapon/action presentation (`#59`).
 - Stamina and ability-derived movement modifiers.
 - Swimming/climbing/vehicle locomotion profiles.
 - NPC steering and pathfinding through the same motion commands.

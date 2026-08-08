@@ -133,6 +133,71 @@ if (world.weather) {
     errors.push('invalid world weather settings')
   }
 }
+if (world.transport) {
+  const validKinds = new Set(['bridge', 'causeway', 'ferry', 'switchback'])
+  if (!Array.isArray(world.transport.profiles) || !world.transport.profiles.length) {
+    errors.push('transport profiles are required when transport is configured')
+  } else {
+    for (const profile of world.transport.profiles) {
+      if (
+        !validKinds.has(profile.id) ||
+        !Array.isArray(profile.requiredTags) ||
+        profile.requiredTags.length < 1 ||
+        !Number.isFinite(profile.movementMultiplier) ||
+        profile.movementMultiplier <= 0 ||
+        !Number.isFinite(profile.maintenanceRate) ||
+        profile.maintenanceRate < 0
+      ) {
+        errors.push(`invalid transport profile ${profile.id || '<missing>'}`)
+      }
+    }
+  }
+  const generation = world.transport.generation
+  if (
+    typeof generation?.enabled !== 'boolean' ||
+    generation.waterDistance < 0 ||
+    generation.causewayMoistureMin < 0 ||
+    generation.causewayMoistureMin > 1 ||
+    generation.switchbackRuggednessMin < 0 ||
+    generation.switchbackRuggednessMin > 1 ||
+    generation.ferryTrafficMin < 0
+  ) {
+    errors.push('invalid transport generation settings')
+  }
+}
+if (world.traffic) {
+  const values = [
+    world.traffic.tickSeconds,
+    world.traffic.congestionScale,
+    world.traffic.maintenanceScale,
+    world.traffic.supplyScale,
+  ]
+  if (
+    typeof world.traffic.enabled !== 'boolean' ||
+    values.some((value) => !Number.isFinite(value) || value < 0) ||
+    world.traffic.tickSeconds <= 0
+  ) {
+    errors.push('invalid world traffic settings')
+  }
+}
+if (world.vehicles) {
+  for (const vehicle of world.vehicles) {
+    if (
+      !vehicle.id ||
+      !['mount', 'vehicle'].includes(vehicle.kind) ||
+      !Array.isArray(vehicle.capabilityTags) ||
+      !Array.isArray(vehicle.roadKinds) ||
+      !Number.isFinite(vehicle.speedMultiplier) ||
+      vehicle.speedMultiplier <= 0 ||
+      !Number.isFinite(vehicle.capacity) ||
+      vehicle.capacity < 0 ||
+      !Number.isFinite(vehicle.maintenanceRate) ||
+      vehicle.maintenanceRate < 0
+    ) {
+      errors.push(`invalid vehicle profile ${vehicle.id || '<missing>'}`)
+    }
+  }
+}
 if (world.geomorphology) {
   const config = world.geomorphology
   const normalizedFields = [

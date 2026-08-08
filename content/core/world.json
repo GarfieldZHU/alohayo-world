@@ -90,6 +90,68 @@
       "textureStep": 5
     }
   },
+  "transport": {
+    "profiles": [
+      {
+        "id": "bridge",
+        "requiredTags": ["traversal:bridge"],
+        "movementMultiplier": 0.92,
+        "maintenanceRate": 0.012
+      },
+      {
+        "id": "causeway",
+        "requiredTags": ["traversal:causeway"],
+        "movementMultiplier": 1.08,
+        "maintenanceRate": 0.018
+      },
+      {
+        "id": "ferry",
+        "requiredTags": ["traversal:ferry"],
+        "movementMultiplier": 1.2,
+        "maintenanceRate": 0.024
+      },
+      {
+        "id": "switchback",
+        "requiredTags": ["traversal:switchback"],
+        "movementMultiplier": 1.12,
+        "maintenanceRate": 0.014
+      }
+    ],
+    "generation": {
+      "enabled": true,
+      "waterDistance": 2.5,
+      "causewayMoistureMin": 0.68,
+      "switchbackRuggednessMin": 0.62,
+      "ferryTrafficMin": 3
+    }
+  },
+  "traffic": {
+    "enabled": true,
+    "tickSeconds": 12,
+    "congestionScale": 0.22,
+    "maintenanceScale": 0.16,
+    "supplyScale": 0.3
+  },
+  "vehicles": [
+    {
+      "id": "core:pack-mount",
+      "kind": "mount",
+      "capabilityTags": ["traversal:mount"],
+      "roadKinds": ["trail", "road", "trade-route", "pass"],
+      "speedMultiplier": 1.35,
+      "capacity": 2,
+      "maintenanceRate": 0.02
+    },
+    {
+      "id": "core:handcart",
+      "kind": "vehicle",
+      "capabilityTags": ["traversal:vehicle"],
+      "roadKinds": ["road", "trade-route"],
+      "speedMultiplier": 1.12,
+      "capacity": 6,
+      "maintenanceRate": 0.034
+    }
+  ],
   "rivers": {
     "enabled": true,
     "blockingMovement": true,
