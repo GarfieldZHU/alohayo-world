@@ -84,9 +84,14 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   const biomeName = document.createElement('span')
   location.append(regionName, biomeName)
 
+  const headerTools = document.createElement('div')
+  headerTools.className = 'aw-game-ui__header-tools'
+
   const compassButton = button('aw-game-ui__compass', 'menu-map')
   compassButton.setAttribute('aria-label', 'Open world map')
   compassButton.innerHTML = '<span aria-hidden="true">N</span><i aria-hidden="true"></i>'
+  headerTools.append(location, compassButton)
+
   const controlsHint = document.createElement('aside')
   controlsHint.className = 'aw-game-ui__controls-hint'
   controlsHint.setAttribute('aria-label', 'Game shortcuts')
@@ -103,7 +108,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   const hudHint = shortcutHint('H', '')
   const minimapHint = shortcutHint('N', '')
   controlsHint.append(menuHint, hudHint, minimapHint)
-  hud.append(identity, location, compassButton, controlsHint)
+  hud.append(identity, headerTools, controlsHint)
 
   const splash = document.createElement('section')
   splash.className = 'aw-game-ui__splash'

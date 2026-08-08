@@ -107,6 +107,21 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--aw-brass) 10%, transparent);
 }
 
+.aw-game-ui__header-tools {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.aw-game-ui__header-tools > * {
+  pointer-events: auto;
+}
+
 .aw-game-ui__identity {
   position: absolute;
   top: 0;
@@ -170,16 +185,13 @@
 }
 
 .aw-game-ui__location {
-  position: absolute;
-  top: 3px;
-  left: 50%;
+  position: static;
   padding: 5px 12px;
   text-align: center;
-  transform: translateX(-50%);
   border-radius: 999px;
-  opacity: 0.72;
-  border-color: color-mix(in srgb, var(--aw-teal) 24%, transparent);
-  background: color-mix(in srgb, var(--aw-deep) 38%, transparent);
+  opacity: 0.66;
+  border-color: color-mix(in srgb, var(--aw-teal) 20%, transparent);
+  background: color-mix(in srgb, var(--aw-deep) 30%, transparent);
   box-shadow: none;
 }
 
@@ -189,20 +201,33 @@
 }
 
 .aw-game-ui__compass {
-  position: absolute;
-  top: 2px;
-  right: 176px;
+  position: relative;
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   place-items: center;
   border-radius: 50%;
+  border-color: color-mix(in srgb, var(--aw-teal) 25%, transparent);
   color: var(--aw-mint);
   cursor: pointer;
   pointer-events: auto;
-  background: color-mix(in srgb, var(--aw-panel) 84%, transparent);
-  opacity: 0.82;
+  background: color-mix(in srgb, var(--aw-panel) 34%, transparent);
+  box-shadow: none;
+  opacity: 0.68;
+  transition:
+    opacity 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.aw-game-ui__compass:hover,
+.aw-game-ui__compass:focus-visible {
+  border-color: color-mix(in srgb, var(--aw-teal) 60%, transparent);
+  background: color-mix(in srgb, var(--aw-panel) 72%, transparent);
+  opacity: 0.96;
+  transform: translateY(-1px);
 }
 
 .aw-game-ui__controls-hint {
@@ -249,7 +274,7 @@
 .aw-game-ui__compass i {
   position: absolute;
   width: 2px;
-  height: 24px;
+  height: 18px;
   background: linear-gradient(
     var(--aw-brass) 50%,
     color-mix(in srgb, var(--aw-silver) 36%, transparent) 50%
@@ -259,7 +284,7 @@
 
 .aw-game-ui__compass span {
   position: absolute;
-  top: 4px;
+  top: 3px;
   font:
     700 8px ui-monospace,
     SFMono-Regular,
@@ -600,11 +625,7 @@
     min-width: 0;
   }
 
-  .aw-game-ui__location {
-    display: none;
-  }
-
-  .aw-game-ui__compass {
+  .aw-game-ui__header-tools {
     display: none;
   }
 
