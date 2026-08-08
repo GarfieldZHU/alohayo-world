@@ -24,7 +24,19 @@ Current implementation details:
   approximate serialized size, health, and backup count without decoding render buffers;
 - backup restoration is an explicit user action, and quota retries prune oldest backups
   first before returning a typed failure.
+- runtime load and backup recovery first run a read-only compatibility report. A matching
+  world loads directly, seed/preset differences return a `remountable` result for the
+  launcher to confirm, and content-resolution or chunk-size differences remain hard
+  incompatibilities. Target chunks are fetched before restore mutation. The launcher writes
+  a temporary recovery slot before remounting, restores the previous world after a failed
+  mount/load, and keeps the recovery slot when rollback cannot be completed.
+- replacing a save, rename target, duplicate target, single import, or archive record requires
+  an explicit confirmation; archive imports use schema version 1, cap records at 64, and
+  report malformed, duplicate, cancelled, and rejected records independently.
+- save journey cards expose compact metadata and keyboard selection while a best-effort
+  `navigator.storage.estimate()` status remains advisory and never gates saves.
 
-Future work remains for optional thumbnails, cross-seed remount prompts, slot-conflict
-transactions, bulk archives, and chunk-history compression. These build on the same
-snapshot/backup contract rather than replacing it; see issues #53 and #54.
+Future work remains for optional visual thumbnails and chunk-history compression. These build
+on the same snapshot/backup contract rather than replacing it; issue #62 tracks the benchmarks,
+versioned compression, and asynchronous thumbnail phases without weakening the bounded archive
+and recovery guarantees delivered by #43/#54.

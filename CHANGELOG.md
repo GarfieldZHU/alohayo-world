@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Close #43/#54 save recovery work: classify current/remountable/incompatible worlds before
+  mutation, confirm cross-seed remounts with a temporary recovery slot and rollback path, and
+  require replacement confirmation across save, rename, duplicate, and import flows. Add
+  accessible journey cards, schema-one bounded multi-slot archives with partial-import reports,
+  and advisory browser storage estimates. Optional thumbnails and chunk-history compression are
+  intentionally deferred to follow-up #62.
+
 - Complete #45 with a deterministic fixed-step regional weather state: bounded retained
   cells, pressure/humidity/precipitation/wind/front fields, short changed-cell history,
   optional versioned save snapshots, deterministic restore, pure visibility/drainage

@@ -4,6 +4,7 @@ import {
   createWorldSaveStore,
   decodeDiscoveredChunk,
   encodeDiscoveredChunk,
+  inspectWorldSaveCompatibility,
   validateWorldSaveSnapshot,
   WorldSaveError,
 } from '../packages/engine/src/save-store'
@@ -413,6 +414,45 @@ describe('world save store', () => {
     expect(() => assertCompatibleContentPackState(sampleSnapshot, 'fnv32:other')).toThrow(
       WorldSaveError
     )
+  })
+
+  it('classifies same-world, remountable, and hard-incompatible saves without mutation', () => {
+    const currentWorld = { ...sampleSnapshot.world }
+    expect(
+      inspectWorldSaveCompatibility(
+        sampleSnapshot,
+        currentWorld,
+        sampleSnapshot.contentPacks.resolutionHash
+      )
+    ).toMatchObject({ kind: 'current', reasons: [] })
+
+    const remountable = inspectWorldSaveCompatibility(
+      { ...sampleSnapshot, world: { ...sampleSnapshot.world, seed: 'another-seed' } },
+      currentWorld,
+      sampleSnapshot.contentPacks.resolutionHash
+    )
+    expect(remountable).toMatchObject({ kind: 'remountable', reasons: ['seed'] })
+    expect(currentWorld).toEqual(sampleSnapshot.world)
+
+    const incompatible = inspectWorldSaveCompatibility(sampleSnapshot, currentWorld, 'fnv32:other')
+    expect(incompatible.kind).toBe('incompatible')
+    expect(incompatible.reasons).toContain('content-resolution')
+  })
+
+  it('loads a backup for compatibility inspection without replacing the active record', async () => {
+    const factory = new FakeIndexedDbFactory()
+    const store = createWorldSaveStore(factory as unknown as IDBFactory)
+    await store.save(sampleSnapshot, 'journey', { label: 'Wayfinder' })
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-06T00:00:00.000Z' }, 'journey', {
+      label: 'Wayfinder',
+    })
+    const [backup] = await store.listBackups('journey')
+    expect(backup).toBeTruthy()
+    const loaded = await store.loadBackup('journey', backup!.backupId)
+    expect(loaded).toMatchObject({ savedAt: sampleSnapshot.savedAt })
+    await expect(store.load('journey')).resolves.toMatchObject({
+      savedAt: '2026-07-06T00:00:00.000Z',
+    })
   })
 
   it('rejects invalid imports', async () => {

@@ -60,6 +60,91 @@ footer {
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.7fr);
   gap: 8px;
 }
+.save-slots-source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.save-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.save-list:empty::before {
+  content: '—';
+  padding: 8px 10px;
+  color: #78909c;
+}
+.save-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 2px 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgb(77 125 145 / 42%);
+  border-radius: 10px;
+  color: #d8f3ff;
+  background: rgb(7 23 35 / 64%);
+  text-align: left;
+}
+.save-card__thumb {
+  display: grid;
+  grid-row: span 2;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgb(241 199 119 / 48%);
+  border-radius: 8px;
+  color: #f1c777;
+  background:
+    radial-gradient(circle at 65% 25%, rgb(114 215 200 / 45%), transparent 55%),
+    linear-gradient(135deg, hsl(var(--save-hue, 180) 42% 22%), #071723);
+}
+.save-card:hover,
+.save-card:focus-visible {
+  border-color: #72d7c8;
+  background: rgb(20 64 70 / 74%);
+}
+.save-card[aria-selected='true'] {
+  border-color: #f1c777;
+  box-shadow: 0 0 0 1px rgb(241 199 119 / 26%);
+}
+.save-card__title {
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-card__meta,
+.save-card__status {
+  overflow: hidden;
+  color: #9bb2bf;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-card__status {
+  grid-column: 1 / -1;
+  color: #72d7c8;
+}
+.save-card[data-health='corrupt'] .save-card__status {
+  color: #ffb39d;
+}
+.save-card__kind {
+  align-self: start;
+  color: #f1c777;
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
 .save-actions {
   display: flex;
   flex-wrap: wrap;
@@ -125,6 +210,18 @@ footer {
   color: inherit;
   background: #071723;
   font-family: ui-monospace, monospace;
+}
+.save-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.save-storage {
+  margin: 10px 0 0;
+  color: #78909c;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
 }
 #launcher label {
   display: block;

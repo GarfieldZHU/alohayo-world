@@ -236,6 +236,17 @@ export interface WorldSaveSummary {
   sizeBytes: number
 }
 
+export type WorldSaveCompatibilityKind = 'current' | 'remountable' | 'incompatible'
+
+export interface WorldSaveCompatibility {
+  kind: WorldSaveCompatibilityKind
+  reasons: string[]
+  savedWorld: WorldSaveWorldState
+  currentWorld: WorldSaveWorldState
+  savedResolutionHash: string
+  currentResolutionHash: string
+}
+
 export interface WorldSaveBackupSummary extends WorldSaveSummary {
   backupId: string
 }
@@ -926,6 +937,7 @@ export interface GameHandle {
   closeMenu?(): void
   listSaves?(): Promise<WorldSaveSummary[]>
   listSaveBackups?(slotId: string): Promise<WorldSaveBackupSummary[]>
+  inspectSave?(slotId: string): Promise<WorldSaveCompatibility>
   save?(slotId?: string, label?: string): Promise<WorldSaveSummary>
   loadSave?(slotId: string): Promise<WorldSaveSummary>
   renameSave?(slotId: string, nextSlotId: string, label?: string): Promise<WorldSaveSummary>

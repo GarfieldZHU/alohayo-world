@@ -1,9 +1,11 @@
 import {
   WORLD_SAVE_MIGRATION_REGISTRY_SHAPE,
   type WorldSaveBackupSummary,
+  type WorldSaveCompatibility,
   type WorldSaveErrorCode,
   type WorldSaveSnapshot,
   type WorldSaveSummary,
+  type WorldSaveWorldState,
   type WorldSaveWeatherState,
 } from '@alohayo/config'
 import {
@@ -46,6 +48,7 @@ export interface WorldSaveMetadata {
 export interface WorldSaveStore {
   list(): Promise<WorldSaveSummary[]>
   listBackups(slotId: string): Promise<WorldSaveBackupSummary[]>
+  loadBackup(slotId: string, backupId: string): Promise<WorldSaveSnapshot | null>
   load(slotId?: string): Promise<WorldSaveSnapshot | null>
   save(
     snapshot: WorldSaveSnapshot,
@@ -58,6 +61,45 @@ export interface WorldSaveStore {
   clear(slotId?: string): Promise<void>
   exportSnapshot(snapshot: WorldSaveSnapshot): string
   importSnapshot(serialized: string): Promise<WorldSaveSnapshot>
+}
+
+/**
+ * Compare a validated save with the mounted world without touching runtime state.
+ * A matching content resolution can be safely remounted; a different resolution
+ * may change generation/content contracts and must be rejected before mutation.
+ */
+export function inspectWorldSaveCompatibility(
+  snapshot: WorldSaveSnapshot,
+  currentWorld: WorldSaveWorldState,
+  currentResolutionHash: string
+): WorldSaveCompatibility {
+  const savedWorld = snapshot.world
+  const reasons: string[] = []
+  if (snapshot.contentPacks.resolutionHash !== currentResolutionHash) {
+    reasons.push('content-resolution')
+  }
+  const worldFields: Array<keyof WorldSaveWorldState> = [
+    'seed',
+    'chunkSize',
+    'surveyWidth',
+    'surveyHeight',
+    'activeChunkRadius',
+    'retainChunkRadius',
+    'minimapChunkRadius',
+  ]
+  for (const field of worldFields) {
+    if (savedWorld[field] !== currentWorld[field]) reasons.push(field)
+  }
+  const hardIncompatibility =
+    reasons.includes('content-resolution') || savedWorld.chunkSize !== currentWorld.chunkSize
+  return {
+    kind: hardIncompatibility ? 'incompatible' : reasons.length > 0 ? 'remountable' : 'current',
+    reasons,
+    savedWorld: { ...savedWorld },
+    currentWorld: { ...currentWorld },
+    savedResolutionHash: snapshot.contentPacks.resolutionHash,
+    currentResolutionHash,
+  }
 }
 
 export class WorldSaveError extends Error {
@@ -118,6 +160,14 @@ export function createWorldSaveStore(
           (left, right) =>
             right.savedAt.localeCompare(left.savedAt) || left.backupId.localeCompare(right.backupId)
         )
+    },
+    async loadBackup(slotId, backupId) {
+      const record = await requireRawRecord(await readRawRecord(indexedDb, slotId), slotId)
+      const backup = recordBackups(record).find((candidate) => candidate.backupId === backupId)
+      if (!backup) {
+        throw new WorldSaveError('unavailable', `save backup ${backupId} does not exist`)
+      }
+      return validateWorldSaveSnapshot(backup.snapshot)
     },
     async load(slotId = WORLD_SAVE_AUTOSAVE_SLOT) {
       const db = await openSaveDatabase(indexedDb)

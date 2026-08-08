@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.4.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.4.0
+> **Wiki page version:** EN 1.5.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.5.0
 
 ## Dependency Direction
 
@@ -88,9 +88,14 @@ coverage, and at least 15% median CPU improvement without more than 5% transfer 
 IndexedDB stores versioned local snapshots, discovery, explorer state, topology aliases,
 persistent authored-entity despawns, content-pack resolution metadata, and named slots.
 Replacing a slot keeps a bounded rolling history; each record is validated independently,
-and recovery is explicit. Preview summaries read compact metadata rather than render
-buffers. No account, telemetry, remote save, or network gameplay service is part of the
-architecture.
+and recovery is explicit. The engine reports whether a save is current, remountable, or
+hard-incompatible before mutation. The launcher confirms remounts, writes a temporary
+recovery slot, and rolls back when loading the target world fails. Journey cards remain
+lightweight, keyboard-selectable, and localized; schema-one archives cap at 64 records and
+report malformed, duplicate, cancelled, and rejected entries independently. Browser quota
+estimates are advisory. No account, telemetry, remote save, or network gameplay service is
+part of the architecture. Optional visual thumbnails and chunk-history compression remain
+follow-up work in #62.
 
 ## Verification Gates
 

@@ -25,8 +25,10 @@ import type {
   LocaleCode,
   GameHandle,
   MountGameOptions,
+  WorldSaveCompatibility,
   WorldSaveSnapshot,
   WorldSaveSummary,
+  WorldSaveWorldState,
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
   WorldRoadConditionDefinition,
@@ -121,6 +123,7 @@ import {
   createWorldSaveStore,
   decodeDiscoveredChunk,
   encodeDiscoveredChunk,
+  inspectWorldSaveCompatibility,
   summarizeSave,
   WORLD_SAVE_ENGINE_VERSION,
   WorldSaveError,
@@ -396,14 +399,31 @@ export async function createGame(
     devPanel?.refreshEntityDiagnostics()
   }
 
-  const saveIdentityMatches = (snapshot: WorldSaveSnapshot) =>
-    snapshot.world.seed === worldSeed &&
-    snapshot.world.chunkSize === chunkSize &&
-    snapshot.world.surveyWidth === surveyWidth &&
-    snapshot.world.surveyHeight === surveyHeight &&
-    snapshot.world.activeChunkRadius === activeChunkRadius &&
-    snapshot.world.retainChunkRadius === retainChunkRadius &&
-    snapshot.world.minimapChunkRadius === minimapChunkRadius
+  const currentSaveWorld = (): WorldSaveWorldState => ({
+    seed: worldSeed,
+    chunkSize,
+    surveyWidth,
+    surveyHeight,
+    activeChunkRadius,
+    retainChunkRadius,
+    minimapChunkRadius,
+  })
+
+  const saveCompatibility = (snapshot: WorldSaveSnapshot): WorldSaveCompatibility =>
+    inspectWorldSaveCompatibility(
+      snapshot,
+      currentSaveWorld(),
+      contentPackSaveMetadata?.resolutionHash ?? ''
+    )
+
+  const incompatibleSaveError = (compatibility: WorldSaveCompatibility) =>
+    new WorldSaveError(
+      'incompatible-content',
+      compatibility.kind === 'remountable'
+        ? `save belongs to another world (${compatibility.reasons.join(', ')}); remount is required before loading`
+        : `save content is incompatible with this world (${compatibility.reasons.join(', ')})`,
+      compatibility
+    )
 
   const applySavedPreferences = (snapshot: WorldSaveSnapshot) => {
     if (!options.locale) {
@@ -559,12 +579,14 @@ export async function createGame(
 
   const restoreSnapshot = async (snapshot: WorldSaveSnapshot) => {
     assertCompatibleContentPackState(snapshot, contentPackSaveMetadata?.resolutionHash ?? '')
-    if (!saveIdentityMatches(snapshot)) {
-      throw new WorldSaveError(
-        'incompatible-content',
-        'save world identity does not match current runtime'
-      )
-    }
+    const compatibility = saveCompatibility(snapshot)
+    if (compatibility.kind !== 'current') throw incompatibleSaveError(compatibility)
+
+    // Resolve the target chunk before mutating discovery, preferences, or ledgers.
+    // A failed worker request therefore leaves the active journey untouched.
+    const targetChunkX = Math.floor(snapshot.explorer.x / chunkSize)
+    const targetChunkY = Math.floor(snapshot.explorer.y / chunkSize)
+    await ensureChunkNeighborhood(targetChunkX, targetChunkY, 0)
 
     applyingImportedSave = true
     try {
@@ -612,9 +634,6 @@ export async function createGame(
       }
       renderMinimapLocale(minimapControls, minimapText, minimapCollapsed)
       minimapControls?.setCollapsed(minimapCollapsed)
-      const targetChunkX = Math.floor(snapshot.explorer.x / chunkSize)
-      const targetChunkY = Math.floor(snapshot.explorer.y / chunkSize)
-      await ensureChunkNeighborhood(targetChunkX, targetChunkY, 0)
       if (explorer) {
         explorer.activeWeaponSlot = snapshot.explorer.activeWeaponSlot
       }
@@ -2453,18 +2472,20 @@ export async function createGame(
   if (contentPackSaveMetadata) {
     try {
       const snapshot = await saveStore.load()
-      if (
-        snapshot &&
-        saveIdentityMatches(snapshot) &&
-        snapshot.contentPacks.resolutionHash === contentPackSaveMetadata.resolutionHash
-      ) {
-        restoredSnapshot = snapshot
-        applySavedPreferences(snapshot)
-        authoredEntityLifecycle.restore(snapshot.authoredEntities)
-        updateAuthoredEntityDiagnostics()
-        topologyResolver.rehydrate(snapshot.topology)
-        app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
-        window.localStorage.setItem('alohayo-world:locale', locale)
+      if (snapshot) {
+        const compatibility = saveCompatibility(snapshot)
+        if (compatibility.kind !== 'current') {
+          restoreWarning = incompatibleSaveError(compatibility)
+          app.canvas.dataset.saveRecovery = restoreWarning.code
+        } else {
+          restoredSnapshot = snapshot
+          applySavedPreferences(snapshot)
+          authoredEntityLifecycle.restore(snapshot.authoredEntities)
+          updateAuthoredEntityDiagnostics()
+          topologyResolver.rehydrate(snapshot.topology)
+          app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
+          window.localStorage.setItem('alohayo-world:locale', locale)
+        }
       }
     } catch (error) {
       restoredSnapshot = null
@@ -3004,12 +3025,19 @@ export async function createGame(
     async listSaveBackups(slotId) {
       return saveStore.listBackups(slotId)
     },
+    async inspectSave(slotId) {
+      const snapshot = await saveStore.load(slotId)
+      if (!snapshot) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+      return saveCompatibility(snapshot)
+    },
     async save(slotId, label) {
       return saveNow(slotId, label)
     },
     async loadSave(slotId) {
       const snapshot = await saveStore.load(slotId)
       if (!snapshot) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
+      const compatibility = saveCompatibility(snapshot)
+      if (compatibility.kind !== 'current') throw incompatibleSaveError(compatibility)
       await restoreSnapshot(snapshot)
       return summarizeSave(slotId, snapshot)
     },
@@ -3020,6 +3048,12 @@ export async function createGame(
       return saveStore.duplicate(slotId, nextSlotId, label)
     },
     async restoreSaveBackup(slotId, backupId) {
+      const backupSnapshot = await saveStore.loadBackup(slotId, backupId)
+      if (!backupSnapshot) {
+        throw new WorldSaveError('unavailable', `save backup ${backupId} does not exist`)
+      }
+      const compatibility = saveCompatibility(backupSnapshot)
+      if (compatibility.kind !== 'current') throw incompatibleSaveError(compatibility)
       const summary = await saveStore.restoreBackup(slotId, backupId)
       const snapshot = await saveStore.load(slotId)
       if (!snapshot) throw new WorldSaveError('unavailable', `save slot ${slotId} does not exist`)
@@ -3035,6 +3069,8 @@ export async function createGame(
     },
     async importSave(serialized, slotId = `import-${Date.now()}`, label = 'Imported save') {
       const snapshot = await saveStore.importSnapshot(serialized)
+      const compatibility = saveCompatibility(snapshot)
+      if (compatibility.kind !== 'current') throw incompatibleSaveError(compatibility)
       await restoreSnapshot(snapshot)
       const summary = summarizeImportedSnapshot(snapshot, slotId, label)
       await saveStore.save(snapshot, slotId, { label, kind: 'imported' })

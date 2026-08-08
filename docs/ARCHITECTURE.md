@@ -80,5 +80,13 @@ The standalone save inspector lists summaries without decoding world buffers, an
 rename, duplicate, delete, load, export, and import operations reuse the same validated
 snapshot. Replacing a slot keeps three rolling local backups, corrupt records are isolated
 from healthy summaries, and the launcher exposes lightweight seed/position/discovery/size
-previews plus explicit recovery. Runtime loads require the active world identity and
-content resolution hash to match; cross-seed confirmation/remount remains tracked in #53.
+previews plus explicit recovery. The engine exposes a read-only compatibility report:
+same-world snapshots load directly, seed/preset differences are marked `remountable`, and
+content-resolution or chunk-size differences are hard `incompatible` failures. Loads and
+backup recovery preflight that report before mutating runtime state. The launcher confirms
+and remounts a `remountable` save only after writing a temporary recovery slot, rolls back
+to the previous world when mount or restore fails, and leaves that recovery slot visible if
+rollback is incomplete. Save, rename, duplicate, single-import, and archive-import flows
+confirm replacement before overwriting. Journey cards are keyboard-selectable and the
+versioned archive importer reports malformed, duplicate, cancelled, and engine-rejected
+records independently; browser storage estimates are advisory only.

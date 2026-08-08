@@ -134,26 +134,63 @@ test('manages named local saves and reports bad imports', async ({ page }) => {
   await page.getByPlaceholder('Save name').fill('Bridge approach')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByLabel('Save slots')).toContainText('Bridge approach')
+  await expect(page.locator('.save-card').filter({ hasText: 'Bridge approach' })).toBeVisible()
+  await expect(page.locator('.save-card').filter({ hasText: 'Bridge approach' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  await expect(page.locator('#save-storage')).toBeVisible()
   await expect(page.getByText(/World · alohayo/)).toBeVisible()
-  await expect(page.getByText(/cells · .* chunks/)).toBeVisible()
+  await expect(page.locator('#save-preview-discovery')).toHaveText(/cells · .* chunks/)
 
+  page.once('dialog', async (dialog) => {
+    await dialog.accept()
+  })
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByLabel('Previous save versions')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Recover previous' })).toBeEnabled()
   await page.getByRole('button', { name: 'Recover previous' }).click()
-  await expect(page.getByRole('status')).toContainText('Recovered Bridge approach')
+  await expect(page.locator('#save-status')).toContainText('Recovered Bridge approach')
 
   await page.getByPlaceholder('Save name').fill('Bridge copy')
   await page.getByRole('button', { name: 'Duplicate' }).click()
   await expect(page.getByLabel('Save slots')).toContainText('Bridge copy')
 
   await page.getByLabel('Save slots').selectOption('Bridge-copy')
+  page.once('dialog', async (dialog) => {
+    await dialog.accept()
+  })
   await page.getByRole('button', { name: 'Delete' }).click()
   await expect(page.getByLabel('Save slots')).not.toContainText('Bridge copy')
 
   await page.getByPlaceholder('Paste exported save JSON').fill('{bad json')
-  await page.getByRole('button', { name: 'Import' }).click()
-  await expect(page.getByRole('status')).toContainText('Save recovery:')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await expect(page.locator('#save-status')).toContainText('Save recovery:')
+})
+
+test('confirms a cross-seed journey remount and keeps a recovery slot', async ({ page }) => {
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByLabel('World seed').fill('first-journey')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+
+  await page.getByPlaceholder('Save name').fill('First journey')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.locator('.save-card').filter({ hasText: 'First journey' })).toBeVisible()
+
+  await page.getByLabel('World seed').fill('second-journey')
+  await page.getByRole('button', { name: 'Resurvey' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  const card = page.locator('.save-card').filter({ hasText: 'First journey' })
+  await card.click()
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('first-journey')
+    await dialog.accept()
+  })
+  await page.getByRole('button', { name: 'Load', exact: true }).click()
+  await expect(page.getByLabel('World seed')).toHaveValue('first-journey')
+  await expect(page.locator('.save-card').filter({ hasText: 'First journey' })).toBeVisible()
 })
 
 test('rehydrates topology aliases before streamed chunks after a browser restart', async ({
