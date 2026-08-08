@@ -2,7 +2,8 @@
 
 **Program status:** first promotion program completed in GitHub issue #30.
 
-**Next measured candidates:** render hints in #49 and contour/frontier geometry in #50.
+**Next measured candidate:** contour/frontier geometry in #50. Render hints (#49) are now
+stable and default-on with a deterministic TypeScript fallback.
 **Principle:** Rust/Wasm accelerates deterministic worker batches; TypeScript continues to
 own content orchestration, rendering, UI, input, persistence, and public embed APIs.
 
@@ -39,7 +40,7 @@ No browser query string is a production rollout mechanism. The engine must recei
 explicit local developer capability and a versioned worker request field.
 
 The active protocol is `protocolVersion: 1`. The production default enables the promoted
-`chunk-base-layers` and `hydrology-raster` batches. A batch may load Wasm only when
+`chunk-base-layers`, `render-hints`, and `hydrology-raster` batches. A batch may load Wasm only when
 `enabled` is true, ABI version 1 is present, and that batch appears in the request list. Responses report per-batch
 implementation and fallback reasons; request failures are structured and the engine
 rejects stalled requests after 15 seconds.
@@ -97,7 +98,7 @@ TypeScript median and 0.903 ms Wasm median (43.4% lower), with 1.706/0.966 ms p9
 path and an explicit forced-TypeScript capability, so this batch is default-on while the
 reference fallback remains supported.
 
-### M2: Render hints (candidate #49)
+### M2: Render hints (stable #49)
 
 - Inputs: biome/elevation buffers plus origin/chunk size.
 - Outputs: noise, transition masks, detail classes, and offsets.
@@ -106,9 +107,13 @@ reference fallback remains supported.
 **Gate:** bitwise parity with `generateChunkRenderHints`, no changed draw-call budget, and
 no visible seam regression across chunk borders.
 
-The TypeScript reference and optional Rust export exist. Issue #49 owns built-Wasm
-16/64/128 parity, worker fallback/browser coverage, transfer metrics, and the measured
-authority decision. It is not a default production batch until those gates pass.
+**Promotion result (#49):** built-Wasm byte parity passes the 16/64/128 matrix across
+negative/positive quadrants and seam-adjacent chunks. The release fixture measured a
+0.521 ms TypeScript median versus 0.072 ms Wasm median (86.2% lower), with 0.921/0.291 ms
+p95, 0% transfer growth, and 0.501 ms module startup. Worker capability normalization,
+malformed-output fallback, and Playwright startup/navigation/destroy coverage pass for
+both the default Wasm path and explicit TypeScript fallback. Render hints are now
+default-on; TypeScript remains the authority for smoothing, LOD, and all Pixi draw calls.
 
 ### M3: Contour and frontier geometry (candidate #50)
 

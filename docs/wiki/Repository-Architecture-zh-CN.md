@@ -1,7 +1,7 @@
 # 仓库架构
 
-> **Wiki 页面版本：** zh-CN 1.3.0 · **英文源版本：** EN 1.3.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-08
-> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.3.0
+> **Wiki 页面版本：** zh-CN 1.4.0 · **英文源版本：** EN 1.4.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-08
+> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.4.0
 
 ## 依赖方向
 
@@ -46,14 +46,18 @@ DOM 与 GPU 资源。地图层的自定义实体由区块所有者引用计数�
   构建、Wiki 校验、绿色 Pages/CI 和 READY 的 Vercel 部署验证；这不是对 #57/#58 后续证据
   的替代。
 - 区域天气采样、运输结构记录、按能力通行查询、聚落交通聚合以及坐骑/载具 profile 现在都是
-  确定性的地图消费者。诊断留在 canvas dataset，不增加普通 HUD 负担；移动交通仍由可选后续
-  #60 跟踪。
+  确定性的地图消费者。区域天气还维护有界固定步长状态与可选存档快照；诊断留在 canvas
+  dataset，不增加普通 HUD 负担；移动交通仍由可选后续 #60 跟踪。
 
 ## Rust/Wasm 边界
 
-Rust/Wasm 只加速经性能测量的 Worker 数值批处理。v0.1.3 稳定批次是区块基础层与纯水文
-栅格。TypeScript 保留确定性参考与回退。PixiJS 绘制、UI、内容解析、存档格式、道路、
-地形分类和世界变更仍由 TypeScript 负责。
+Rust/Wasm 只加速经性能测量的 Worker 数值批处理。v0.1.3 稳定批次是区块基础层、渲染
+提示与纯水文栅格。TypeScript 保留确定性参考与回退。PixiJS 绘制、UI、内容解析、存档
+格式、道路、地形分类和世界变更仍由 TypeScript 负责。
+
+渲染提示在通过 16/64/128 Wasm 精确一致性、负坐标与接缝夹具、Worker 回退、浏览器覆盖
+以及性能门槛后默认启用：中位 CPU 降低 86.2%，传输增长为 0%。该批次只准备 typed array；
+平滑、LOD 与最终呈现仍由引擎负责。
 
 Issue #50 已在 `crates/world-core` 提供与渲染器无关的轮廓候选实现：一次粗粒度调用接收
 内部掩码和显式已知数据 halo，并返回带 ABI 版本与世界原点的 typed、区块局部路径缓冲。

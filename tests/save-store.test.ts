@@ -4,6 +4,7 @@ import {
   createWorldSaveStore,
   decodeDiscoveredChunk,
   encodeDiscoveredChunk,
+  validateWorldSaveSnapshot,
   WorldSaveError,
 } from '../packages/engine/src/save-store'
 import type { WorldSaveSnapshot } from '../packages/config/src'
@@ -277,6 +278,43 @@ describe('world save store', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'unsupported-version' })
+  })
+
+  it('validates optional bounded regional weather snapshots', () => {
+    const weather = {
+      schemaVersion: 1 as const,
+      seed: sampleSnapshot.world.seed,
+      tick: 3,
+      accumulatorSeconds: 2,
+      tickSeconds: 12,
+      cellScale: 48,
+      maxCells: 16,
+      historyLimit: 8,
+      cells: [
+        {
+          key: '0:0',
+          x: 0,
+          y: 0,
+          tick: 3,
+          pressure: 0.5,
+          humidity: 0.6,
+          precipitation: 0.4,
+          temperatureAnomaly: 0,
+          windX: 0.2,
+          windY: -0.1,
+          frontId: 'front:0:0:3',
+          lastTouchedTick: 3,
+        },
+      ],
+      history: [{ tick: 3, changedKeys: ['0:0'] }],
+    }
+    expect(validateWorldSaveSnapshot({ ...sampleSnapshot, weather }).weather).toEqual(weather)
+    expect(() =>
+      validateWorldSaveSnapshot({
+        ...sampleSnapshot,
+        weather: { ...weather, maxCells: 2048 },
+      })
+    ).toThrow('weather state')
   })
 
   it('lists, renames, duplicates, and deletes named save slots', async () => {

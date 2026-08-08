@@ -459,10 +459,12 @@ pub fn generate_chunk_base_layers(
 }
 
 fn render_hint_noise(x: i32, y: i32, salt: u8) -> u32 {
-    let mut value = ((x + salt as i32).wrapping_mul(374_761_393))
-        ^ ((y - salt as i32).wrapping_mul(668_265_263));
+    // Keep the bit operations unsigned to match the TypeScript reference's
+    // `>>>` shifts for negative world coordinates.
+    let mut value = (x.wrapping_add(salt as i32) as u32).wrapping_mul(374_761_393)
+        ^ (y.wrapping_sub(salt as i32) as u32).wrapping_mul(668_265_263);
     value = (value ^ (value >> 13)).wrapping_mul(1_274_126_177);
-    (value ^ (value >> 16)) as u32
+    value ^ (value >> 16)
 }
 
 fn close_detail_kind_for_biome(biome: u8) -> u8 {

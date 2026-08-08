@@ -47,7 +47,13 @@ import {
   hashSeed,
   type GeneratedChunk,
   type GeneratedLandmark,
+  advanceRegionalWeatherState,
   sampleRegionalWeather,
+  createRegionalWeatherState,
+  cloneRegionalWeatherState,
+  primeRegionalWeatherCell,
+  regionalWeatherElapsedSeconds,
+  restoreRegionalWeatherState,
   simulateSettlementTraffic,
 } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
@@ -250,6 +256,7 @@ export async function createGame(
   let actionMessageUntil = 0
   let lastChunkGenerationMs = 0
   let regionalWeather: ReturnType<typeof sampleRegionalWeather> | null = null
+  let regionalWeatherState: ReturnType<typeof createRegionalWeatherState> | null = null
   let trafficTick = -1
   const pressedKeys = new Set<string>()
   const chunks = new Map<string, GeneratedChunk>()
@@ -336,6 +343,10 @@ export async function createGame(
   )
   let minimapManualRadius = minimapChunkRadius
   const worldSeed = options.initialWorld?.seed?.trim() || content.world.defaultSeed
+  regionalWeatherState = createRegionalWeatherState({
+    seed: worldSeed,
+    weather: content.world.weather,
+  })
   window.localStorage.setItem('alohayo-world:last-seed', worldSeed)
   window.localStorage.setItem('alohayo-world:locale', locale)
   const devPanelStateStorageKey = 'alohayo-world:dev-panel-collapsed'
@@ -489,6 +500,7 @@ export async function createGame(
       },
       topology,
       authoredEntities,
+      weather: regionalWeatherState ? cloneRegionalWeatherState(regionalWeatherState) : undefined,
       preferences: {
         locale,
         devMode,
@@ -558,6 +570,26 @@ export async function createGame(
     try {
       applySavedPreferences(snapshot)
       applySavedDiscovery(snapshot)
+      if (snapshot.weather) {
+        try {
+          regionalWeatherState = restoreRegionalWeatherState(snapshot.weather, {
+            seed: worldSeed,
+            weather: content.world.weather,
+          })
+        } catch (error) {
+          throw new WorldSaveError(
+            'corrupt',
+            error instanceof Error ? error.message : 'regional weather state is invalid',
+            error
+          )
+        }
+      } else {
+        regionalWeatherState = createRegionalWeatherState({
+          seed: worldSeed,
+          weather: content.world.weather,
+        })
+      }
+      trafficTick = -1
       authoredEntityLifecycle.restore(snapshot.authoredEntities)
       updateAuthoredEntityDiagnostics()
       topologyResolver.rehydrate(snapshot.topology)
@@ -1195,14 +1227,17 @@ export async function createGame(
     view.grid.stroke({ color: 0x102537, width: 0.42, alpha: 0.24 })
   }
 
-  const activeWeather = (nowMs = performance.now()): ActiveWeatherState => {
+  const activeWeather = (_nowMs = performance.now()): ActiveWeatherState => {
     const weather = content.world.weather
     if (!weather?.enabled || !weather.states.length) {
       return { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 }
     }
     const totalDuration = weather.states.reduce((sum, state) => sum + state.duration, 0)
     const seedBias = (cellNoise(hashSeed(worldSeed), content.world.chunkSize, 17) % 1000) / 1000
-    const cycle = (nowMs / 1000 / Math.max(1, weather.cycleSeconds) + seedBias) % 1
+    const elapsedSeconds = regionalWeatherState
+      ? regionalWeatherElapsedSeconds(regionalWeatherState)
+      : _nowMs / 1000
+    const cycle = (elapsedSeconds / Math.max(1, weather.cycleSeconds) + seedBias) % 1
     let cursor = 0
     for (const state of weather.states) {
       const next = cursor + state.duration / totalDuration
@@ -1222,14 +1257,21 @@ export async function createGame(
     return { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 }
   }
 
-  const refreshRegionalDiagnostics = (nowMs = performance.now()) => {
-    if (!explorerMotion) return
+  const refreshRegionalDiagnostics = (_nowMs = performance.now()) => {
+    if (!explorerMotion || !regionalWeatherState) return
+    primeRegionalWeatherCell(regionalWeatherState, {
+      x: explorerMotion.x,
+      y: explorerMotion.y,
+    })
     regionalWeather = sampleRegionalWeather({
       seed: worldSeed,
       x: explorerMotion.x,
       y: explorerMotion.y,
-      elapsedSeconds: nowMs / 1000,
+      elapsedSeconds: regionalWeatherState
+        ? regionalWeatherElapsedSeconds(regionalWeatherState)
+        : _nowMs / 1000,
       weather: content.world.weather,
+      state: regionalWeatherState,
     })
     app.canvas.dataset.weatherRegion = regionalWeather.regionId
     app.canvas.dataset.weatherFront = regionalWeather.front.toFixed(3)
@@ -1238,11 +1280,17 @@ export async function createGame(
     app.canvas.dataset.weatherPrecipitation = regionalWeather.precipitation.toFixed(3)
     app.canvas.dataset.weatherAccumulation = regionalWeather.accumulation.toFixed(3)
     app.canvas.dataset.weatherVisibility = regionalWeather.visibility.toFixed(3)
+    app.canvas.dataset.weatherPressure = regionalWeather.pressure.toFixed(3)
+    app.canvas.dataset.weatherHumidity = regionalWeather.humidity.toFixed(3)
+    app.canvas.dataset.weatherTemperatureAnomaly = regionalWeather.temperatureAnomaly.toFixed(3)
+    app.canvas.dataset.weatherFrontId = regionalWeather.frontId
+    app.canvas.dataset.weatherDrainage = regionalWeather.drainageInput.runoff.toFixed(3)
     app.canvas.dataset.weatherForecast = regionalWeather.forecast
       .map((entry) => `${entry.stateId}:${entry.precipitation.toFixed(2)}`)
       .join('|')
     const nextTrafficTick = Math.floor(
-      nowMs / 1000 / Math.max(1, content.world.traffic?.tickSeconds ?? 12)
+      regionalWeatherElapsedSeconds(regionalWeatherState) /
+        Math.max(1, content.world.traffic?.tickSeconds ?? 12)
     )
     if (nextTrafficTick === trafficTick) return
     trafficTick = nextTrafficTick
@@ -1922,6 +1970,7 @@ export async function createGame(
         if (chunk.workerDiagnostics) {
           app.canvas.dataset.workerImplementation = chunk.workerDiagnostics.implementation
           app.canvas.dataset.workerBaseLayers = chunk.workerDiagnostics.batches['chunk-base-layers']
+          app.canvas.dataset.workerRenderHints = chunk.workerDiagnostics.batches['render-hints']
           app.canvas.dataset.workerHydrology = chunk.workerDiagnostics.batches['hydrology-raster']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
           app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)
@@ -2758,6 +2807,14 @@ export async function createGame(
   const stepSimulation = (deltaSeconds: number) => {
     if (!explorer || !explorerMotion) return
     if (gameUi?.isBlockingInput()) return
+    if (regionalWeatherState) {
+      const weatherTicks = advanceRegionalWeatherState(
+        regionalWeatherState,
+        content.world.weather,
+        deltaSeconds
+      )
+      if (weatherTicks > 0) markSaveDirty()
+    }
     const inputX =
       Number(pressedKeys.has('d') || pressedKeys.has('arrowright')) -
       Number(pressedKeys.has('a') || pressedKeys.has('arrowleft'))

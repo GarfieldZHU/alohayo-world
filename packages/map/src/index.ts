@@ -69,6 +69,27 @@ export {
 } from './traffic'
 export { sampleRegionalWeather, type RegionalWeatherSample } from './regional-weather'
 export {
+  advanceRegionalWeatherState,
+  cloneRegionalWeatherState,
+  createRegionalWeatherState,
+  drainageInputAt,
+  primeRegionalWeatherCell,
+  regionalWeatherElapsedSeconds,
+  restoreRegionalWeatherState,
+  visibilityModifierAt,
+  weatherAt,
+  REGIONAL_WEATHER_STATE_SCHEMA_VERSION,
+  DEFAULT_REGIONAL_WEATHER_HISTORY_LIMIT,
+  DEFAULT_REGIONAL_WEATHER_MAX_CELLS,
+  DEFAULT_REGIONAL_WEATHER_TICK_SECONDS,
+  type RegionalWeatherCellState,
+  type RegionalWeatherDrainageInput,
+  type RegionalWeatherHistoryEntry,
+  type RegionalWeatherQuery,
+  type RegionalWeatherStateOptions,
+  type RegionalWeatherStateSnapshot,
+} from './regional-weather-state'
+export {
   buildHaloShoreDistance,
   buildSignedShoreDistance,
   type ChunkRenderHints,
@@ -359,7 +380,7 @@ export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   wasm: {
     abiVersion: 1,
     enabled: true,
-    batches: ['chunk-base-layers', 'hydrology-raster'],
+    batches: ['chunk-base-layers', 'render-hints', 'hydrology-raster'],
   },
 }
 

@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.3.0
+> **Wiki page version:** EN 1.4.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.4.0
 
 ## Dependency Direction
 
@@ -57,15 +57,21 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
   deployment. These are regression gates, not a replacement for #57/#58 evidence.
 - Regional weather sampling, transport structure records, capability-aware traversal,
   aggregate settlement traffic, and mount/vehicle profiles are now deterministic map
-  consumers. Their diagnostics stay on the canvas dataset and do not add normal HUD
-  chrome; moving traffic remains an optional follow-up (#60).
+  consumers. Regional weather also keeps bounded fixed-step state and optional save
+  snapshots; its diagnostics stay on the canvas dataset and do not add normal HUD chrome.
+  Moving traffic remains an optional follow-up (#60).
 
 ## Rust/Wasm Boundary
 
 Rust/Wasm accelerates measured worker-side numeric batches. Stable v0.1.3 batches are
-chunk base layers and the pure hydrology raster. TypeScript remains the deterministic
-reference and fallback. PixiJS draw calls, UI, content resolution, save formats, roads,
-terrain classification, and world mutations remain TypeScript-owned.
+chunk base layers, render hints, and the pure hydrology raster. TypeScript remains the
+deterministic reference and fallback. PixiJS draw calls, UI, content resolution, save
+formats, roads, terrain classification, and world mutations remain TypeScript-owned.
+
+Render hints are default-on after exact 16/64/128 Wasm parity, negative-coordinate and
+seam fixtures, worker fallback validation, browser coverage, and a measured 86.2% median
+CPU reduction with 0% transfer growth. The batch only prepares typed arrays; smoothing,
+LOD, and presentation remain in the engine.
 
 Issue #50 now has a renderer-independent contour candidate in `crates/world-core`: one
 coarse call consumes an inside mask plus an explicit known-data halo and returns typed,

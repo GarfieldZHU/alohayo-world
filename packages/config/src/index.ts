@@ -132,6 +132,39 @@ export interface WorldSaveAuthoredEntityLifecycle {
   despawnedRuntimeIds: string[]
 }
 
+export interface WorldSaveWeatherCellState {
+  key: string
+  x: number
+  y: number
+  tick: number
+  pressure: number
+  humidity: number
+  precipitation: number
+  temperatureAnomaly: number
+  windX: number
+  windY: number
+  frontId: string
+  lastTouchedTick: number
+}
+
+export interface WorldSaveWeatherHistoryEntry {
+  tick: number
+  changedKeys: string[]
+}
+
+export interface WorldSaveWeatherState {
+  schemaVersion: 1
+  seed: string
+  tick: number
+  accumulatorSeconds: number
+  tickSeconds: number
+  cellScale: number
+  maxCells: number
+  historyLimit: number
+  cells: WorldSaveWeatherCellState[]
+  history: WorldSaveWeatherHistoryEntry[]
+}
+
 export interface WorldSavePreferences {
   locale: LocaleCode
   devMode: boolean
@@ -159,6 +192,7 @@ export interface WorldSaveSnapshot {
   }
   topology: WorldSaveTopologyLedger
   authoredEntities: WorldSaveAuthoredEntityLifecycle
+  weather?: WorldSaveWeatherState
   preferences: WorldSavePreferences
   contentPacks: ContentPackSaveMetadata
 }

@@ -4,6 +4,7 @@ import {
   type WorldSaveErrorCode,
   type WorldSaveSnapshot,
   type WorldSaveSummary,
+  type WorldSaveWeatherState,
 } from '@alohayo/config'
 import {
   AuthoredEntityLifecycleError,
@@ -391,6 +392,82 @@ function normalizeRecord(record: PersistedWorldSaveRecord): PersistedWorldSaveRe
   }
 }
 
+function validateWeatherState(weather: unknown): asserts weather is WorldSaveWeatherState {
+  if (!weather || typeof weather !== 'object') {
+    throw new WorldSaveError('corrupt', 'save snapshot weather state is invalid')
+  }
+  const candidate = weather as Partial<WorldSaveWeatherState>
+  const tick = candidate.tick
+  const accumulatorSeconds = candidate.accumulatorSeconds
+  const tickSeconds = candidate.tickSeconds
+  const cellScale = candidate.cellScale
+  const maxCells = candidate.maxCells
+  const historyLimit = candidate.historyLimit
+  const tickValue = tick ?? Number.NaN
+  const accumulatorSecondsValue = accumulatorSeconds ?? Number.NaN
+  const tickSecondsValue = tickSeconds ?? Number.NaN
+  const cellScaleValue = cellScale ?? Number.NaN
+  const maxCellsValue = maxCells ?? 0
+  const historyLimitValue = historyLimit ?? 0
+  if (
+    candidate.schemaVersion !== 1 ||
+    typeof candidate.seed !== 'string' ||
+    !Number.isFinite(tickValue) ||
+    tickValue < 0 ||
+    !Number.isFinite(accumulatorSecondsValue) ||
+    accumulatorSecondsValue < 0 ||
+    !Number.isFinite(tickSecondsValue) ||
+    tickSecondsValue <= 0 ||
+    !Number.isFinite(cellScaleValue) ||
+    cellScaleValue < 1 ||
+    !Number.isInteger(maxCellsValue) ||
+    maxCellsValue < 1 ||
+    maxCellsValue > 1024 ||
+    !Number.isInteger(historyLimitValue) ||
+    historyLimitValue < 1 ||
+    historyLimitValue > 64 ||
+    !Array.isArray(candidate.cells) ||
+    candidate.cells.length > maxCellsValue ||
+    !Array.isArray(candidate.history) ||
+    candidate.history.length > historyLimitValue
+  ) {
+    throw new WorldSaveError(
+      'corrupt',
+      'save snapshot weather state does not match schema version 1'
+    )
+  }
+  for (const cell of candidate.cells) {
+    if (
+      !cell ||
+      typeof cell.key !== 'string' ||
+      !Number.isInteger(cell.x) ||
+      !Number.isInteger(cell.y) ||
+      !Number.isInteger(cell.tick) ||
+      !Number.isFinite(cell.pressure) ||
+      !Number.isFinite(cell.humidity) ||
+      !Number.isFinite(cell.precipitation) ||
+      !Number.isFinite(cell.temperatureAnomaly) ||
+      !Number.isFinite(cell.windX) ||
+      !Number.isFinite(cell.windY) ||
+      typeof cell.frontId !== 'string' ||
+      !Number.isInteger(cell.lastTouchedTick)
+    ) {
+      throw new WorldSaveError('corrupt', 'save snapshot weather cell is invalid')
+    }
+  }
+  for (const entry of candidate.history) {
+    if (
+      !entry ||
+      !Number.isInteger(entry.tick) ||
+      entry.tick < 0 ||
+      !Array.isArray(entry.changedKeys) ||
+      entry.changedKeys.some((key) => typeof key !== 'string')
+    ) {
+      throw new WorldSaveError('corrupt', 'save snapshot weather history is invalid')
+    }
+  }
+}
+
 async function requireRecord(
   record: PersistedWorldSaveRecord | null,
   slotId: string
@@ -469,6 +546,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
   try {
     validateTopologyLedger(migrated.topology)
     validateAuthoredEntityLifecycleSnapshot(migrated.authoredEntities)
+    if (migrated.weather !== undefined) validateWeatherState(migrated.weather)
   } catch (error) {
     if (error instanceof TopologyLedgerError) {
       throw new WorldSaveError(

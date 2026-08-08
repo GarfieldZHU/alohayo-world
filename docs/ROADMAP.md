@@ -6,8 +6,9 @@
       viewport-lazy streamed presentation.
 - [x] Authored runtime overlays, named save slots, geomorphology metadata, and modular
       character rules.
-- [x] Stable Rust/Wasm chunk base-layer and hydrology batches with deterministic
-      TypeScript fallback, measured promotion gates, and live browser diagnostics.
+- [x] Stable Rust/Wasm chunk base-layer, render-hint, and hydrology batches with
+      deterministic TypeScript fallback, measured promotion gates, and live browser
+      diagnostics.
 - [x] Weather, transport, render-hint, and contour expansion decomposed into ordered,
       independently closeable issues.
 - [x] Regional weather diagnostics, transport structure/traversal records, aggregate
@@ -73,11 +74,10 @@
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
       versioned persistent aliases, typed merge/frontier events, legacy-save migration,
       and browser-restart coverage completed in issue `#37`.
-- [x] First Rust/Wasm promotion program: base climate layers and the pure hydrology
-      raster are stable worker batches with exact TypeScript parity, structured fallback,
-      transfer/benchmark gates, and browser coverage. Render hints and contour geometry
-      remain measured candidates in issues `#49` and `#50`; biome/content authority stays
-      in TypeScript.
+- [x] First Rust/Wasm promotion program: base climate layers, render hints, and the pure
+      hydrology raster are stable worker batches with exact TypeScript parity, structured
+      fallback, transfer/benchmark gates, and browser coverage. Contour geometry remains
+      a measured candidate in issue `#50`; biome/content authority stays in TypeScript.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
       restoration, including named-slot management, isolated corrupt records, bounded
       rolling backups, compact journey previews, and explicit previous-version recovery.
@@ -87,8 +87,9 @@
       equipment/weapon overrides.
 - [ ] Convert debug flight into a real locomotion capability granted by gear, mounts,
       vehicles, or abilities instead of a dev-only bypass.
-- [~] Deterministic reversible weather surfaces and road movement effects are active;
-  regional fronts, persistence, settlements, creatures, and cities continue in issue `#31`.
+- [x] Deterministic reversible weather surfaces, fixed-step regional fronts, bounded
+      persistence, and road movement effects are active; settlement/creature behavior and
+      drainage feedback continue in `#46`/future follow-ups.
 - Planned long-term: custom map authoring workflow with import, editing, and test tooling.
 - [x] Explicit desktop/mobile performance budgets with runtime telemetry, benchmark
       gates, and build-budget enforcement. See `docs/PERFORMANCE_BUDGETS.md` and issue

@@ -104,6 +104,11 @@ describe('settlement traffic aggregate', () => {
       visibility: 0.6,
       comfort: 0.5,
       stateId: 'rain',
+      frontId: 'front:0:0:0',
+      pressure: 0.3,
+      humidity: 0.8,
+      temperatureAnomaly: 0.1,
+      drainageInput: { precipitation: 0.8, accumulation: 0.4, runoff: 0.24 },
       forecast: [],
     })
     const second = simulateSettlementTraffic(settlements, fixtureRoads, [], 4, undefined)
@@ -117,6 +122,11 @@ describe('settlement traffic aggregate', () => {
         visibility: 0.6,
         comfort: 0.5,
         stateId: 'rain',
+        frontId: 'front:0:0:0',
+        pressure: 0.3,
+        humidity: 0.8,
+        temperatureAnomaly: 0.1,
+        drainageInput: { precipitation: 0.8, accumulation: 0.4, runoff: 0.24 },
         forecast: [],
       })
     )

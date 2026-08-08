@@ -1,7 +1,7 @@
 # Wiki Versioning
 
-> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
-> **中文:** [Wiki 版本管理](Wiki-Versioning-zh-CN) · **Translation status:** synced with EN 1.1.0
+> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [Wiki 版本管理](Wiki-Versioning-zh-CN) · **Translation status:** synced with EN 1.3.0
 
 English is the editorial source language. Simplified Chinese is a first-class translation,
 but its version is tracked separately so readers can see when it trails the source.
@@ -38,7 +38,7 @@ records which released behavior the page describes.
 | Abilities and Roles            |      1.0.0 | Abilities-and-Roles-zh-CN            |         1.0.0 |             1.0.0 | synced |
 | Weapons, Armor, and Items      |      1.0.0 | Weapons-Armor-and-Items-zh-CN        |         1.0.0 |             1.0.0 | synced |
 | Character and Map Interactions |      1.2.0 | Character-and-Map-Interactions-zh-CN |         1.2.0 |             1.2.0 | synced |
-| Repository Architecture        |      1.3.0 | Repository-Architecture-zh-CN        |         1.3.0 |             1.3.0 | synced |
+| Repository Architecture        |      1.4.0 | Repository-Architecture-zh-CN        |         1.4.0 |             1.4.0 | synced |
 | Content and Modding            |      1.2.0 | Content-and-Modding-zh-CN            |         1.2.0 |             1.2.0 | synced |
 | Sources and Design Boundaries  |      1.0.0 | Sources-and-Design-Boundaries-zh-CN  |         1.0.0 |             1.0.0 | synced |
 

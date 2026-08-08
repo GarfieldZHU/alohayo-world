@@ -1,4 +1,9 @@
 import type { WorldWeatherDefinition } from '@alohayo/config'
+import {
+  drainageInputAt,
+  weatherAt,
+  type RegionalWeatherStateSnapshot,
+} from './regional-weather-state'
 
 export interface RegionalWeatherSample {
   regionId: string
@@ -9,6 +14,11 @@ export interface RegionalWeatherSample {
   visibility: number
   comfort: number
   stateId: string
+  frontId: string
+  pressure: number
+  humidity: number
+  temperatureAnomaly: number
+  drainageInput: ReturnType<typeof drainageInputAt>
   forecast: Array<{ stateId: string; precipitation: number; windSpeed: number }>
 }
 
@@ -51,6 +61,7 @@ export function sampleRegionalWeather(args: {
   y: number
   elapsedSeconds: number
   weather?: WorldWeatherDefinition
+  state?: RegionalWeatherStateSnapshot
 }): RegionalWeatherSample {
   const weather = args.weather
   if (!weather?.enabled || !weather.states.length) {
@@ -63,7 +74,46 @@ export function sampleRegionalWeather(args: {
       visibility: 1,
       comfort: 1,
       stateId: 'clear',
+      frontId: 'front:clear',
+      pressure: 1,
+      humidity: 0,
+      temperatureAnomaly: 0,
+      drainageInput: { precipitation: 0, accumulation: 0, runoff: 0 },
       forecast: [],
+    }
+  }
+  if (args.state) {
+    const cell = weatherAt(args.state, { x: args.x, y: args.y })
+    const drainageInput = drainageInputAt(args.state, { x: args.x, y: args.y })
+    const windSpeed = Math.hypot(cell.windX, cell.windY)
+    const state = weather.states.reduce((closest, candidate) =>
+      Math.abs(candidate.wetness - cell.precipitation) <
+      Math.abs(closest.wetness - cell.precipitation)
+        ? candidate
+        : closest
+    )
+    const precipitation = Math.min(1, Math.max(0, cell.precipitation))
+    const visibility = Math.max(0.35, 1 - precipitation * 0.38 - windSpeed * 0.1)
+    const comfort = Math.max(0, 1 - precipitation * 0.36 - (state.id === 'snow' ? 0.24 : 0))
+    return {
+      regionId: `front:${cell.x}:${cell.y}`,
+      front: Math.min(1, Math.max(0, 1 - cell.pressure)),
+      wind: { x: cell.windX, y: cell.windY, speed: windSpeed },
+      precipitation,
+      accumulation: drainageInput.accumulation,
+      visibility,
+      comfort,
+      stateId: state.id,
+      frontId: cell.frontId,
+      pressure: cell.pressure,
+      humidity: cell.humidity,
+      temperatureAnomaly: cell.temperatureAnomaly,
+      drainageInput,
+      forecast: [1, 2, 3].map((step) => ({
+        stateId: state.id,
+        precipitation: Math.min(1, precipitation + step * 0.02),
+        windSpeed: Math.min(1, windSpeed + step * 0.025),
+      })),
     }
   }
   const seed = seedHash(args.seed)
@@ -114,6 +164,15 @@ export function sampleRegionalWeather(args: {
     visibility,
     comfort,
     stateId: state.id,
+    frontId: regionId,
+    pressure: 1 - front,
+    humidity: precipitation,
+    temperatureAnomaly: state.id === 'snow' ? -0.4 : state.id === 'rain' ? 0.08 : 0,
+    drainageInput: {
+      precipitation,
+      accumulation,
+      runoff: Math.min(1, accumulation * (0.35 + (1 - front) * 0.45)),
+    },
     forecast,
   }
 }

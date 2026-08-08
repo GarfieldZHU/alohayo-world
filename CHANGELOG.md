@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Complete #45 with a deterministic fixed-step regional weather state: bounded retained
+  cells, pressure/humidity/precipitation/wind/front fields, short changed-cell history,
+  optional versioned save snapshots, deterministic restore, pure visibility/drainage
+  queries, and pause-aware engine integration.
+
+- Promote #49 render-hint batches to the default Wasm worker capability after exact
+  16/64/128 parity, negative-coordinate/seam fixtures, fallback validation, browser
+  coverage, and measured CPU/transfer gates. TypeScript remains the presentation authority.
+
 - Complete #46/#47/#48 with deterministic regional weather sampling, shared bridge/
   causeway/ferry/switchback traversal records, aggregate settlement traffic diagnostics,
   and config-driven mount/vehicle profiles. Narrow game-mode camera framing to roughly
