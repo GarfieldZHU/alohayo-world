@@ -1,9 +1,11 @@
 use wasm_bindgen::prelude::*;
 
 mod batches;
+mod contours;
 mod shape;
 
-pub use batches::{ChunkBaseLayers, ChunkRenderHints, HydrologyCoreRaster};
+pub use batches::{ChunkBaseLayers, ChunkRenderHints, ContourGeometry, HydrologyCoreRaster};
+pub use contours::CONTOUR_GEOMETRY_ABI_VERSION;
 use shape::checked_raster_size;
 
 const BIOME_DEEP_OCEAN: u8 = 0;
@@ -38,6 +40,20 @@ const HYDROLOGY_DIRECTIONS: [(i32, i32); 8] = [
     (-1, -1),
 ];
 const OPPOSITE_HYDROLOGY_DIRECTION: [i8; 8] = [1, 0, 3, 2, 7, 6, 5, 4];
+
+#[wasm_bindgen]
+/// Prepare deterministic chunk-local contour paths from an inside mask and a one-cell
+/// known-data halo. Rendering, smoothing policy, and visibility remain TypeScript-owned.
+pub fn prepare_contour_geometry(
+    inside: &[u8],
+    known_halo: &[u8],
+    width: usize,
+    height: usize,
+    origin_x: i32,
+    origin_y: i32,
+) -> ContourGeometry {
+    contours::prepare_contour_geometry(inside, known_halo, width, height, origin_x, origin_y)
+}
 
 #[derive(Clone, Copy)]
 struct HeapEntry {

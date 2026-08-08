@@ -37,3 +37,30 @@ pub struct ChunkRenderHints {
     pub detail_offset_y: Vec<u8>,
     pub shore_distance: Vec<i8>,
 }
+
+/// Deterministic, renderer-independent frontier paths produced by the contour batch.
+///
+/// `points` is a flattened `x, y` stream in chunk-local cell-corner coordinates. Each
+/// path starts at `path_offsets[index]` points and contains `path_lengths[index]` points;
+/// a closed path repeats its first point at the end. `closed` is `1` for closed paths and
+/// `0` for open paths. All buffers are owned by the returned Wasm object and are copied
+/// into JavaScript typed arrays by wasm-bindgen; callers may transfer those buffers to a
+/// worker consumer after reading them. Rust never retains references to input buffers.
+#[wasm_bindgen(getter_with_clone)]
+pub struct ContourGeometry {
+    /// ABI version for this coarse geometry contract.
+    pub abi_version: u32,
+    /// Input raster width and height in cells.
+    pub width: u32,
+    pub height: u32,
+    /// World-space origin associated with these chunk-local paths.
+    pub origin_x: i32,
+    pub origin_y: i32,
+    /// Number of points in each path, not number of scalar floats.
+    pub path_offsets: Vec<u32>,
+    pub path_lengths: Vec<u32>,
+    /// Flattened `x, y` point pairs. Coordinates stay chunk-local by design.
+    pub points: Vec<f32>,
+    /// `1` for a closed path, `0` for an open path.
+    pub closed: Vec<u8>,
+}

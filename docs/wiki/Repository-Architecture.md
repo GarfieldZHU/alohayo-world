@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.2.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-05
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.2.0
+> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.3.0
 
 ## Dependency Direction
 
@@ -62,6 +62,13 @@ Rust/Wasm accelerates measured worker-side numeric batches. Stable v0.1.3 batche
 chunk base layers and the pure hydrology raster. TypeScript remains the deterministic
 reference and fallback. PixiJS draw calls, UI, content resolution, save formats, roads,
 terrain classification, and world mutations remain TypeScript-owned.
+
+Issue #50 now has a renderer-independent contour candidate in `crates/world-core`: one
+coarse call consumes an inside mask plus an explicit known-data halo and returns typed,
+chunk-local path buffers with an ABI version and world origin. Unknown streamed samples
+never become guessed coastlines. This candidate is deliberately outside the worker's
+default capability list until transfer/fallback, seam reload, benchmark, and browser
+visual gates pass; the TypeScript contour tracer remains authoritative.
 
 Every new candidate needs exact parity, worker transfer tests, fallback tests, browser
 coverage, and at least 15% median CPU improvement without more than 5% transfer growth.

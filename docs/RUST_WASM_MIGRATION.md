@@ -115,12 +115,30 @@ authority decision. It is not a default production batch until those gates pass.
 - Produce coast, lake, river, and fog contour segments for issue #20.
 - Rust prepares geometry only; TypeScript owns smoothing style, gradient, and Pixi paths.
 
+The first candidate ABI is now available as the renderer-independent
+`prepare_contour_geometry` batch in `crates/world-core/src/contours.rs`:
+
+- Inputs are an `inside` `Uint8Array` (`width * height`) and an explicit one-cell
+  `known_halo` (`(width + 2) * (height + 2)`). A zero halo sample means unknown; edges
+  against unknown samples are suppressed rather than guessed as land or water.
+- Outputs are a `ContourGeometry` object with ABI version, chunk origin, path offsets and
+  lengths (in points), flattened `Float32Array` cell-corner coordinates, and one closed
+  flag per path. The vectors are owned by the returned Wasm object and copied by
+  wasm-bindgen, so a worker can transfer the typed-array buffers after consumption.
+- The Rust module uses deterministic edge insertion and adjacency tracing only. Curve
+  smoothing, gradients, masks, visibility decisions, and collision authority remain
+  TypeScript-owned; the worker receives topology points and chooses presentation policy.
+- Rust unit tests cover closed paths, separated regions, deterministic output, and unknown
+  frontier suppression. `tests/wasm-contours.test.ts` compares built-Wasm output with the
+  TypeScript tracer across positive/negative origins and unknown frontiers.
+
 **Gate:** contour topology handles negative chunks and eviction/reload; visual browser
 review and seam fixtures pass.
 
-Issue #50 owns the coarse typed-segment ABI and promotion review. The existing TypeScript
-contour implementation remains authoritative until the candidate proves exact topology,
-seam continuity, and a worthwhile worker CPU improvement.
+Issue #50 owns the coarse typed-segment ABI and promotion review. The optional candidate
+is not in the worker capability list yet: the existing TypeScript contour implementation
+remains authoritative until the worker transfer/fallback path, eviction/reload seam fixtures,
+visual browser evidence, and a worthwhile CPU/transfer result are recorded.
 
 ### M4: Hydrology raster (stable) and path-cost candidates
 
