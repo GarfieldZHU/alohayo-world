@@ -22,16 +22,21 @@ signals while borrowing the host's quieter slate, cyan, rounded-surface language
 ![Blog-adapted splash and HUD polish reference](design/jrpg-ui/ui-polish-reference.png)
 
 The production rule is simple: use the image for hierarchy and mood, not as a bitmap
-skin. Keep the map dominant, use one calm splash card, keep HUD information at the edge,
-and let brass appear as a trace accent rather than a heavy frame.
+skin. Keep the map visible around a compact launch folio, make the next action obvious
+with a high-contrast action card, keep HUD information at the edge, and let brass appear
+as a trace accent rather than a heavy frame.
 
 ### Splash: the threshold
 
 ![JRPG splash concept](design/jrpg-ui/splash-concept.png)
 
-The splash uses a compass crest, moonlit terrain, a distant dungeon gate, and one dominant
-entry action. Its useful lesson is hierarchy, not the amount of ornament: the production
-surface uses code-native borders, gradients, and a small crest instead of a full bitmap.
+The splash is a threshold into the field map, not a generic centered dialog. Its production
+surface uses a small compass crest, a readable serif title, a local-world status row, and
+action cards that explain the difference between starting a survey, returning to a saved
+camp, and tuning settings. A labeled field-controls strip keeps the first shortcuts visible
+without asking the player to decode a low-contrast footer. The map remains visible around
+the translucent veil, and code-native borders, gradients, and the crest replace a full
+bitmap skin.
 
 ### HUD: the wayfinder edge
 
@@ -114,8 +119,11 @@ monospace surface and are hidden behind normal game UI.
 
 ### Menu
 
-- desktop maximum width `min(980px, calc(100% - 40px))` and maximum height around 78%;
-- mobile becomes a safe-area-aware full surface with horizontally scrollable tabs;
+- desktop maximum width `min(980px, calc(100% - 40px))` and a 720px maximum height capped
+  again by the game surface and dynamic viewport; the left rail stays fixed while the
+  active content plane scrolls;
+- mobile becomes a safe-area-aware full surface with a fixed-height horizontally scrollable
+  tab row and a separately scrollable active panel;
 - only one content panel is active;
 - the world remains visible around the desktop perimeter;
 - menu state gates movement, actions, dev pointer controls, and minimap shortcuts.
@@ -196,7 +204,9 @@ slice maps existing systems as follows:
 
 ## Accessibility and input
 
-- splash is an `aria-modal` dialog with an immediate primary action;
+- splash is an `aria-modal` dialog labelled by its title and intro, with a visible primary
+  action card, concise action descriptions, and a focus target that follows the available
+  new-or-continue state;
 - menu is an `aria-modal` dialog with a labelled tablist and tabpanels;
 - selected tabs use `aria-selected` and roving `tabindex`;
 - `C` opens or closes the character dossier; while it is open, `1` opens the Wayfinder
@@ -205,6 +215,8 @@ slice maps existing systems as follows:
 - `Escape` closes the focused dossier panel first, then the dossier; with the dossier
   closed, it closes the journal when it is open. `M` opens or closes the game menu;
 - `H` toggles the HUD (and hides the map with it); `N` toggles the integrated field map;
+- `M` opens the Settings section from the splash so the visible shortcut remains useful
+  before the journey begins;
 - the integrated field map and its controls are hidden during the splash and reappear
   together after `Begin journey`;
 - `Q`/`E`, arrows, Home/End, pointer, and touch switch tabs while the menu is open;
@@ -244,5 +256,6 @@ default. Explicitly enabling game UI in dev mode gives the menu priority.
 - all visible values are real or explicitly unavailable;
 - locale, theme, resize, pause/resume, remount, and destroy are safe;
 - screenshots still read first as a game world;
-- the splash has no persistent minimap chrome;
+- the splash has no persistent minimap chrome and keeps its action hierarchy readable at
+  desktop and narrow mobile widths;
 - fog, shoreline, minimap, and rendering behavior do not regress.

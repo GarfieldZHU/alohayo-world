@@ -18,9 +18,15 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   const splashCard = splash.locator('.aw-game-ui__splash-card')
   await expect(splashCard).toHaveCSS('border-radius', '22px')
   await expect(splash.getByRole('button', { name: 'Begin journey' })).toHaveCSS(
-    'border-radius',
-    '999px'
+    'min-height',
+    '58px'
   )
+  await expect(splash.locator('.aw-game-ui__splash-meta')).toContainText('LOCAL WORLD')
+  await expect(splash.locator('.aw-game-ui__splash-controls')).toContainText('Field controls')
+  await expect(
+    splash.getByRole('button', { name: 'Begin journey' }).locator('.aw-game-ui__button-detail')
+  ).toBeVisible()
+  await page.locator('#game').screenshot({ path: testInfo.outputPath('splash-desktop.png') })
   const minimap = page.locator('[data-alohayo-world-minimap="true"]')
   await expect(minimap).toBeHidden()
   await expect(page.getByRole('heading', { name: 'Alohayo World' })).toBeVisible()
@@ -55,6 +61,11 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await page.keyboard.press('m')
   const menu = page.locator('[data-game-ui-surface="menu"]')
   await expect(menu).toBeVisible()
+  const gameBox = await page.locator('#game').boundingBox()
+  const menuFrameBox = await menu.locator('.aw-game-ui__menu-frame').boundingBox()
+  expect(menuFrameBox?.height).toBeLessThan(gameBox?.height ?? 0)
+  await expect(menu.locator('.aw-journal__tabs')).toHaveCSS('overflow-y', 'hidden')
+  await expect(menu.locator('.aw-journal__content')).toHaveCSS('overflow-y', 'auto')
   await expect(minimap).toBeHidden()
   await expect(page.getByRole('tab')).toHaveCount(6)
   await expect(menu.getByRole('button', { name: 'Save progress' })).toBeVisible()
@@ -62,6 +73,18 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await expect(menu.locator('[data-journal-save-state="saved"]')).toBeVisible()
   await page.keyboard.press('3')
   await expect(menu.getByRole('heading', { name: 'Terrain manual' })).toBeVisible()
+  const contentScroll = await menu.locator('.aw-journal__content').evaluate((element) => {
+    const node = element as HTMLElement
+    node.scrollTop = node.scrollHeight
+    return {
+      scrollHeight: node.scrollHeight,
+      clientHeight: node.clientHeight,
+      scrollTop: node.scrollTop,
+    }
+  })
+  expect(contentScroll.scrollHeight).toBeGreaterThan(contentScroll.clientHeight)
+  expect(contentScroll.scrollTop).toBeGreaterThan(0)
+  await expect(menu.locator('.aw-journal__tabs')).toHaveJSProperty('scrollTop', 0)
   await page.keyboard.press('4')
   await expect(menu.getByText('Encounter ledger not active', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Field map' }).click()
@@ -83,15 +106,28 @@ test('keeps the journal readable as a mobile tabbed surface', async ({ page }, t
   })
   await page.setViewportSize({ width: 390, height: 720 })
   await launch(page)
+  await page.locator('#game').screenshot({ path: testInfo.outputPath('splash-mobile.png') })
   await page.getByRole('button', { name: /Begin journey|Continue journey/ }).click()
   await page.keyboard.press('m')
   const menu = page.locator('[data-game-ui-surface="menu"]')
   await expect(menu).toBeVisible()
   await expect(menu.locator('.aw-journal__tabs')).toHaveCSS('flex-direction', 'row')
+  await expect(menu.locator('.aw-journal__tabs')).toHaveCSS('overflow-y', 'hidden')
   await page.keyboard.press('5')
   await expect(menu.getByRole('heading', { name: 'Field map' })).toBeVisible()
   await expect(menu.getByText('World seed', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('journal-mobile-field-map.png') })
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
+})
+
+test('opens splash settings from the M shortcut', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
+  })
+  await launch(page)
+  await page.keyboard.press('m')
+  const menu = page.locator('[data-game-ui-surface="menu"]')
+  await expect(menu).toBeVisible()
+  await expect(menu.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 })

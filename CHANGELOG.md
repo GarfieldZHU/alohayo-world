@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Constrain the Chronicle menu to the game surface rather than the browser viewport. Keep
+  the desktop navigation rail and mobile tab row fixed while limiting scrolling to the
+  active right-side reading pane.
+
+- Redesign the splash threshold as a readable Wayfinder launch folio: high-contrast
+  start/continue action cards, local-world status, explicit field controls, responsive
+  mobile spacing, concise accessible labels, and an `M` shortcut into Settings while the
+  game is still gated.
+
 - Add the feature-branch terrain texture rendering foundation: a deterministic
   `terrain-texture-hints` Rust/Wasm batch with TypeScript parity/fallback, compact worker
   diagnostics, world-coordinate procedural water/coast/grass/forest/wetland/rock/snow/

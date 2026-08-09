@@ -152,24 +152,47 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   splash.setAttribute('aria-modal', 'true')
   const splashCard = document.createElement('div')
   splashCard.className = 'aw-game-ui__splash-card'
+  const splashHeader = document.createElement('div')
+  splashHeader.className = 'aw-game-ui__splash-header'
   const splashMark = document.createElement('div')
   splashMark.className = 'aw-game-ui__splash-mark'
   splashMark.setAttribute('aria-hidden', 'true')
   splashMark.textContent = '✦'
+  const splashHeaderCopy = document.createElement('div')
+  splashHeaderCopy.className = 'aw-game-ui__splash-header-copy'
   const eyebrow = document.createElement('p')
   eyebrow.className = 'aw-game-ui__eyebrow'
+  splashHeaderCopy.append(eyebrow)
+  splashHeader.append(splashMark, splashHeaderCopy)
   const splashTitle = document.createElement('h1')
+  splashTitle.id = 'aw-game-ui-splash-title'
   const splashIntro = document.createElement('p')
   splashIntro.className = 'aw-game-ui__intro'
+  splashIntro.id = 'aw-game-ui-splash-intro'
+  splash.setAttribute('aria-labelledby', splashTitle.id)
+  splash.setAttribute('aria-describedby', splashIntro.id)
+  const splashMeta = document.createElement('div')
+  splashMeta.className = 'aw-game-ui__splash-meta'
+  const splashStatus = document.createElement('span')
+  const splashSave = document.createElement('span')
+  splashMeta.append(splashStatus, splashSave)
   const splashActions = document.createElement('div')
   splashActions.className = 'aw-game-ui__splash-actions'
-  const enterButton = button('aw-game-ui__primary', 'enter')
-  const continueButton = button('aw-game-ui__secondary', 'continue')
-  const settingsButton = button('aw-game-ui__text-button', 'menu-settings')
+  const enterButton = button('aw-game-ui__splash-action aw-game-ui__primary', 'enter')
+  const continueButton = button('aw-game-ui__splash-action aw-game-ui__secondary', 'continue')
+  const settingsButton = button(
+    'aw-game-ui__splash-action aw-game-ui__text-button',
+    'menu-settings'
+  )
   splashActions.append(enterButton, continueButton, settingsButton)
-  const controls = document.createElement('p')
-  controls.className = 'aw-game-ui__controls'
-  splashCard.append(splashMark, eyebrow, splashTitle, splashIntro, splashActions, controls)
+  const controls = document.createElement('div')
+  controls.className = 'aw-game-ui__splash-controls'
+  const controlsLabel = document.createElement('span')
+  controlsLabel.className = 'aw-game-ui__splash-controls-label'
+  const controlsText = document.createElement('span')
+  controlsText.className = 'aw-game-ui__splash-controls-text'
+  controls.append(controlsLabel, controlsText)
+  splashCard.append(splashHeader, splashTitle, splashIntro, splashMeta, splashActions, controls)
   splash.append(splashCard)
 
   const menu = document.createElement('section')
@@ -236,6 +259,48 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   const text = (key: string) => getGameUiCopy(locale, key)
   const setBlocked = () => options.onBlockingChange(splashOpen || menuOpen)
 
+  const setActionContent = (
+    element: HTMLButtonElement,
+    label: string,
+    detail: string,
+    shortcut: string
+  ) => {
+    const labelElement = document.createElement('strong')
+    labelElement.className = 'aw-game-ui__button-label'
+    labelElement.textContent = label
+    const detailElement = document.createElement('span')
+    detailElement.className = 'aw-game-ui__button-detail'
+    detailElement.textContent = detail
+    const shortcutElement = document.createElement('kbd')
+    shortcutElement.className = 'aw-game-ui__button-shortcut'
+    shortcutElement.textContent = shortcut
+    element.replaceChildren(labelElement, detailElement, shortcutElement)
+    // Keep the accessible name stable and concise while the visible action card can
+    // explain what the choice does.
+    element.setAttribute('aria-label', label)
+  }
+
+  const renderSplashActions = () => {
+    setActionContent(enterButton, text('Enter'), text('EnterDetail'), text('EnterShortcut'))
+    setActionContent(
+      continueButton,
+      text('Continue'),
+      text('ContinueDetail'),
+      text('ContinueShortcut')
+    )
+    setActionContent(
+      settingsButton,
+      text('Settings'),
+      text('SettingsDetail'),
+      text('SettingsShortcut')
+    )
+    enterButton.hidden = snapshot.restoredSave
+    continueButton.hidden = !snapshot.restoredSave
+    continueButton.className = snapshot.restoredSave
+      ? 'aw-game-ui__splash-action aw-game-ui__primary'
+      : 'aw-game-ui__splash-action aw-game-ui__secondary'
+  }
+
   const renderCopy = () => {
     hud.setAttribute('aria-label', text('HudLabel'))
     compassButton.setAttribute('aria-label', text('OpenMap'))
@@ -245,15 +310,11 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     eyebrow.textContent = text('Eyebrow')
     splashTitle.textContent = text('Title')
     splashIntro.textContent = text('Intro')
-    enterButton.textContent = text('Enter')
-    continueButton.textContent = text('Continue')
-    enterButton.hidden = snapshot.restoredSave
-    continueButton.hidden = !snapshot.restoredSave
-    continueButton.className = snapshot.restoredSave
-      ? 'aw-game-ui__primary'
-      : 'aw-game-ui__secondary'
-    settingsButton.textContent = text('Settings')
-    controls.textContent = text('SplashControls')
+    splashStatus.textContent = text('SplashStatus')
+    splashSave.textContent = text('SplashSave')
+    renderSplashActions()
+    controlsLabel.textContent = text('SplashControlsLabel')
+    controlsText.textContent = text('SplashControls')
     menuEyebrow.textContent = text('MenuEyebrow')
     menuTitle.textContent = text('MenuTitle')
     closeButton.setAttribute('aria-label', text('Close'))
@@ -291,6 +352,11 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     splashOpen = false
     renderState()
     options.container.focus({ preventScroll: true })
+  }
+
+  const focusSplashAction = () => {
+    const action = snapshot.restoredSave ? continueButton : enterButton
+    action.focus()
   }
 
   const openMenu = (tab?: GameUiTab) => {
@@ -344,7 +410,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   renderCopy()
   renderSnapshot()
   renderState()
-  if (splashOpen) requestAnimationFrame(() => enterButton.focus())
+  if (splashOpen) requestAnimationFrame(focusSplashAction)
 
   return {
     isBlockingInput: () => splashOpen || menuOpen,
@@ -353,6 +419,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       const key = event.key.toLowerCase()
       if (splashOpen) {
         if (key === 'tab') trapFocus(splash, event)
+        else if (key === 'm' && !event.repeat) openMenu('settings')
         if ((key === 'enter' || key === ' ') && !event.repeat) closeSplash()
         return true
       }
@@ -397,8 +464,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       snapshot = nextSnapshot
       renderSnapshot()
       dossier?.setSnapshot(nextSnapshot.character)
-      enterButton.hidden = snapshot.restoredSave
-      continueButton.hidden = !snapshot.restoredSave
+      renderSplashActions()
     },
     setLocale(nextLocale) {
       locale = nextLocale

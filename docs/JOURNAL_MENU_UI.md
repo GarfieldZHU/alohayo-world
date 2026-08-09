@@ -24,15 +24,18 @@ skills, and field systems stay in the independently collapsible character dossie
 
 ## Visual and interaction rules
 
-- The desktop frame is capped and centered instead of filling the entire playfield.
+- The desktop frame is capped at 720px and centered inside the game surface, while also
+  respecting the dynamic viewport and host surface; long content cannot push the folio
+  above or below the map.
 - A left rail and one active reading plane keep the hierarchy closer to a field folio
   than a dashboard.
 - The rail uses restrained brass selection lines, smoky navy surfaces, teal focus, and
   serif section headings from the JRPG UI system.
-- The active content plane scrolls independently. Long terrain and ecology references do
-  not stretch the outer modal or move the playfield behind it.
-- Mobile switches the rail to a horizontal tab strip and keeps every button at a touchable
-  size. The active panel remains the only scrollable reading surface.
+- The left rail is a fixed-height navigation blade with no vertical scroll. Only the active
+  right reading plane scrolls independently, so long terrain and ecology references do not
+  stretch the outer modal or move the playfield behind it.
+- Mobile switches the rail to a fixed-height horizontal tab strip and keeps every button at
+  a touchable size. The active panel remains the only scrollable reading surface.
 - `M` or `Esc` closes the journal. `Q`/`E`, arrows, `Home`, and `End` move sections;
   `Tab` remains the focus loop. Opening the journal clears held gameplay keys.
 
