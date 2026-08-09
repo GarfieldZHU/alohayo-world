@@ -47,9 +47,10 @@ discovery, objective, and action state that the engine already owns.
 ![JRPG menu concept](design/jrpg-ui/menu-concept.png)
 
 The pause menu is an enchanted cartographer's folio: one section rail, one active content
-plane, visible focus, and a dimmed perimeter that keeps the world recognizable. Party,
-Gear, Bestiary, Map, Journey, and Settings are stable extension destinations; unavailable
-systems use explicit empty states.
+plane, visible focus, and a dimmed perimeter that keeps the world recognizable. Save,
+Guide, Terrain Manual, Bestiary, Field Map, and Settings are stable Chronicle sections;
+unavailable systems use explicit empty states. Legacy `journey`, `party`, and `gear` tab
+IDs remain accepted as aliases for embedders.
 
 ## Wayfinder Relic language
 
@@ -174,24 +175,24 @@ All nodes, listeners, and callbacks are owned by the returned `GameHandle` and r
 
 ## Panel boundary
 
-The first slice has stable panel IDs:
+The Chronicle has stable section IDs:
 
 ```text
-journey | party | gear | bestiary | map | settings
+save | guide | terrain | bestiary | map | settings
 ```
 
 Each panel consumes presentation data only. Future modules may register panel descriptors
 through an engine capability, but JSON content never supplies executable UI. The initial
 slice maps existing systems as follows:
 
-| Panel    | Initial authority                                           |
-| -------- | ----------------------------------------------------------- |
-| Journey  | current exploration objective and discovery progress        |
-| Party    | active generated explorer; explicit single-member state     |
-| Gear     | generated equipment and active weapon slot                  |
-| Bestiary | honest empty state until creature ownership lands           |
-| Map      | position, biome/region, seed, loaded/discovered counts      |
-| Settings | HUD visibility, locale/theme handoff, and control reference |
+| Section   | Initial authority                                          |
+| --------- | ---------------------------------------------------------- |
+| Save      | versioned local save snapshot and manual save callback     |
+| Guide     | movement/action/UI control contract and dossier handoff    |
+| Terrain   | loaded biome catalog; detailed terrain rules remain a TODO |
+| Bestiary  | enemy archetype and ecology references, no encounter state |
+| Field map | position, biome/region, seed, loaded/discovered counts     |
+| Settings  | HUD/map visibility and control reference                   |
 
 ## Accessibility and input
 
@@ -202,7 +203,7 @@ slice maps existing systems as follows:
   record, `2` the Ability ledger, `3` Equipment, `4` Skills and proficiencies, and `5`
   Field systems;
 - `Escape` closes the focused dossier panel first, then the dossier; with the dossier
-  closed, it opens the game menu. `M` opens or closes the game menu;
+  closed, it closes the journal when it is open. `M` opens or closes the game menu;
 - `H` toggles the HUD (and hides the map with it); `N` toggles the integrated field map;
 - the integrated field map and its controls are hidden during the splash and reappear
   together after `Begin journey`;
@@ -238,7 +239,7 @@ default. Explicitly enabling game UI in dev mode gives the menu priority.
 
 - default normal game exposes the splash, HUD, integrated field map, and menu;
 - dev mode and `ui: false` preserve the previous world-first presentation;
-- Escape/M opens and closes the menu without leaked movement;
+- M opens and closes the menu; Escape closes the active surface without leaked movement;
 - all six initial tabs are keyboard and pointer navigable;
 - all visible values are real or explicitly unavailable;
 - locale, theme, resize, pause/resume, remount, and destroy are safe;

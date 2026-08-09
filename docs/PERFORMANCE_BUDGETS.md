@@ -92,7 +92,7 @@ These are broad CI-safe gates, not ideal local targets.
 | `dist/app.js`             | `< 8 KB`   |
 | `dist/embed/bootstrap.js` | `< 1 KB`   |
 | engine runtime chunk      | `< 390 KB` |
-| i18n chunk                | `< 30 KB`  |
+| i18n chunk                | `< 50 KB`  |
 
 ### Runtime smoke expectations
 

@@ -33,6 +33,8 @@ blindly.
   terrain interaction, research boundaries, and staged implementation.
 - `CHARACTER_DOSSIER_UI.md`: right-docked character dossier panels, shortcuts, responsive
   layout, and the preview/unavailable data boundary.
+- `JOURNAL_MENU_UI.md`: Chronicle sections, keyboard navigation, map-first layout, and
+  truthful save/terrain/bestiary data boundaries.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
 - `CONTENT_PACKS.md`: dependency-safe pack loading, authored overlays, conflicts, and

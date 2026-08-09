@@ -38,6 +38,7 @@ export interface I18nCatalog {
   }
   devPanel: Record<string, string>
   characterPanel: Record<string, string>
+  journal: Record<string, string>
   actions: Record<string, string>
   content: Record<string, Record<string, I18nContentEntry>>
 }

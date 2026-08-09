@@ -46,7 +46,7 @@ siblings, and every closed panel can be restored from the rail.
 - `4`: open Skills and proficiencies.
 - `5`: open Field systems.
 - `Escape`: close the focused sub-panel first; when focus is outside a panel, close the
-  dossier. If the dossier is already closed, `Escape` opens the full game menu.
+  dossier. `M` opens the full game menu when no surface is active.
 - `M`: open or close the full game menu.
 - `H`: toggle the HUD.
 - `N`: toggle the field map/minimap.

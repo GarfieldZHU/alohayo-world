@@ -467,7 +467,11 @@
 .aw-game-ui__menu-frame {
   box-sizing: border-box;
   width: min(920px, 100%);
-  min-height: min(560px, calc(100vh - 36px));
+  min-height: min(560px, calc(100vh - 88px));
+  max-height: calc(100vh - 36px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   border: 1px solid var(--aw-line);
   border-radius: 18px;
   background:
@@ -483,7 +487,7 @@
   animation: aw-ui-arrive 260ms ease-out both;
 }
 
-.aw-game-ui__menu header {
+.aw-game-ui__menu-frame > header {
   position: relative;
   padding: 26px 32px 18px;
   border-bottom: 1px solid var(--aw-line);
@@ -507,9 +511,460 @@
 }
 
 .aw-game-ui__menu-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.aw-journal {
   display: grid;
-  min-height: 410px;
-  grid-template-columns: 210px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 205px minmax(0, 1fr);
+  color: var(--aw-silver);
+}
+
+.aw-journal__tabs {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 0 14px;
+  overflow-y: auto;
+  border-right: 1px solid var(--aw-line);
+}
+
+.aw-journal__tab {
+  display: grid;
+  min-height: 52px;
+  flex: 0 0 auto;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: var(--aw-muted);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.aw-journal__tab:focus-visible,
+.aw-journal__primary:focus-visible,
+.aw-journal__secondary:focus-visible,
+.aw-game-ui__close:focus-visible {
+  outline: 2px solid var(--aw-mint);
+  outline-offset: 2px;
+}
+
+.aw-journal__tab[aria-selected='true'] {
+  border-left-color: var(--aw-brass);
+  color: var(--aw-mint);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--aw-teal) 15%, transparent),
+    transparent
+  );
+}
+
+.aw-journal__tab-glyph {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 35%, transparent);
+  border-radius: 50%;
+  color: var(--aw-brass);
+  font-size: 13px;
+}
+
+.aw-journal__tab-label {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-journal__tabs-hint {
+  margin: auto 20px 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--aw-line);
+  color: var(--aw-faint);
+  font:
+    9px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.04em;
+}
+
+.aw-journal__content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: var(--aw-teal) transparent;
+}
+
+.aw-journal__panel {
+  max-width: 780px;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 32px clamp(22px, 4vw, 54px) 38px;
+}
+
+.aw-journal__panel-header {
+  margin-bottom: 24px;
+}
+
+.aw-journal__title {
+  margin: 0;
+  color: var(--aw-mint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(28px, 4vw, 38px);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.aw-journal__lead {
+  max-width: 62ch;
+  margin: 10px 0 0;
+  color: var(--aw-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.aw-journal__section {
+  margin-top: 28px;
+}
+
+.aw-journal__section-title {
+  margin: 0 0 12px;
+  color: var(--aw-brass);
+  font:
+    10px/1.3 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.aw-journal__save-card,
+.aw-journal__callout,
+.aw-journal__notice {
+  border: 1px solid color-mix(in srgb, var(--aw-teal) 32%, var(--aw-line));
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--aw-teal) 10%, transparent),
+    color-mix(in srgb, var(--aw-panel) 78%, transparent)
+  );
+}
+
+.aw-journal__save-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.aw-journal__save-status {
+  min-width: 0;
+}
+
+.aw-journal__chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  min-height: 24px;
+  box-sizing: border-box;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--aw-teal) 42%, transparent);
+  border-radius: 999px;
+  color: var(--aw-mint);
+  font:
+    9px/1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.aw-journal__chip.is-warn {
+  border-color: color-mix(in srgb, var(--aw-brass) 64%, transparent);
+  color: var(--aw-brass);
+}
+
+.aw-journal__chip.is-error {
+  border-color: #c97769;
+  color: #f0a496;
+}
+
+.aw-journal__muted,
+.aw-journal__id,
+.aw-journal__entry-note {
+  color: var(--aw-muted);
+}
+
+.aw-journal__muted {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.aw-journal__id {
+  display: block;
+  margin-top: 5px;
+  font:
+    9px/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.aw-journal__primary,
+.aw-journal__secondary {
+  padding: 0 16px;
+  color: var(--aw-silver);
+}
+
+.aw-journal__primary {
+  flex: 0 0 auto;
+}
+
+.aw-journal__primary:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.45);
+  opacity: 0.6;
+}
+
+.aw-journal__secondary {
+  min-height: 40px;
+}
+
+.aw-journal__metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+  background: var(--aw-line);
+}
+
+.aw-journal__metric {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 13px;
+  background: color-mix(in srgb, var(--aw-deep) 92%, var(--aw-panel));
+}
+
+.aw-journal__metric span,
+.aw-journal__fact-list p {
+  color: var(--aw-faint);
+  font:
+    9px/1.35 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aw-journal__metric strong {
+  overflow: hidden;
+  color: var(--aw-silver);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-journal__guide-grid,
+.aw-journal__manual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.aw-journal__guide-card,
+.aw-journal__manual-card,
+.aw-journal__landmark-card {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--aw-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--aw-panel) 70%, transparent);
+}
+
+.aw-journal__guide-card {
+  position: relative;
+  padding-top: 42px;
+}
+
+.aw-journal__card-index {
+  position: absolute;
+  top: 13px;
+  right: 14px;
+  color: color-mix(in srgb, var(--aw-brass) 60%, transparent);
+  font:
+    10px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.aw-journal__key {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--aw-teal) 45%, transparent);
+  border-radius: 5px;
+  color: var(--aw-mint);
+  font:
+    10px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  background: color-mix(in srgb, var(--aw-teal) 9%, transparent);
+}
+
+.aw-journal__guide-card h4,
+.aw-journal__manual-card h4,
+.aw-journal__landmark-card h4 {
+  margin: 12px 0 0;
+  color: var(--aw-silver);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.aw-journal__manual-card.is-current {
+  border-color: color-mix(in srgb, var(--aw-brass) 62%, var(--aw-line));
+  box-shadow: inset 2px 0 var(--aw-brass);
+}
+
+.aw-journal__manual-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.aw-journal__manual-card-header h4 {
+  margin-top: 0;
+}
+
+.aw-journal__fact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid var(--aw-line);
+}
+
+.aw-journal__fact-list p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.aw-journal__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.aw-journal__tag-label {
+  margin-right: 2px;
+  color: var(--aw-faint);
+  font-size: 10px;
+}
+
+.aw-journal__entry-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.aw-journal__callout,
+.aw-journal__notice {
+  padding: 15px;
+}
+
+.aw-journal__callout {
+  margin-top: 24px;
+}
+
+.aw-journal__callout strong {
+  color: var(--aw-brass);
+  font-size: 13px;
+}
+
+.aw-journal__callout p {
+  margin: 7px 0 14px;
+  color: var(--aw-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.aw-journal__notice {
+  margin-top: 18px;
+  color: var(--aw-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.aw-journal__bestiary-group + .aw-journal__bestiary-group {
+  margin-top: 28px;
+}
+
+.aw-journal__landmark-list,
+.aw-journal__settings-list {
+  display: grid;
+  gap: 8px;
+}
+
+.aw-journal__landmark-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 12px;
+}
+
+.aw-journal__landmark-card h4,
+.aw-journal__landmark-card p {
+  grid-column: 1 / -1;
+}
+
+.aw-journal__landmark-card small {
+  align-self: end;
+  color: var(--aw-faint);
+  font:
+    10px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.aw-journal__settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--aw-line);
+}
+
+.aw-journal__settings-copy {
+  color: var(--aw-silver);
+  font-size: 13px;
 }
 
 .aw-game-ui__tabs {
@@ -653,10 +1108,69 @@
   .aw-game-ui__menu-frame {
     width: 100%;
     min-height: calc(100vh - 16px);
+    max-height: calc(100vh - 16px);
   }
 
   .aw-game-ui__menu-body {
     grid-template-columns: 1fr;
+  }
+
+  .aw-journal {
+    grid-template-columns: 1fr;
+  }
+
+  .aw-journal__tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--aw-line);
+  }
+
+  .aw-journal__tab {
+    min-width: 132px;
+    min-height: 54px;
+    padding: 0 14px;
+    border-bottom: 2px solid transparent;
+    border-left: 0;
+  }
+
+  .aw-journal__tab[aria-selected='true'] {
+    border-bottom-color: var(--aw-brass);
+    border-left: 0;
+    background: linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--aw-teal) 13%, transparent),
+      transparent
+    );
+  }
+
+  .aw-journal__tabs-hint {
+    display: none;
+  }
+
+  .aw-journal__content {
+    min-height: 0;
+  }
+
+  .aw-journal__panel {
+    padding: 24px 18px 32px;
+  }
+
+  .aw-journal__guide-grid,
+  .aw-journal__manual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .aw-journal__save-card,
+  .aw-journal__settings-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .aw-journal__primary,
+  .aw-journal__secondary {
+    width: 100%;
   }
 
   .aw-game-ui__tabs {

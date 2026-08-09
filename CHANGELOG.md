@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Redesign the in-game Adventurer's Chronicle into independent Save, Guide, Terrain
+  Manual, Bestiary, Field Map, and Settings sections. The Save section now writes a real
+  manual progress marker through the local save store; terrain and creature content stays
+  explicit about catalog/reference versus unavailable encounter authority. Add bilingual
+  copy, responsive folio styling, keyboard section shortcuts, and desktop/mobile coverage.
+  Refresh the enforced bilingual artifact budget to account for the expanded player-facing
+  catalog.
+
 - Close #52/#53 save safety follow-through: add controllable quota/pruning and injected
   corrupt-record browser fixtures, keyboard/narrow-viewport journey coverage, and document
   non-destructive cross-seed remount rollback guarantees.

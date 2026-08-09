@@ -113,5 +113,8 @@ export function getGameUiCopy(locale: LocaleCode, key: string): string {
   if (key.startsWith('Character')) {
     return getI18nCatalog(locale).characterPanel[key] ?? key
   }
+  if (key.startsWith('Journal')) {
+    return getI18nCatalog(locale).journal[key] ?? key
+  }
   return COPY[locale][key] ?? COPY.en[key] ?? key
 }

@@ -119,6 +119,7 @@ import { sampleWeatherSurface } from './weather'
 import { createGameUi, type GameUiController, type GameUiSnapshot } from './game-ui'
 import { resolveGameUiOptions } from './game-ui-config'
 import type { CharacterDossierAction } from './character-dossier'
+import type { JournalAction, JournalMenuSnapshot } from './journal-menu'
 import './game-ui.css'
 import './character-dossier.css'
 import {
@@ -364,6 +365,7 @@ export async function createGame(
   const contentPackSaveMetadata = content.contentPackSaveMetadata
   let autosaveTimer: number | null = null
   let saveDirty = false
+  let latestSaveSummary: WorldSaveSummary | null = null
   let applyingImportedSave = false
 
   const catalog = () => getI18nCatalog(locale)
@@ -561,11 +563,12 @@ export async function createGame(
       label,
       kind: slotId === 'autosave' ? 'autosave' : 'manual',
     })
-    if (slotId === 'autosave') saveDirty = false
+    if (slotId === 'autosave' || slotId === 'journal-manual') saveDirty = false
     if (slotId === 'autosave' && autosaveTimer !== null) {
       window.clearTimeout(autosaveTimer)
       autosaveTimer = null
     }
+    latestSaveSummary = result
     return result
   }
 
@@ -2185,6 +2188,141 @@ export async function createGame(
     })
   }
 
+  const buildJournalSnapshot = (): JournalMenuSnapshot => {
+    const cellX = explorerMotion ? Math.floor(explorerMotion.x) : 0
+    const cellY = explorerMotion ? Math.floor(explorerMotion.y) : 0
+    const cell = getCellData(cellX, cellY)
+    const journal = catalog().journal
+    const familyName = (family: string) =>
+      journal[`JournalFamily${family.charAt(0).toUpperCase()}${family.slice(1)}`] ??
+      journal.JournalReferenceEntry!
+    const referenceList = (values: string[]) => {
+      if (!values.length) return journal.JournalReferenceEntry!
+      return locale === 'zh-CN'
+        ? formatI18n(journal.JournalCatalogReferenceCount!, { count: values.length })
+        : values.join(', ')
+    }
+    const referenceValues = (values: string[]) =>
+      locale === 'zh-CN'
+        ? [formatI18n(journal.JournalCatalogReferenceCount!, { count: values.length })]
+        : values
+    const terrain = content.biomes.map((biome) => ({
+      id: biome.id,
+      name: translateBiomeName(biome),
+      family: familyName(biome.family),
+      occurrence: `${Math.round(biome.occurrence * 100)}%`,
+      description: translateContentDescription(locale, 'biomes', biome.id, biome.description),
+      movement: String(biome.movementCost),
+      roadCost: String(biome.roadCost),
+      habitatTags: referenceValues(biome.creatures.habitatTags),
+      iconicSpecies: referenceValues(biome.creatures.iconicSpecies),
+      current: biome.id === cell?.biome.id,
+    }))
+    const monsterEntries = (content.characters.archetypes ?? [])
+      .filter((archetype) => archetype.role === 'enemy')
+      .map((archetype) => ({
+        id: archetype.id,
+        name: translateArchetypeName(archetype.id, archetype.name),
+        description: translateContentDescription(
+          locale,
+          'archetypes',
+          archetype.id,
+          archetype.description
+        ),
+        tags: referenceValues(archetype.tags),
+        habitat: referenceList(archetype.tags),
+        status: journal.JournalUnencountered!,
+        kind: 'monster' as const,
+      }))
+    const wildlifeEntries = content.biomes.map((biome) => ({
+      id: `wildlife:${biome.id}`,
+      name: `${translateBiomeName(biome)} · ${journal.JournalWildlife}`,
+      description: translateContentDescription(locale, 'biomes', biome.id, biome.description),
+      tags: referenceValues(biome.creatures.iconicSpecies),
+      habitat: referenceList(biome.creatures.habitatTags),
+      status: journal.JournalReferenceEntry!,
+      kind: 'wildlife' as const,
+    }))
+    const landmarkMap = new Map<string, JournalMenuSnapshot['map']['landmarks'][number]>()
+    chunks.forEach((chunk) => {
+      chunk.landmarks.forEach((landmark) => {
+        if (landmarkMap.has(landmark.id)) return
+        landmarkMap.set(landmark.id, {
+          id: landmark.id,
+          name: translateLandmarkName(landmark.id, landmark.name),
+          kind: locale === 'zh-CN' ? journal.JournalReferenceEntry! : landmark.kind,
+          description: translateLandmarkDescription(landmark.id, landmark.description),
+          position: `${landmark.x}, ${landmark.y}`,
+        })
+      })
+    })
+    return {
+      save: {
+        canSave: Boolean(contentPackSaveMetadata && explorer && explorerMotion),
+        dirty: saveDirty,
+        lastSavedAt: latestSaveSummary?.savedAt ?? restoredSnapshot?.savedAt ?? null,
+        lastLabel:
+          latestSaveSummary?.label ?? (restoredSnapshot ? journal.JournalSaveAutosave! : null),
+        worldSeed,
+        position: `${cellX}, ${cellY}`,
+        discoveredCells,
+        discoveredChunks: discoveredChunks.size,
+      },
+      guide: {
+        steps: [
+          {
+            key: 'WASD / ↑↓←→',
+            title: journal.JournalGuideMoveTitle!,
+            body: journal.JournalGuideMoveBody!,
+          },
+          {
+            key: 'Shift',
+            title: journal.JournalGuideRunTitle!,
+            body: journal.JournalGuideRunBody!,
+          },
+          {
+            key: 'E / Space',
+            title: journal.JournalGuideActTitle!,
+            body: journal.JournalGuideActBody!,
+          },
+          {
+            key: 'M',
+            title: journal.JournalGuideJournalTitle!,
+            body: journal.JournalGuideJournalBody!,
+          },
+          {
+            key: 'C',
+            title: journal.JournalGuideCharacterTitle!,
+            body: journal.JournalGuideCharacterBody!,
+          },
+          {
+            key: 'N',
+            title: journal.JournalGuideMapTitle!,
+            body: journal.JournalGuideMapBody!,
+          },
+          {
+            key: '1–6',
+            title: journal.JournalGuideManualsTitle!,
+            body: journal.JournalGuideManualsBody!,
+          },
+        ],
+        note: journal.JournalGuideNote!,
+      },
+      terrain,
+      bestiary: [...monsterEntries, ...wildlifeEntries],
+      map: {
+        seed: worldSeed,
+        region: cell ? translatedRegion(cell.region) : '—',
+        biome: cell ? translateBiomeName(cell.biome) : journal.JournalReferenceEntry!,
+        position: `${cellX}, ${cellY}`,
+        discoveredCells,
+        discoveredChunks: discoveredChunks.size,
+        loadedChunks: chunks.size,
+        landmarks: [...landmarkMap.values()].slice(0, 12),
+      },
+    }
+  }
+
   const buildGameUiSnapshot = (): GameUiSnapshot => {
     const cellX = explorerMotion ? Math.floor(explorerMotion.x) : 0
     const cellY = explorerMotion ? Math.floor(explorerMotion.y) : 0
@@ -2277,6 +2415,7 @@ export async function createGame(
       position: `${cellX}, ${cellY}`,
       gear,
       restoredSave: Boolean(restoredSnapshot),
+      journal: buildJournalSnapshot(),
       character: {
         id: explorer?.id ?? 'character:unknown',
         name: translatedExplorerName(),
@@ -2618,6 +2757,11 @@ export async function createGame(
     onConfigChange: (nextConfig) => {
       gameUiConfig = nextConfig
       applyGameUiState()
+    },
+    onJournalAction: async (action: JournalAction) => {
+      if (action.type !== 'save-progress') return
+      await saveNow('journal-manual', catalog().journal.JournalSaveManual!)
+      gameUi?.setSnapshot(buildGameUiSnapshot())
     },
     onCharacterInteractionStart: () => {
       pressedKeys.clear()

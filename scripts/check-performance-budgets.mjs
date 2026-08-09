@@ -26,7 +26,7 @@ const budgets = [
     path: Object.values(manifest)
       .map((entry) => entry.file)
       .find((file) => /^assets\/i18n-.*\.js$/.test(file)),
-    maxBytes: 30_000,
+    maxBytes: 50_000,
   },
 ]
 

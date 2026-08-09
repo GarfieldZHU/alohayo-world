@@ -6,7 +6,7 @@ const launch = async (page: import('@playwright/test').Page) => {
   await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 30_000 })
 }
 
-test('moves from splash to a light HUD and keyboard-safe menu', async ({ page }) => {
+test('moves from splash to a light HUD and keyboard-safe menu', async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
     window.localStorage.setItem('alohayo-world:minimap-collapsed', 'true')
@@ -32,7 +32,7 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page })
   await page.keyboard.up('d')
   await expect(canvas).toHaveAttribute('data-explorer-x', beforeSplash!)
 
-  await page.getByRole('button', { name: 'Begin journey' }).click()
+  await page.getByRole('button', { name: /Begin journey|Continue journey/ }).click()
   await expect(splash).toBeHidden()
   const hud = page.locator('[data-game-ui-surface="hud"]')
   await expect(hud).toBeVisible()
@@ -57,14 +57,41 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page })
   await expect(menu).toBeVisible()
   await expect(minimap).toBeHidden()
   await expect(page.getByRole('tab')).toHaveCount(6)
-  await page.getByRole('tab', { name: 'World map' }).click()
+  await expect(menu.getByRole('button', { name: 'Save progress' })).toBeVisible()
+  await menu.getByRole('button', { name: 'Save progress' }).click()
+  await expect(menu.locator('[data-journal-save-state="saved"]')).toBeVisible()
+  await page.keyboard.press('3')
+  await expect(menu.getByRole('heading', { name: 'Terrain manual' })).toBeVisible()
+  await page.keyboard.press('4')
+  await expect(menu.getByText('Encounter ledger not active', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Field map' }).click()
   await expect(menu.getByText('World seed', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('journal-desktop-field-map.png') })
 
   const beforeMenu = await canvas.getAttribute('data-explorer-x')
   await page.keyboard.down('d')
   await page.waitForTimeout(1100)
   await page.keyboard.up('d')
   await expect(canvas).toHaveAttribute('data-explorer-x', beforeMenu!)
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+})
+
+test('keeps the journal readable as a mobile tabbed surface', async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
+  })
+  await page.setViewportSize({ width: 390, height: 720 })
+  await launch(page)
+  await page.getByRole('button', { name: /Begin journey|Continue journey/ }).click()
+  await page.keyboard.press('m')
+  const menu = page.locator('[data-game-ui-surface="menu"]')
+  await expect(menu).toBeVisible()
+  await expect(menu.locator('.aw-journal__tabs')).toHaveCSS('flex-direction', 'row')
+  await page.keyboard.press('5')
+  await expect(menu.getByRole('heading', { name: 'Field map' })).toBeVisible()
+  await expect(menu.getByText('World seed', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('journal-mobile-field-map.png') })
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
 })

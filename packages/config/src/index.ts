@@ -901,7 +901,16 @@ export interface GameUiOptions {
   menu?: boolean
 }
 
-export type GameUiTab = 'journey' | 'party' | 'gear' | 'bestiary' | 'map' | 'settings'
+export type GameUiTab =
+  | 'save'
+  | 'guide'
+  | 'terrain'
+  | 'bestiary'
+  | 'map'
+  | 'settings'
+  | 'journey'
+  | 'party'
+  | 'gear'
 
 export interface MountGameOptions {
   container: HTMLElement

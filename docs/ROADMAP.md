@@ -97,6 +97,17 @@
 
 ## Staged Modules
 
+### Journal UI follow-ups
+
+- [x] Replace placeholder menu statistics with the bilingual Chronicle Save, Guide,
+      Terrain Manual, Bestiary, Field Map, and Settings sections.
+- [x] Add a real in-game manual save action backed by the versioned local save store,
+      plus responsive tab navigation and keyboard input gating.
+- [ ] Wire `terrain-rules.json` through resolved content packs so the manual can show
+      localized hazards, entry requirements, surface effects, and transformations.
+- [ ] Add persisted journal notes, charted/inspected landmark records, and an encounter
+      ledger after the deferred creature module owns those facts.
+
 Detailed independent plans now live in `docs/modules/` for characters, weather,
 settlements, economy, combat, vehicles, creatures, and water. The next implementation
 target is global topology continuity plus drainage, with natural-water contour work

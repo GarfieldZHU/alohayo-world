@@ -7,8 +7,30 @@ import {
   type CharacterDossierSnapshot,
 } from './character-dossier'
 import { getGameUiCopy } from './game-ui-copy'
+import {
+  createJournalMenu,
+  type JournalAction,
+  type JournalMenuController,
+  type JournalTabId,
+} from './journal-menu'
 
-const TABS: GameUiTab[] = ['journey', 'party', 'gear', 'bestiary', 'map', 'settings']
+function normalizeJournalTab(tab?: GameUiTab): JournalTabId {
+  switch (tab) {
+    case 'save':
+    case 'guide':
+    case 'terrain':
+    case 'bestiary':
+    case 'map':
+    case 'settings':
+      return tab
+    case 'journey':
+    case 'party':
+    case 'gear':
+      return 'guide'
+    default:
+      return 'save'
+  }
+}
 
 export interface GameUiSnapshot {
   explorerName: string
@@ -24,6 +46,7 @@ export interface GameUiSnapshot {
   gear: string[]
   restoredSave: boolean
   character: CharacterDossierSnapshot
+  journal: import('./journal-menu').JournalMenuSnapshot
 }
 
 interface CreateGameUiOptions {
@@ -34,6 +57,7 @@ interface CreateGameUiOptions {
   onBlockingChange: (blocked: boolean) => void
   onConfigChange: (config: ResolvedGameUiOptions) => void
   onCharacterAction: (action: CharacterDossierAction) => void
+  onJournalAction: (action: JournalAction) => Promise<void> | void
   onCharacterInteractionStart?: () => void
 }
 
@@ -63,10 +87,10 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   let snapshot = options.snapshot
   let splashOpen = config.splash
   let menuOpen = false
-  let activeTab: GameUiTab = 'journey'
   let locale = options.locale
   let previousFocus: HTMLElement | null = null
   let dossier: CharacterDossierController | null = null
+  let journalMenu: JournalMenuController | null = null
 
   const root = document.createElement('div')
   root.className = 'aw-game-ui'
@@ -165,23 +189,8 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   menuHeader.append(menuEyebrow, menuTitle, closeButton)
   const menuBody = document.createElement('div')
   menuBody.className = 'aw-game-ui__menu-body'
-  const tabList = document.createElement('div')
-  tabList.className = 'aw-game-ui__tabs'
-  tabList.setAttribute('role', 'tablist')
-  const tabButtons = new Map<GameUiTab, HTMLButtonElement>()
-  TABS.forEach((tab) => {
-    const tabButton = button('aw-game-ui__tab', `tab-${tab}`)
-    tabButton.dataset.gameUiTab = tab
-    tabButton.setAttribute('role', 'tab')
-    tabButtons.set(tab, tabButton)
-    tabList.appendChild(tabButton)
-  })
-  const panel = document.createElement('div')
-  panel.className = 'aw-game-ui__panel'
-  panel.setAttribute('role', 'tabpanel')
-  menuBody.append(tabList, panel)
   const menuFooter = document.createElement('footer')
-  menuFooter.innerHTML = '<span>Q / E</span><span>Esc</span>'
+  menuFooter.innerHTML = '<span>1–6 · Q / E</span><span>Esc / M</span>'
   menuFrame.append(menuHeader, menuBody, menuFooter)
   menu.append(menuFrame)
   root.append(hud, splash, menu)
@@ -195,70 +204,37 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     onInteractionStart: options.onCharacterInteractionStart,
   })
 
+  journalMenu = createJournalMenu({
+    container: menuBody,
+    locale,
+    snapshot: snapshot.journal,
+    config: { hud: config.hud, minimap: config.minimap },
+    onAction: (action) => {
+      if (action.type === 'open-character') {
+        closeMenu()
+        dossier?.openPanel('overview')
+        return
+      }
+      if (action.type === 'toggle-hud') {
+        config = { ...config, hud: !config.hud }
+        options.onConfigChange(config)
+        journalMenu?.setConfig({ hud: config.hud, minimap: config.minimap })
+        renderState()
+        return
+      }
+      if (action.type === 'toggle-minimap') {
+        config = { ...config, minimap: !config.minimap }
+        options.onConfigChange(config)
+        journalMenu?.setConfig({ hud: config.hud, minimap: config.minimap })
+        renderState()
+        return
+      }
+      return options.onJournalAction(action)
+    },
+  })
+
   const text = (key: string) => getGameUiCopy(locale, key)
   const setBlocked = () => options.onBlockingChange(splashOpen || menuOpen)
-
-  const renderPanel = () => {
-    panel.replaceChildren()
-    const heading = document.createElement('h3')
-    heading.textContent = text(`Tab${activeTab[0]!.toUpperCase()}${activeTab.slice(1)}`)
-    const lead = document.createElement('p')
-    lead.className = 'aw-game-ui__panel-lead'
-    lead.textContent = text(`Panel${activeTab[0]!.toUpperCase()}${activeTab.slice(1)}`)
-    panel.append(heading, lead)
-
-    const stats = document.createElement('dl')
-    stats.className = 'aw-game-ui__stats'
-    const entries: Array<[string, string | number]> =
-      activeTab === 'journey'
-        ? [
-            [text('Region'), snapshot.region],
-            [text('Biome'), snapshot.biome],
-            [text('Discovered'), snapshot.discoveredCells],
-            [text('Position'), snapshot.position],
-          ]
-        : activeTab === 'party'
-          ? [
-              [text('Explorer'), snapshot.explorerName],
-              [text('State'), snapshot.state],
-              [text('Role'), text('Wayfinder')],
-            ]
-          : activeTab === 'gear'
-            ? snapshot.gear.length
-              ? snapshot.gear.map((item, index) => [`${text('Relic')} ${index + 1}`, item])
-              : [[text('Relic'), text('None')]]
-            : activeTab === 'map'
-              ? [
-                  [text('Seed'), snapshot.worldSeed],
-                  [text('DiscoveredChunks'), snapshot.discoveredChunks],
-                  [text('LoadedChunks'), snapshot.loadedChunks],
-                ]
-              : activeTab === 'settings'
-                ? [
-                    [text('Controls'), text('ControlsValue')],
-                    [text('Interface'), text('InterfaceValue')],
-                  ]
-                : [[text('Bestiary'), text('BestiaryEmpty')]]
-    entries.forEach(([label, value]) => {
-      const term = document.createElement('dt')
-      term.textContent = String(label)
-      const detail = document.createElement('dd')
-      detail.textContent = String(value)
-      stats.append(term, detail)
-    })
-    panel.appendChild(stats)
-    if (activeTab === 'settings') {
-      const hudToggle = button('aw-game-ui__secondary aw-game-ui__panel-action', 'toggle-hud')
-      hudToggle.textContent = config.hud ? text('HideHud') : text('ShowHud')
-      panel.appendChild(hudToggle)
-      const minimapToggle = button(
-        'aw-game-ui__secondary aw-game-ui__panel-action',
-        'toggle-minimap'
-      )
-      minimapToggle.textContent = config.minimap ? text('HideMinimap') : text('ShowMinimap')
-      panel.appendChild(minimapToggle)
-    }
-  }
 
   const renderCopy = () => {
     hud.setAttribute('aria-label', text('HudLabel'))
@@ -281,11 +257,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     menuEyebrow.textContent = text('MenuEyebrow')
     menuTitle.textContent = text('MenuTitle')
     closeButton.setAttribute('aria-label', text('Close'))
-    TABS.forEach((tab) => {
-      const title = tab[0]!.toUpperCase() + tab.slice(1)
-      tabButtons.get(tab)!.textContent = text(`Tab${title}`)
-    })
-    renderPanel()
+    journalMenu?.setLocale(locale)
   }
 
   const renderSnapshot = () => {
@@ -293,7 +265,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     explorerState.textContent = snapshot.state
     regionName.textContent = snapshot.region
     biomeName.textContent = snapshot.biome
-    renderPanel()
+    journalMenu?.setSnapshot(snapshot.journal)
   }
 
   const renderState = () => {
@@ -310,11 +282,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       config.minimap && config.hud && !splashOpen && !menuOpen
     )
     dossier?.setSuppressed(!config.enabled || splashOpen || menuOpen)
-    tabButtons.forEach((tabButton, tab) => {
-      const selected = tab === activeTab
-      tabButton.setAttribute('aria-selected', String(selected))
-      tabButton.tabIndex = selected ? 0 : -1
-    })
+    journalMenu?.setConfig({ hud: config.hud, minimap: config.minimap })
     setBlocked()
   }
 
@@ -325,16 +293,18 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     options.container.focus({ preventScroll: true })
   }
 
-  const openMenu = (tab: GameUiTab = activeTab) => {
+  const openMenu = (tab?: GameUiTab) => {
     if (!config.enabled || !config.menu) return
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     splashOpen = false
     menuOpen = true
     dossier?.close()
-    activeTab = tab
+    journalMenu?.openTab(normalizeJournalTab(tab))
     renderCopy()
     renderState()
-    requestAnimationFrame(() => tabButtons.get(activeTab)?.focus())
+    requestAnimationFrame(() =>
+      menuBody.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus()
+    )
   }
 
   const closeMenu = () => {
@@ -342,14 +312,6 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     menuOpen = false
     renderState()
     previousFocus?.focus({ preventScroll: true })
-  }
-
-  const shiftTab = (amount: number) => {
-    const index = TABS.indexOf(activeTab)
-    activeTab = TABS[(index + amount + TABS.length) % TABS.length]!
-    renderCopy()
-    renderState()
-    tabButtons.get(activeTab)?.focus()
   }
 
   const trapFocus = (surface: HTMLElement, event: KeyboardEvent) => {
@@ -376,21 +338,6 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     else if (action === 'close-menu') closeMenu()
     else if (action === 'menu-map') openMenu('map')
     else if (action === 'menu-settings') openMenu('settings')
-    else if (action === 'toggle-hud') {
-      config = { ...config, hud: !config.hud }
-      options.onConfigChange(config)
-      renderCopy()
-      renderState()
-    } else if (action === 'toggle-minimap') {
-      config = { ...config, minimap: !config.minimap }
-      options.onConfigChange(config)
-      renderCopy()
-      renderState()
-    } else if (action?.startsWith('tab-')) {
-      activeTab = action.slice(4) as GameUiTab
-      renderCopy()
-      renderState()
-    }
   }
   root.addEventListener('click', onClick)
 
@@ -412,26 +359,15 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       if (menuOpen) {
         if (key === 'tab') trapFocus(menu, event)
         else if (key === 'escape' || key === 'm') closeMenu()
-        else if (key === 'q' || key === 'arrowleft') shiftTab(-1)
-        else if (key === 'e' || key === 'arrowright') shiftTab(1)
-        else if (key === 'home') {
-          activeTab = TABS[0]!
-          renderCopy()
-          renderState()
-          tabButtons.get(activeTab)?.focus()
-        } else if (key === 'end') {
-          activeTab = TABS[TABS.length - 1]!
-          renderCopy()
-          renderState()
-          tabButtons.get(activeTab)?.focus()
-        }
+        else if (journalMenu?.handleKeyDown(event)) return true
         return true
       }
       if (dossier?.handleKeyDown(event)) return true
-      if ((key === 'escape' || key === 'm') && !event.repeat) {
+      if (key === 'm' && !event.repeat) {
         openMenu()
         return true
       }
+      if (key === 'escape' && !event.repeat) return true
       if (key === 'h' && !event.repeat) {
         config = { ...config, hud: !config.hud }
         options.onConfigChange(config)
@@ -454,6 +390,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
         splashOpen = false
         menuOpen = false
       }
+      journalMenu?.setConfig({ hud: config.hud, minimap: config.minimap })
       renderState()
     },
     setSnapshot(nextSnapshot) {
@@ -482,6 +419,8 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       root.remove()
       dossier?.destroy()
       dossier = null
+      journalMenu?.destroy()
+      journalMenu = null
       delete options.container.dataset.gameUiEnabled
       delete options.container.dataset.gameUiModal
       delete options.container.dataset.gameUiMinimap
