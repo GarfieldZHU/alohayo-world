@@ -295,7 +295,7 @@
     "JournalHideMap": "隐藏野外地图",
     "JournalShowMap": "显示野外地图",
     "JournalControls": "操作",
-    "JournalControlsValue": "WASD / 方向键 · Shift · E / 空格 · M · C · H · N",
+    "JournalControlsValue": "Esc 设置 · M 地图 · I 能力 / 物品",
     "JournalSystemsNote": "语言、主题和存档传输会继续由外部启动器管理，直到它们拥有明确的游戏内持久化契约。"
   },
   "actions": {

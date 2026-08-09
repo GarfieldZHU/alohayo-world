@@ -295,7 +295,7 @@
     "JournalHideMap": "Hide field map",
     "JournalShowMap": "Show field map",
     "JournalControls": "Controls",
-    "JournalControlsValue": "WASD / arrows · Shift · E / Space · M · C · H · N",
+    "JournalControlsValue": "Esc Settings · M Map · I Abilities / items",
     "JournalSystemsNote": "Language, theme, and save transfer remain managed by the outer launcher until their in-world persistence contracts are ready."
   },
   "actions": {

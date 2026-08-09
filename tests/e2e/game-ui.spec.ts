@@ -22,7 +22,9 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
     '58px'
   )
   await expect(splash.locator('.aw-game-ui__splash-meta')).toContainText('LOCAL WORLD')
-  await expect(splash.locator('.aw-game-ui__splash-controls')).toContainText('Field controls')
+  await expect(splash.locator('.aw-game-ui__splash-controls')).toContainText(
+    'Esc settings · M map · I abilities / items'
+  )
   await expect(
     splash.getByRole('button', { name: 'Begin journey' }).locator('.aw-game-ui__button-detail')
   ).toBeVisible()
@@ -175,12 +177,12 @@ test('keeps the journal readable as a mobile tabbed surface', async ({ page }, t
   await expect(menu).toBeHidden()
 })
 
-test('opens splash settings from the M shortcut', async ({ page }) => {
+test('opens splash settings from the Escape shortcut', async ({ page }) => {
   await page.addInitScript(() => {
     window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
   })
   await launch(page)
-  await page.keyboard.press('m')
+  await page.keyboard.press('Escape')
   const menu = page.locator('[data-game-ui-surface="menu"]')
   await expect(menu).toBeVisible()
   await expect(menu.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')

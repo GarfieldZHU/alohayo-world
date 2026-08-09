@@ -419,7 +419,12 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       const key = event.key.toLowerCase()
       if (splashOpen) {
         if (key === 'tab') trapFocus(splash, event)
-        else if (key === 'm' && !event.repeat) openMenu('settings')
+        else if (key === 'escape' && !event.repeat) openMenu('settings')
+        else if (key === 'm' && !event.repeat) openMenu('map')
+        else if (key === 'i' && !event.repeat) {
+          closeSplash()
+          dossier?.openPanel('abilities')
+        }
         if ((key === 'enter' || key === ' ') && !event.repeat) closeSplash()
         return true
       }
