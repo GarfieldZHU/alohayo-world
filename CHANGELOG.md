@@ -11,6 +11,11 @@
   disposable, support reduced-motion/debug capture, and leave sprite/GLB manifests as an
   additive seam for the follow-up asset issue.
 
+- Add the first Wayfinder Dossier character surface: a low-chrome right dock/bottom sheet
+  with independently collapsible overview, ability-point preview, equipment, skills, and
+  field-system panels; `C` plus `1`–`5` shortcuts; bilingual copy; truthful preview/
+  unavailable states; and desktop/mobile Playwright coverage.
+
 - Close #43/#54 save recovery work: classify current/remountable/incompatible worlds before
   mutation, confirm cross-seed remounts with a temporary recovery slot and rollback path, and
   require replacement confirmation across save, rename, duplicate, and import flows. Add

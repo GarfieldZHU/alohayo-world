@@ -37,6 +37,7 @@ export interface I18nCatalog {
     states: Record<string, string>
   }
   devPanel: Record<string, string>
+  characterPanel: Record<string, string>
   actions: Record<string, string>
   content: Record<string, Record<string, I18nContentEntry>>
 }

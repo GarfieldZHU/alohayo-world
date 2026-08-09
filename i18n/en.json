@@ -128,12 +128,88 @@
     "teleported": "Teleported to ({x}, {y}).",
     "equipmentSet": "{slotName} set to {itemName}."
   },
+  "characterPanel": {
+    "CharacterDossier": "Wayfinder dossier",
+    "CharacterPanels": "Character panels",
+    "CharacterDossierEyebrow": "Field dossier",
+    "CharacterShortcutHint": "C dossier · Esc close",
+    "CharacterOverview": "Wayfinder record",
+    "CharacterAbilities": "Ability ledger",
+    "CharacterEquipment": "Equipment rack",
+    "CharacterSkills": "Skills & proficiencies",
+    "CharacterSystems": "Field systems",
+    "CharacterCollapse": "Collapse panel",
+    "CharacterExpand": "Expand panel",
+    "CharacterClosePanel": "Close panel",
+    "CharacterState": "State",
+    "CharacterPosition": "Position",
+    "CharacterTerrain": "Terrain",
+    "CharacterWeapon": "Active weapon",
+    "CharacterPointsAvailable": "Unspent ability points",
+    "CharacterPointsPreview": "Local preview · progression is not saved yet",
+    "CharacterPointsShort": "points",
+    "CharacterIncrease": "Increase",
+    "CharacterDecrease": "Decrease",
+    "CharacterReset": "Reset",
+    "CharacterApply": "Apply preview",
+    "CharacterEquipmentHint": "Inspect the generated loadout. Inventory transactions will arrive with the equipment module.",
+    "CharacterActive": "Active",
+    "CharacterUse": "Use",
+    "CharacterSkillsHint": "Known actions and declared capability tags; no unearned skill levels are shown.",
+    "CharacterFieldNote": "Field note",
+    "CharacterWalkSpeed": "Walk speed",
+    "CharacterRunMultiplier": "Run multiplier",
+    "CharacterActionRange": "Action range",
+    "CharacterCells": "cells",
+    "CharacterCharted": "Cells charted",
+    "CharacterLoaded": "Loaded chunks",
+    "CharacterFrontiers": "Frontiers found",
+    "CharacterTraversalReady": "Traversal rules ready",
+    "CharacterTraversalUnavailable": "Traversal rules unavailable",
+    "CharacterTraversalUnavailableNote": "The optional character-rules pack is validated but not connected to live exploration yet.",
+    "CharacterConfigured": "Configured action",
+    "CharacterTag": "Character tag",
+    "CharacterRolePlayer": "player",
+    "CharacterRoleNpc": "npc",
+    "CharacterRoleEnemy": "enemy"
+  },
   "actions": {
     "selfUse": "{explorerName} uses {actionName}.",
     "inspect": "{explorerName} examines {landmarkName}: {landmarkDescription}",
     "noTarget": "{explorerName} uses {actionName}, but nothing is within reach."
   },
   "content": {
+    "abilities": {
+      "core:strength": {
+        "name": "Strength",
+        "description": "Force, lifting, melee power, and physical burden."
+      },
+      "core:agility": {
+        "name": "Agility",
+        "description": "Speed, balance, precision, and reaction."
+      },
+      "core:endurance": {
+        "name": "Endurance",
+        "description": "Health, stamina, resistance, and recovery."
+      },
+      "core:intelligence": {
+        "name": "Intelligence",
+        "description": "Reasoning, learning, crafting, and technical knowledge."
+      },
+      "core:perception": {
+        "name": "Perception",
+        "description": "Awareness, observation, tracking, and ranged accuracy."
+      },
+      "core:willpower": {
+        "name": "Willpower",
+        "description": "Focus, courage, discipline, and mental resistance."
+      },
+      "core:charisma": {
+        "name": "Charisma",
+        "description": "Presence, empathy, leadership, and negotiation."
+      },
+      "core:luck": { "name": "Luck", "description": "Fortune, unusual outcomes, and opportunity." }
+    },
     "worldSizePresets": {
       "frontier": { "name": "Frontier" },
       "expanse": { "name": "Expanse" },

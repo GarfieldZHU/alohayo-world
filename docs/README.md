@@ -31,6 +31,8 @@ blindly.
 - `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.
 - `CHARACTER_SYSTEM_BLUEPRINT.md`: modular abilities, roles, equipment, progression,
   terrain interaction, research boundaries, and staged implementation.
+- `CHARACTER_DOSSIER_UI.md`: right-docked character dossier panels, shortcuts, responsive
+  layout, and the preview/unavailable data boundary.
 - `GIS_FOUNDATIONS.md`: geographic concepts translated into game-system rules.
 - `CONTENT_GUIDE.md`: config-first authoring and schemas.
 - `CONTENT_PACKS.md`: dependency-safe pack loading, authored overlays, conflicts, and

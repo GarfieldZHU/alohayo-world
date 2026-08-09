@@ -1,5 +1,11 @@
 import type { GameUiTab, LocaleCode } from '@alohayo/config'
 import type { ResolvedGameUiOptions } from './game-ui-config'
+import {
+  createCharacterDossier,
+  type CharacterDossierAction,
+  type CharacterDossierController,
+  type CharacterDossierSnapshot,
+} from './character-dossier'
 import { getGameUiCopy } from './game-ui-copy'
 
 const TABS: GameUiTab[] = ['journey', 'party', 'gear', 'bestiary', 'map', 'settings']
@@ -17,6 +23,7 @@ export interface GameUiSnapshot {
   position: string
   gear: string[]
   restoredSave: boolean
+  character: CharacterDossierSnapshot
 }
 
 interface CreateGameUiOptions {
@@ -26,6 +33,8 @@ interface CreateGameUiOptions {
   snapshot: GameUiSnapshot
   onBlockingChange: (blocked: boolean) => void
   onConfigChange: (config: ResolvedGameUiOptions) => void
+  onCharacterAction: (action: CharacterDossierAction) => void
+  onCharacterInteractionStart?: () => void
 }
 
 export interface GameUiController {
@@ -37,6 +46,7 @@ export interface GameUiController {
   setTheme(theme: 'light' | 'dark'): void
   openMenu(tab?: GameUiTab): void
   closeMenu(): void
+  openCharacterPanel(panel?: Parameters<CharacterDossierController['openPanel']>[0]): void
   destroy(): void
 }
 
@@ -56,6 +66,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   let activeTab: GameUiTab = 'journey'
   let locale = options.locale
   let previousFocus: HTMLElement | null = null
+  let dossier: CharacterDossierController | null = null
 
   const root = document.createElement('div')
   root.className = 'aw-game-ui'
@@ -176,6 +187,14 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   root.append(hud, splash, menu)
   options.container.appendChild(root)
 
+  dossier = createCharacterDossier({
+    container: options.container,
+    locale,
+    snapshot: snapshot.character,
+    onAction: options.onCharacterAction,
+    onInteractionStart: options.onCharacterInteractionStart,
+  })
+
   const text = (key: string) => getGameUiCopy(locale, key)
   const setBlocked = () => options.onBlockingChange(splashOpen || menuOpen)
 
@@ -290,6 +309,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     options.container.dataset.gameUiMinimap = String(
       config.minimap && config.hud && !splashOpen && !menuOpen
     )
+    dossier?.setSuppressed(!config.enabled || splashOpen || menuOpen)
     tabButtons.forEach((tabButton, tab) => {
       const selected = tab === activeTab
       tabButton.setAttribute('aria-selected', String(selected))
@@ -310,6 +330,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     splashOpen = false
     menuOpen = true
+    dossier?.close()
     activeTab = tab
     renderCopy()
     renderState()
@@ -406,6 +427,7 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
         }
         return true
       }
+      if (dossier?.handleKeyDown(event)) return true
       if ((key === 'escape' || key === 'm') && !event.repeat) {
         openMenu()
         return true
@@ -437,21 +459,29 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     setSnapshot(nextSnapshot) {
       snapshot = nextSnapshot
       renderSnapshot()
+      dossier?.setSnapshot(nextSnapshot.character)
       enterButton.hidden = snapshot.restoredSave
       continueButton.hidden = !snapshot.restoredSave
     },
     setLocale(nextLocale) {
       locale = nextLocale
       renderCopy()
+      dossier?.setLocale(nextLocale)
     },
     setTheme(nextTheme) {
       root.dataset.theme = nextTheme
+      dossier?.setTheme(nextTheme)
     },
     openMenu,
     closeMenu,
+    openCharacterPanel(panel = 'overview') {
+      dossier?.openPanel(panel)
+    },
     destroy() {
       root.removeEventListener('click', onClick)
       root.remove()
+      dossier?.destroy()
+      dossier = null
       delete options.container.dataset.gameUiEnabled
       delete options.container.dataset.gameUiModal
       delete options.container.dataset.gameUiMinimap

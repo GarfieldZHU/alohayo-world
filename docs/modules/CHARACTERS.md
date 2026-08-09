@@ -22,6 +22,9 @@ does not fork.
 - Fixed items, reusable item pools, sharing intent, ability modifiers.
 - Deterministic generation and initial active weapon selection.
 - A generated Wayfinder marker rendered on the map.
+- A first Wayfinder Dossier UI with independent overview, ability-preview, equipment,
+  skills, and field-system panels; progression and inventory changes remain explicitly
+  local preview/unavailable until their runtime contracts land.
 - One-ninth-cell physical/render scale contract.
 - Fixed-step walk/run movement, terrain cost, water collision, facing, camera follow,
   and streamed frontier tolerance when chunks are still loading.

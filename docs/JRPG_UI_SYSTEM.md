@@ -198,7 +198,11 @@ slice maps existing systems as follows:
 - splash is an `aria-modal` dialog with an immediate primary action;
 - menu is an `aria-modal` dialog with a labelled tablist and tabpanels;
 - selected tabs use `aria-selected` and roving `tabindex`;
-- `Escape` and `M` toggle the game menu in normal game mode;
+- `C` opens or closes the character dossier; while it is open, `1` opens the Wayfinder
+  record, `2` the Ability ledger, `3` Equipment, `4` Skills and proficiencies, and `5`
+  Field systems;
+- `Escape` closes the focused dossier panel first, then the dossier; with the dossier
+  closed, it opens the game menu. `M` opens or closes the game menu;
 - `H` toggles the HUD (and hides the map with it); `N` toggles the integrated field map;
 - the integrated field map and its controls are hidden during the splash and reappear
   together after `Begin journey`;

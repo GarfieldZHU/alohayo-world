@@ -118,7 +118,9 @@ import { createRuntimePerformanceTracker } from './performance'
 import { sampleWeatherSurface } from './weather'
 import { createGameUi, type GameUiController, type GameUiSnapshot } from './game-ui'
 import { resolveGameUiOptions } from './game-ui-config'
+import type { CharacterDossierAction } from './character-dossier'
 import './game-ui.css'
+import './character-dossier.css'
 import {
   assertCompatibleContentPackState,
   createWorldSaveStore,
@@ -252,6 +254,7 @@ export async function createGame(
   let dragging = false
   let lastX = 0
   let lastY = 0
+  let activePointerId: number | null = null
   let frameCount = 0
   let fps = 0
   let fpsStarted = performance.now()
@@ -2195,6 +2198,72 @@ export async function createGame(
           ? translateItemName(selection.itemId, item.name)
           : (selection.itemId ?? '')
       })
+    const archetype = content.characters.archetypes.find(
+      (candidate) => candidate.id === explorer?.archetypeId
+    )
+    const characterAbilities = (content.characters.abilities ?? []).map((ability) => ({
+      id: ability.id,
+      name: translateContentName(locale, 'abilities', ability.id, ability.name),
+      abbreviation: ability.abbreviation,
+      description: translateContentDescription(
+        locale,
+        'abilities',
+        ability.id,
+        ability.description
+      ),
+      group: ability.group,
+      value: explorer?.abilities[ability.id] ?? ability.default,
+      minimum: ability.minimum,
+      maximum: ability.maximum,
+    }))
+    const characterEquipment = (explorer?.equipment ?? []).map((selection) => {
+      const slot = slotById.get(selection.slotId)
+      const currentItem = content.characters.items.find((item) => item.id === selection.itemId)
+      const options = [
+        { id: null, name: devText('unequip') },
+        ...content.characters.items
+          .filter((item) => item.allowedSlots.includes(selection.slotId))
+          .map((item) => ({ id: item.id, name: translateItemName(item.id, item.name) })),
+      ]
+      return {
+        slotId: selection.slotId,
+        slotName: translateSlotName(selection.slotId, slot?.name ?? selection.slotId),
+        kind: slot?.kind ?? 'wearable',
+        itemId: selection.itemId,
+        itemName: currentItem
+          ? translateItemName(currentItem.id, currentItem.name)
+          : devText('unequip'),
+        shared: selection.shared,
+        options,
+      }
+    })
+    const characterSkills = [
+      ...(explorer?.actionIds ?? []).flatMap((actionId) => {
+        const action = content.characters.actions.find((candidate) => candidate.id === actionId)
+        if (!action) return []
+        return [
+          {
+            id: action.id,
+            name: translateActionName(action.id, action.name),
+            description: translateContentDescription(
+              locale,
+              'actions',
+              action.id,
+              action.description
+            ),
+            source: catalog().characterPanel.CharacterConfigured ?? 'Configured action',
+            status: 'ready',
+          },
+        ]
+      }),
+      ...(explorer?.tags ?? []).map((tag) => ({
+        id: `tag:${tag}`,
+        name: tag,
+        description: catalog().characterPanel.CharacterTag ?? 'Character tag',
+        source: catalog().characterPanel.CharacterTag ?? 'Character tag',
+        status: 'ready',
+      })),
+    ]
     return {
       explorerName: translatedExplorerName(),
       state: explorerMotion ? translatedState(explorerMotion.state) : catalog().hud.states.idle!,
@@ -2208,6 +2277,48 @@ export async function createGame(
       position: `${cellX}, ${cellY}`,
       gear,
       restoredSave: Boolean(restoredSnapshot),
+      character: {
+        id: explorer?.id ?? 'character:unknown',
+        name: translatedExplorerName(),
+        archetype: archetype
+          ? translateArchetypeName(archetype.id, archetype.name)
+          : translatedExplorerName(),
+        role: explorer
+          ? catalog().characterPanel[
+              explorer.role === 'player'
+                ? 'CharacterRolePlayer'
+                : explorer.role === 'npc'
+                  ? 'CharacterRoleNpc'
+                  : 'CharacterRoleEnemy'
+            ]!
+          : catalog().characterPanel.CharacterRolePlayer!,
+        description: archetype
+          ? translateContentDescription(locale, 'archetypes', archetype.id, archetype.description)
+          : '',
+        position: `${cellX}, ${cellY}`,
+        state: explorerMotion ? translatedState(explorerMotion.state) : catalog().hud.states.idle!,
+        biome: cell ? translateBiomeName(cell.biome) : catalog().hud.surveyingFrontier,
+        region: cell ? translatedRegion(cell.region) : '—',
+        activeWeaponSlot: explorer?.activeWeaponSlot ?? null,
+        activeWeaponName:
+          characterEquipment.find((entry) => entry.slotId === explorer?.activeWeaponSlot)
+            ?.itemName ?? devText('unequip'),
+        walkSpeed: explorer?.movement.walkSpeed ?? 0,
+        runMultiplier: explorer?.movement.runMultiplier ?? 0,
+        actionRange: explorer?.movement.actionRange ?? 0,
+        tags: explorer?.tags ?? [],
+        abilities: characterAbilities,
+        abilityPointsAvailable: 4,
+        equipment: characterEquipment,
+        skills: characterSkills,
+        field: {
+          loadedChunks: chunks.size,
+          discoveredChunks: discoveredChunks.size,
+          discoveredCells,
+          traversalReady: false,
+          traversalNote: catalog().characterPanel.CharacterTraversalUnavailableNote!,
+        },
+      },
     }
   }
 
@@ -2508,6 +2619,28 @@ export async function createGame(
       gameUiConfig = nextConfig
       applyGameUiState()
     },
+    onCharacterInteractionStart: () => {
+      pressedKeys.clear()
+      dragging = false
+      if (activePointerId !== null && app.canvas.hasPointerCapture(activePointerId)) {
+        app.canvas.releasePointerCapture(activePointerId)
+      }
+      activePointerId = null
+    },
+    onCharacterAction: (action: CharacterDossierAction) => {
+      if (!explorer) return
+      if (action.type === 'apply-abilities') {
+        app.canvas.dataset.characterAbilityPreview = 'true'
+        return
+      }
+      if (action.type === 'equip') {
+        app.canvas.dataset.characterEquipmentPreview = 'true'
+        return
+      }
+      if (action.type === 'active-weapon') {
+        app.canvas.dataset.characterEquipmentPreview = 'true'
+      }
+    },
   })
   gameUi.setTheme(theme)
   applyGameUiState()
@@ -2543,6 +2676,7 @@ export async function createGame(
     dragging = true
     lastX = event.clientX
     lastY = event.clientY
+    activePointerId = event.pointerId
     app.canvas.setPointerCapture(event.pointerId)
   }
 
@@ -2577,6 +2711,10 @@ export async function createGame(
 
   const onPointerUp = () => {
     dragging = false
+    if (activePointerId !== null && app.canvas.hasPointerCapture(activePointerId)) {
+      app.canvas.releasePointerCapture(activePointerId)
+    }
+    activePointerId = null
   }
 
   const onWheel = (event: WheelEvent) => {
@@ -2659,10 +2797,11 @@ export async function createGame(
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
+    const target = event.target instanceof HTMLElement ? event.target : null
     if (
       event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement ||
-      (event.target instanceof HTMLElement && event.target.isContentEditable)
+      (target && target.isContentEditable)
     ) {
       return
     }
@@ -2671,6 +2810,7 @@ export async function createGame(
       pressedKeys.clear()
       return
     }
+    if (target?.matches('select, button, a, [role="button"]')) return
     const key = event.key.toLowerCase()
     if (movementKeys.has(key)) {
       event.preventDefault()
@@ -2717,6 +2857,11 @@ export async function createGame(
 
   const onBlur = () => {
     pressedKeys.clear()
+    dragging = false
+    if (activePointerId !== null && app.canvas.hasPointerCapture(activePointerId)) {
+      app.canvas.releasePointerCapture(activePointerId)
+    }
+    activePointerId = null
   }
 
   const onResize = () => {

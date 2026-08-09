@@ -1,4 +1,5 @@
 import type { LocaleCode } from '@alohayo/config'
+import { getI18nCatalog } from '@alohayo/config'
 
 const COPY: Record<LocaleCode, Record<string, string>> = {
   en: {
@@ -109,5 +110,8 @@ const COPY: Record<LocaleCode, Record<string, string>> = {
 }
 
 export function getGameUiCopy(locale: LocaleCode, key: string): string {
+  if (key.startsWith('Character')) {
+    return getI18nCatalog(locale).characterPanel[key] ?? key
+  }
   return COPY[locale][key] ?? COPY.en[key] ?? key
 }
