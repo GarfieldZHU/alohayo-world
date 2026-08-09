@@ -2,11 +2,28 @@
 
 ## Unreleased
 
+- Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
+  vellum material assets, catalog-backed ability groups with segmented preview meters,
+  point-reserve plate, generated loadout records, and a truthful field item catalog with
+  tags, modifier summaries, appearance tints, and explicit inventory boundaries.
+
+- Narrow the gameplay shortcut strip to `Esc` Settings, `M` Map, and `I` Abilities / items;
+  make `M` open the Field map, `Esc` open Settings when idle, and `I` open the ability ledger.
+  Add the `I` shortcut to the Tour guide and keep its map guidance aligned with `M`.
+
+- Rework the character panels into a larger readable corner dock: remove the unexpected
+  Field Dossier eyebrow, stop replaying panel arrival animations during every interaction,
+  increase ability controls and copy sizing, and use a stable translucent map-safe backing.
+
 - Simplify Chronicle rail icons into direct glyphs without circular wrappers, preserving
   the rail's active selection line, labels, focus treatment, and mobile tab behavior.
 
 - Give Bestiary reference cards a more tactile field-record treatment with kind-specific
-  accents, layered scanline/compass detailing, and restrained hover lift/glow feedback.
+  accents, layered atlas contour/compass detailing, and restrained hover lift/glow feedback.
+
+- Extend the field-record material across the Chronicle's Guide, Terrain, Save, Field Map,
+  and Settings blades with shared textured backgrounds, registration marks, accent tints,
+  keyboard focus feedback, and responsive hover lift.
 
 - Constrain the Chronicle menu to the game surface rather than the browser viewport. Keep
   the desktop navigation rail and mobile tab row fixed while limiting scrolling to the

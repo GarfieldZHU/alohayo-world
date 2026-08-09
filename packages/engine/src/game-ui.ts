@@ -139,10 +139,10 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
     item.append(keycap, copy)
     return item
   }
-  const menuHint = shortcutHint('M', '')
-  const hudHint = shortcutHint('H', '')
-  const minimapHint = shortcutHint('N', '')
-  controlsHint.append(menuHint, hudHint, minimapHint)
+  const settingsHint = shortcutHint('Esc', '')
+  const mapHint = shortcutHint('M', '')
+  const itemsHint = shortcutHint('I', '')
+  controlsHint.append(settingsHint, mapHint, itemsHint)
   hud.append(identity, headerTools, controlsHint)
 
   const splash = document.createElement('section')
@@ -304,9 +304,9 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
   const renderCopy = () => {
     hud.setAttribute('aria-label', text('HudLabel'))
     compassButton.setAttribute('aria-label', text('OpenMap'))
-    menuHint.lastElementChild!.textContent = text('ShortcutMenu')
-    hudHint.lastElementChild!.textContent = text('ShortcutHud')
-    minimapHint.lastElementChild!.textContent = text('ShortcutMinimap')
+    settingsHint.lastElementChild!.textContent = text('ShortcutSettings')
+    mapHint.lastElementChild!.textContent = text('ShortcutMap')
+    itemsHint.lastElementChild!.textContent = text('ShortcutItems')
     eyebrow.textContent = text('Eyebrow')
     splashTitle.textContent = text('Title')
     splashIntro.textContent = text('Intro')
@@ -431,10 +431,13 @@ export function createGameUi(options: CreateGameUiOptions): GameUiController {
       }
       if (dossier?.handleKeyDown(event)) return true
       if (key === 'm' && !event.repeat) {
-        openMenu()
+        openMenu('map')
         return true
       }
-      if (key === 'escape' && !event.repeat) return true
+      if (key === 'escape' && !event.repeat) {
+        openMenu('settings')
+        return true
+      }
       if (key === 'h' && !event.repeat) {
         config = { ...config, hud: !config.hud }
         options.onConfigChange(config)

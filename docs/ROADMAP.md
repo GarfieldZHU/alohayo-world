@@ -54,6 +54,9 @@
 - [x] Deterministic terrain transitions and zoom-dependent geographic detail.
 - [x] Build-time discovered custom map-area configs, landmarks, and topology refresh.
 - [x] Shared configurable character generation for player, NPC, and enemy archetypes.
+- [x] Detailed map-safe Wayfinder Dossier treatment with authored slate/vellum materials,
+      catalog-backed ability groups, segmented point preview, generated loadout detail,
+      and a reference-only field item catalog.
 - [x] One-ninth-cell character scale with fixed-step walk, run, collision, and actions.
 - [x] Infinite chunk coordinate runtime with streamed retention and distance-based eviction.
 - [x] Explorer traversal across streamed chunks with minimap and local discovery fog.

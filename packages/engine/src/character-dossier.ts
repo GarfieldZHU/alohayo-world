@@ -17,6 +17,11 @@ export interface CharacterDossierAbility {
 export interface CharacterDossierEquipmentOption {
   id: string | null
   name: string
+  tags: string[]
+  modifiers: Record<string, number>
+  appearanceColor: string
+  appearanceShape: string
+  shareable: boolean
 }
 
 export interface CharacterDossierEquipmentSlot {
@@ -25,8 +30,24 @@ export interface CharacterDossierEquipmentSlot {
   kind: string
   itemId: string | null
   itemName: string
+  itemTags: string[]
+  itemModifiers: Record<string, number>
+  itemColor: string
+  itemShape: string
   shared: boolean
   options: CharacterDossierEquipmentOption[]
+}
+
+export interface CharacterDossierItem {
+  id: string
+  name: string
+  tags: string[]
+  allowedSlots: string[]
+  modifiers: Record<string, number>
+  appearanceColor: string
+  appearanceShape: string
+  shareable: boolean
+  equippedSlotId: string | null
 }
 
 export interface CharacterDossierSkill {
@@ -56,6 +77,7 @@ export interface CharacterDossierSnapshot {
   abilities: CharacterDossierAbility[]
   abilityPointsAvailable: number
   equipment: CharacterDossierEquipmentSlot[]
+  items: CharacterDossierItem[]
   skills: CharacterDossierSkill[]
   field: {
     loadedChunks: number
@@ -123,6 +145,26 @@ const PANEL_GLYPHS: Record<CharacterDossierPanelId, string> = {
   systems: '⌁',
 }
 
+const ABILITY_GROUP_ORDER = ['physical', 'mental', 'social', 'fortune']
+
+const ITEM_GLYPHS: Record<string, string> = {
+  cap: '⌂',
+  shirt: '◇',
+  coat: '◈',
+  gloves: '≋',
+  belt: '━',
+  pants: '⋮',
+  boots: '⌁',
+  'round-glasses': '⊙',
+  pendant: '✦',
+  ring: '○',
+  watch: '◷',
+  staff: '∥',
+  'short-blade': '╱',
+  bow: '⌒',
+  hatchet: '†',
+}
+
 function cloneEquipment(
   equipment: CharacterDossierEquipmentSlot[]
 ): CharacterDossierEquipmentSlot[] {
@@ -134,6 +176,18 @@ function cloneEquipment(
 
 function copy(locale: LocaleCode, key: string): string {
   return getGameUiCopy(locale, key)
+}
+
+function titleCase(value: string): string {
+  return value ? `${value.slice(0, 1).toUpperCase()}${value.slice(1)}` : value
+}
+
+function groupLabel(locale: LocaleCode, group: string): string {
+  return copy(locale, `CharacterGroup${titleCase(group)}`)
+}
+
+function itemGlyph(shape: string): string {
+  return ITEM_GLYPHS[shape] ?? '◇'
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -271,11 +325,9 @@ export function createCharacterDossier(
     article.dataset.collapsed = String(panelCollapsed.get(panel) === true)
     const header = element('header', 'aw-character-dossier__panel-header')
     const titleGroup = element('div', 'aw-character-dossier__panel-title-group')
-    const eyebrow = element('span', 'aw-character-dossier__panel-eyebrow')
-    eyebrow.textContent = `${PANEL_SHORTCUTS[panel]} · ${copy(locale, 'CharacterDossierEyebrow')}`
     const title = element('h2')
     title.textContent = copy(locale, PANEL_KEYS[panel])
-    titleGroup.append(eyebrow, title)
+    titleGroup.append(title)
     if (count) {
       const countNode = element('span', 'aw-character-dossier__panel-count')
       countNode.textContent = count
@@ -372,66 +424,134 @@ export function createCharacterDossier(
       0
     )
     const remaining = Math.max(0, snapshot.abilityPointsAvailable - spent)
-    const summary = element('div', 'aw-character-dossier__point-summary')
+    const summary = element('section', 'aw-character-dossier__point-summary')
     summary.dataset.characterPreviewPoints = String(remaining)
+    const summaryHeading = element('div', 'aw-character-dossier__point-heading')
     const pointLabel = element('span')
-    pointLabel.textContent = copy(locale, 'CharacterPointsAvailable')
+    pointLabel.textContent = copy(locale, 'CharacterPointReserve')
     const pointValue = element('strong')
     pointValue.textContent = String(remaining)
-    summary.append(pointLabel, pointValue)
+    summaryHeading.append(pointLabel, pointValue)
+    summary.appendChild(summaryHeading)
     const preview = element('small')
     preview.textContent = copy(locale, 'CharacterPointsPreview')
     summary.appendChild(preview)
+    const reserveTrack = element('div', 'aw-character-dossier__point-track')
+    reserveTrack.setAttribute('aria-label', copy(locale, 'CharacterPointReserve'))
+    reserveTrack.style.gridTemplateColumns = `repeat(${Math.max(snapshot.abilityPointsAvailable, 1)}, minmax(0, 1fr))`
+    for (let index = 0; index < Math.max(snapshot.abilityPointsAvailable, 1); index += 1) {
+      const pip = element('span')
+      pip.className = index < remaining ? 'is-available' : 'is-spent'
+      reserveTrack.appendChild(pip)
+    }
+    summary.appendChild(reserveTrack)
     content.appendChild(summary)
 
-    const list = element('div', 'aw-character-dossier__ability-list')
-    snapshot.abilities.forEach((ability) => {
-      const value = draftAbilities[ability.id] ?? ability.value
-      const row = element('div', 'aw-character-dossier__ability-row')
-      row.dataset.characterAbilityId = ability.id
-      const heading = element('div', 'aw-character-dossier__ability-heading')
-      const label = element('div')
-      const abbreviation = element('span', 'aw-character-dossier__ability-abbr')
-      abbreviation.textContent = ability.abbreviation
-      const name = element('strong')
-      name.textContent = ability.name
-      label.append(abbreviation, name)
-      const valueLabel = element('span', 'aw-character-dossier__ability-value')
-      valueLabel.textContent = `${value} / ${ability.maximum}`
-      heading.append(label, valueLabel)
-      const track = element('div', 'aw-character-dossier__meter')
-      const fill = element('span')
-      fill.style.width = `${Math.round(((value - ability.minimum) / Math.max(1, ability.maximum - ability.minimum)) * 100)}%`
-      track.appendChild(fill)
-      const controls = element('div', 'aw-character-dossier__ability-controls')
-      const decrease = makeButton('aw-character-dossier__stepper', '−', () => {
-        if (value <= (abilityBaseline[ability.id] ?? ability.minimum)) return
-        draftAbilities[ability.id] = value - 1
-        hasPendingAbilityChanges = true
-        render()
-      })
-      decrease.dataset.characterAction = 'decrease-ability'
-      decrease.dataset.characterAbilityId = ability.id
-      decrease.disabled = value <= (abilityBaseline[ability.id] ?? ability.minimum)
-      decrease.setAttribute('aria-label', `${copy(locale, 'CharacterDecrease')} ${ability.name}`)
-      const increase = makeButton('aw-character-dossier__stepper is-positive', '+', () => {
-        if (remaining <= 0 || value >= ability.maximum) return
-        draftAbilities[ability.id] = value + 1
-        hasPendingAbilityChanges = true
-        render()
-      })
-      increase.dataset.characterAction = 'increase-ability'
-      increase.dataset.characterAbilityId = ability.id
-      increase.disabled = remaining <= 0 || value >= ability.maximum
-      increase.setAttribute('aria-label', `${copy(locale, 'CharacterIncrease')} ${ability.name}`)
-      controls.append(decrease, increase)
-      row.append(heading, track, controls)
-      const hint = element('small', 'aw-character-dossier__ability-hint')
-      hint.textContent = ability.description
-      row.appendChild(hint)
-      list.appendChild(row)
+    const facts = element('div', 'aw-character-dossier__ability-facts')
+    const factData: Array<[string, string]> = [
+      [copy(locale, 'CharacterAllocated'), String(spent)],
+      [copy(locale, 'CharacterMeasures'), String(snapshot.abilities.length)],
+      [
+        copy(locale, 'CharacterGroups'),
+        String(new Set(snapshot.abilities.map((ability) => ability.group)).size),
+      ],
+    ]
+    factData.forEach(([label, value]) => {
+      const fact = element('div')
+      const factLabel = element('span')
+      factLabel.textContent = label
+      const factValue = element('strong')
+      factValue.textContent = value
+      fact.append(factLabel, factValue)
+      facts.appendChild(fact)
     })
-    content.appendChild(list)
+    content.appendChild(facts)
+
+    const groups = [
+      ...ABILITY_GROUP_ORDER,
+      ...new Set(
+        snapshot.abilities
+          .map((ability) => ability.group)
+          .filter((group) => !ABILITY_GROUP_ORDER.includes(group))
+      ),
+    ]
+    groups.forEach((group) => {
+      const abilities = snapshot.abilities.filter((ability) => ability.group === group)
+      if (!abilities.length) return
+      const section = element('section', 'aw-character-dossier__ability-group')
+      section.dataset.characterAbilityGroup = group
+      const groupHeader = element('div', 'aw-character-dossier__ability-group-header')
+      const groupTitle = element('h3')
+      groupTitle.textContent = groupLabel(locale, group)
+      const groupMeta = element('span')
+      groupMeta.textContent = `${abilities.length} ${copy(locale, 'CharacterMeasuresShort')}`
+      groupHeader.append(groupTitle, groupMeta)
+      section.appendChild(groupHeader)
+
+      const list = element('div', 'aw-character-dossier__ability-list')
+      abilities.forEach((ability) => {
+        const value = draftAbilities[ability.id] ?? ability.value
+        const row = element('article', 'aw-character-dossier__ability-row')
+        row.dataset.characterAbilityId = ability.id
+        const heading = element('div', 'aw-character-dossier__ability-heading')
+        const label = element('div', 'aw-character-dossier__ability-label')
+        const abbreviation = element('span', 'aw-character-dossier__ability-abbr')
+        abbreviation.textContent = ability.abbreviation
+        const name = element('strong')
+        name.textContent = ability.name
+        const groupBadge = element('small', 'aw-character-dossier__ability-group-badge')
+        groupBadge.textContent = groupLabel(locale, group)
+        label.append(abbreviation, name, groupBadge)
+        const valueLabel = element('span', 'aw-character-dossier__ability-value')
+        valueLabel.textContent = `${value} / ${ability.maximum}`
+        heading.append(label, valueLabel)
+
+        const track = element('div', 'aw-character-dossier__meter')
+        track.setAttribute('role', 'progressbar')
+        track.setAttribute('aria-valuemin', String(ability.minimum))
+        track.setAttribute('aria-valuemax', String(ability.maximum))
+        track.setAttribute('aria-valuenow', String(value))
+        for (let index = ability.minimum; index <= ability.maximum; index += 1) {
+          const segment = element('span')
+          if (index <= value) segment.classList.add('is-filled')
+          if (index > (abilityBaseline[ability.id] ?? ability.minimum) && index <= value) {
+            segment.classList.add('is-preview')
+          }
+          track.appendChild(segment)
+        }
+
+        const lower = element('div', 'aw-character-dossier__ability-lower')
+        const hint = element('small', 'aw-character-dossier__ability-hint')
+        hint.textContent = ability.description
+        const controls = element('div', 'aw-character-dossier__ability-controls')
+        const decrease = makeButton('aw-character-dossier__stepper', '−', () => {
+          if (value <= (abilityBaseline[ability.id] ?? ability.minimum)) return
+          draftAbilities[ability.id] = value - 1
+          hasPendingAbilityChanges = true
+          render()
+        })
+        decrease.dataset.characterAction = 'decrease-ability'
+        decrease.dataset.characterAbilityId = ability.id
+        decrease.disabled = value <= (abilityBaseline[ability.id] ?? ability.minimum)
+        decrease.setAttribute('aria-label', `${copy(locale, 'CharacterDecrease')} ${ability.name}`)
+        const increase = makeButton('aw-character-dossier__stepper is-positive', '+', () => {
+          if (remaining <= 0 || value >= ability.maximum) return
+          draftAbilities[ability.id] = value + 1
+          hasPendingAbilityChanges = true
+          render()
+        })
+        increase.dataset.characterAction = 'increase-ability'
+        increase.dataset.characterAbilityId = ability.id
+        increase.disabled = remaining <= 0 || value >= ability.maximum
+        increase.setAttribute('aria-label', `${copy(locale, 'CharacterIncrease')} ${ability.name}`)
+        controls.append(decrease, increase)
+        lower.append(hint, controls)
+        row.append(heading, track, lower)
+        list.appendChild(row)
+      })
+      section.appendChild(list)
+      content.appendChild(section)
+    })
 
     const footer = element('div', 'aw-character-dossier__panel-footer')
     const reset = makeButton(
@@ -469,12 +589,42 @@ export function createCharacterDossier(
     const note = element('p', 'aw-character-dossier__muted')
     note.textContent = copy(locale, 'CharacterEquipmentHint')
     content.appendChild(note)
+
+    const modifierText = (modifiers: Record<string, number>) =>
+      Object.entries(modifiers)
+        .map(([id, value]) => {
+          const ability = snapshot.abilities.find((candidate) => candidate.id === id)
+          const sign = value >= 0 ? '+' : ''
+          return `${sign}${value} ${ability?.abbreviation ?? id.split(':').pop()?.slice(0, 3).toUpperCase() ?? id}`
+        })
+        .join(' · ')
+
+    const loadoutSection = element('section', 'aw-character-dossier__equipment-section')
+    const loadoutHeader = element('div', 'aw-character-dossier__equipment-section-header')
+    const loadoutTitle = element('h3')
+    loadoutTitle.textContent = copy(locale, 'CharacterLoadout')
+    const loadoutMeta = element('span')
+    loadoutMeta.textContent = `${snapshot.equipment.length} ${copy(locale, 'CharacterSlots')}`
+    loadoutHeader.append(loadoutTitle, loadoutMeta)
+    loadoutSection.appendChild(loadoutHeader)
     const list = element('div', 'aw-character-dossier__equipment-list')
     draftEquipment.forEach((slot) => {
-      const row = element('label', 'aw-character-dossier__equipment-row')
-      const slotName = element('span')
+      const row = element('article', 'aw-character-dossier__equipment-row')
+      const itemBlock = element('div', 'aw-character-dossier__equipment-item')
+      const icon = element('span', 'aw-character-dossier__item-icon')
+      icon.textContent = itemGlyph(slot.itemShape)
+      icon.style.setProperty('--awd-item-tint', slot.itemColor)
+      icon.setAttribute('aria-hidden', 'true')
+      const itemCopy = element('div')
+      const slotName = element('small')
       slotName.textContent = slot.slotName
+      const itemName = element('strong')
+      itemName.textContent = slot.itemName
+      itemCopy.append(slotName, itemName)
+      itemBlock.append(icon, itemCopy)
       const controls = element('span', 'aw-character-dossier__equipment-controls')
+      const selectLabel = element('label', 'aw-character-dossier__select-label')
+      selectLabel.textContent = copy(locale, 'CharacterChangeItem')
       const select = element('select')
       select.setAttribute('aria-label', slot.slotName)
       select.dataset.characterAction = 'equip'
@@ -495,6 +645,10 @@ export function createCharacterDossier(
                 ...candidate,
                 itemId: selectedItemId,
                 itemName: selectedOption?.name ?? copy(locale, 'None'),
+                itemTags: selectedOption?.tags ?? [],
+                itemModifiers: { ...(selectedOption?.modifiers ?? {}) },
+                itemColor: selectedOption?.appearanceColor ?? '#7c8a8d',
+                itemShape: selectedOption?.appearanceShape ?? 'empty',
               }
             : candidate
         )
@@ -502,7 +656,8 @@ export function createCharacterDossier(
         options.onAction({ type: 'equip', slotId: slot.slotId, itemId: selectedItemId })
         render()
       })
-      controls.appendChild(select)
+      selectLabel.appendChild(select)
+      controls.appendChild(selectLabel)
       if (slot.kind === 'weapon' && slot.itemId) {
         const active = makeButton(
           `aw-character-dossier__active-button${slot.slotId === draftActiveWeaponSlot ? ' is-active' : ''}`,
@@ -521,10 +676,72 @@ export function createCharacterDossier(
         active.disabled = slot.slotId === draftActiveWeaponSlot
         controls.appendChild(active)
       }
-      row.append(slotName, controls)
+      const meta = element('div', 'aw-character-dossier__equipment-meta')
+      const tags = element('span')
+      tags.textContent = slot.itemTags.length
+        ? slot.itemTags.map((tag) => tag.toUpperCase()).join(' · ')
+        : copy(locale, 'CharacterNoTags')
+      const modifiers = element('strong')
+      modifiers.textContent =
+        modifierText(slot.itemModifiers) || copy(locale, 'CharacterNoModifier')
+      meta.append(tags, modifiers)
+      row.append(itemBlock, controls, meta)
       list.appendChild(row)
     })
-    content.appendChild(list)
+    loadoutSection.appendChild(list)
+    content.appendChild(loadoutSection)
+
+    const catalogSection = element('section', 'aw-character-dossier__equipment-section')
+    const catalogHeader = element('div', 'aw-character-dossier__equipment-section-header')
+    const catalogTitle = element('h3')
+    catalogTitle.textContent = copy(locale, 'CharacterItemCatalog')
+    const catalogMeta = element('span')
+    catalogMeta.textContent = `${snapshot.items.length} ${copy(locale, 'CharacterEntries')}`
+    catalogHeader.append(catalogTitle, catalogMeta)
+    catalogSection.appendChild(catalogHeader)
+    const catalogHint = element('p', 'aw-character-dossier__catalog-hint')
+    catalogHint.textContent = copy(locale, 'CharacterCatalogHint')
+    catalogSection.appendChild(catalogHint)
+    const catalog = element('div', 'aw-character-dossier__item-grid')
+    snapshot.items.forEach((item) => {
+      const card = element('article', 'aw-character-dossier__item-card')
+      card.dataset.characterItemId = item.id
+      const cardHeader = element('div', 'aw-character-dossier__item-card-header')
+      const cardIcon = element('span', 'aw-character-dossier__item-icon')
+      cardIcon.textContent = itemGlyph(item.appearanceShape)
+      cardIcon.style.setProperty('--awd-item-tint', item.appearanceColor)
+      cardIcon.setAttribute('aria-hidden', 'true')
+      const cardTitle = element('div')
+      const cardName = element('strong')
+      cardName.textContent = item.name
+      const cardStatus = element('small')
+      cardStatus.textContent = item.equippedSlotId
+        ? copy(locale, 'CharacterEquipped')
+        : copy(locale, 'CharacterCatalog')
+      cardTitle.append(cardName, cardStatus)
+      cardHeader.append(cardIcon, cardTitle)
+      const cardTags = element('div', 'aw-character-dossier__item-tags')
+      item.tags.forEach((tag) => {
+        const tagNode = element('span')
+        tagNode.textContent = tag.toUpperCase()
+        cardTags.appendChild(tagNode)
+      })
+      if (item.shareable) {
+        const shareTag = element('span')
+        shareTag.textContent = copy(locale, 'CharacterShared')
+        cardTags.appendChild(shareTag)
+      }
+      const cardFooter = element('div', 'aw-character-dossier__item-card-footer')
+      const cardSlots = element('span')
+      cardSlots.textContent = `${item.allowedSlots.length} ${copy(locale, 'CharacterSlotTargets')}`
+      const cardModifier = element('strong')
+      cardModifier.textContent = modifierText(item.modifiers) || copy(locale, 'CharacterNoModifier')
+      cardFooter.append(cardSlots, cardModifier)
+      card.append(cardHeader, cardTags, cardFooter)
+      catalog.appendChild(card)
+    })
+    catalogSection.appendChild(catalog)
+    content.appendChild(catalogSection)
     renderPanelShell('equipment', content, `${snapshot.equipment.length}`)
   }
 
@@ -653,6 +870,7 @@ export function createCharacterDossier(
         const panel = target?.closest<HTMLElement>('[data-character-panel]')?.dataset
           .characterPanel as CharacterDossierPanelId | undefined
         if (panel && PANEL_ORDER.includes(panel)) {
+          target?.blur()
           panelOpen.set(panel, false)
           render()
         } else {
@@ -661,7 +879,9 @@ export function createCharacterDossier(
         return true
       }
       if (
-        target?.matches('input, textarea, select, a, [contenteditable="true"]') ||
+        (target &&
+          root.contains(target) &&
+          target.matches('input, textarea, select, a, [contenteditable="true"]')) ||
         (target?.matches('button, [role="button"]') && !root.contains(target))
       ) {
         return false
@@ -670,6 +890,11 @@ export function createCharacterDossier(
         event.preventDefault()
         if (dossierOpen) controller.close()
         else controller.openPanel('overview')
+        return true
+      }
+      if (key === 'i' && !event.repeat) {
+        event.preventDefault()
+        controller.openPanel('abilities')
         return true
       }
       if (dossierOpen && /^[1-5]$/.test(key) && !event.repeat) {

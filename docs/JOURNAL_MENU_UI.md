@@ -9,14 +9,14 @@ becomes a safe-area-aware single scroll surface on narrow screens.
 The journal has six independent sections. Each section is a complete reading surface;
 the rail only changes which one is visible.
 
-| Section        | Shortcut | Authority                                    | Purpose                                                                                        |
-| -------------- | -------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Save           | `1`      | versioned local save snapshot                | write a named manual progress marker and show save health                                      |
-| Guide          | `2`      | movement/action/UI contracts                 | tour controls, journal shortcuts, and a link to the character dossier                          |
-| Terrain manual | `3`      | loaded `BiomeDefinition` catalog             | names, descriptions, family, movement/road costs, occurrence, habitat tags, and iconic species |
-| Bestiary       | `4`      | enemy archetype and biome ecology references | show catalog references without claiming an encounter ledger exists                            |
-| Field map      | `5`      | streamed chunks and discovery counters       | current position, region, terrain, coverage, loaded landmarks, and seed                        |
-| Settings       | `6`      | live HUD/map configuration                   | toggle field HUD and field map, with the control reference kept nearby                         |
+| Section        | Shortcut  | Authority                                    | Purpose                                                                                        |
+| -------------- | --------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Save           | `1`       | versioned local save snapshot                | write a named manual progress marker and show save health                                      |
+| Guide          | `2`       | movement/action/UI contracts                 | tour controls, journal shortcuts, and a link to the character dossier                          |
+| Terrain manual | `3`       | loaded `BiomeDefinition` catalog             | names, descriptions, family, movement/road costs, occurrence, habitat tags, and iconic species |
+| Bestiary       | `4`       | enemy archetype and biome ecology references | show catalog references without claiming an encounter ledger exists                            |
+| Field map      | `M` / `5` | streamed chunks and discovery counters       | current position, region, terrain, coverage, loaded landmarks, and seed                        |
+| Settings       | `6`       | live HUD/map configuration                   | toggle field HUD and field map, with the control reference kept nearby                         |
 
 Legacy `GameUiTab` values (`journey`, `party`, and `gear`) remain accepted as aliases so
 embedders do not break; they open the Guide section. Detailed abilities, equipment,
@@ -32,15 +32,17 @@ skills, and field systems stay in the independently collapsible character dossie
 - The rail uses direct brass glyphs rather than circular icon containers, restrained
   selection lines, smoky navy surfaces, teal focus, and serif section headings from the
   JRPG UI system.
-- Bestiary reference cards use kind-specific field-record accents, layered contour/compass
-  details, and a restrained hover lift/glow. These effects are presentation-only; the cards
-  remain truthful reference entries and do not imply encounter history.
+- Journal cards use a shared field-record material: layered atlas washes, contour rings,
+  registration marks, accent tints, and a restrained hover/focus lift. Bestiary cards add
+  kind-specific accents and the denser habitat treatment. These effects are presentation-
+  only; the cards remain truthful reference entries and do not imply encounter history.
 - The left rail is a fixed-height navigation blade with no vertical scroll. Only the active
   right reading plane scrolls independently, so long terrain and ecology references do not
   stretch the outer modal or move the playfield behind it.
 - Mobile switches the rail to a fixed-height horizontal tab strip and keeps every button at
   a touchable size. The active panel remains the only scrollable reading surface.
-- `M` or `Esc` closes the journal. `Q`/`E`, arrows, `Home`, and `End` move sections;
+- `M` opens the Field map from gameplay; `Esc` opens Settings when no surface is active and
+  closes the journal when it is already open. `Q`/`E`, arrows, `Home`, and `End` move sections;
   `Tab` remains the focus loop. Opening the journal clears held gameplay keys.
 
 ## Truthful data boundary
