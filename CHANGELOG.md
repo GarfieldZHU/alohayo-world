@@ -2,14 +2,21 @@
 
 ## Unreleased
 
+- Simplify Chronicle rail icons into direct glyphs without circular wrappers, preserving
+  the rail's active selection line, labels, focus treatment, and mobile tab behavior.
+
+- Give Bestiary reference cards a more tactile field-record treatment with kind-specific
+  accents, layered scanline/compass detailing, and restrained hover lift/glow feedback.
+
 - Constrain the Chronicle menu to the game surface rather than the browser viewport. Keep
   the desktop navigation rail and mobile tab row fixed while limiting scrolling to the
   active right-side reading pane.
 
-- Redesign the splash threshold as a readable Wayfinder launch folio: high-contrast
-  start/continue action cards, local-world status, explicit field controls, responsive
-  mobile spacing, concise accessible labels, and an `M` shortcut into Settings while the
-  game is still gated.
+- Redesign the splash threshold as a tactile Wayfinder field plate: brass corner registration
+  marks, contour-line and scanline texture, compass detailing, a serif title lockup, gold
+  primary action, dark secondary action, local-world status, explicit field controls,
+  responsive mobile spacing, concise accessible labels, and an `M` shortcut into Settings
+  while the game is still gated.
 
 - Add the feature-branch terrain texture rendering foundation: a deterministic
   `terrain-texture-hints` Rust/Wasm batch with TypeScript parity/fallback, compact worker

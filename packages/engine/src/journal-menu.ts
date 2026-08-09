@@ -420,6 +420,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
       const grid = element('div', 'aw-journal__manual-grid')
       entries.forEach((entry) => {
         const card = element('article', 'aw-journal__manual-card')
+        card.dataset.journalEntryKind = entry.kind
         const header = element('header', 'aw-journal__manual-card-header')
         const titleNode = element('div')
         titleNode.append(

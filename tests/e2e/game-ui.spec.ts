@@ -16,7 +16,7 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   const splash = page.locator('[data-game-ui-surface="splash"]')
   await expect(splash).toBeVisible()
   const splashCard = splash.locator('.aw-game-ui__splash-card')
-  await expect(splashCard).toHaveCSS('border-radius', '22px')
+  await expect(splashCard).toHaveCSS('border-radius', '8px')
   await expect(splash.getByRole('button', { name: 'Begin journey' })).toHaveCSS(
     'min-height',
     '58px'
@@ -68,6 +68,7 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await expect(menu.locator('.aw-journal__content')).toHaveCSS('overflow-y', 'auto')
   await expect(minimap).toBeHidden()
   await expect(page.getByRole('tab')).toHaveCount(6)
+  await expect(menu.locator('.aw-journal__tab-glyph').first()).toHaveCSS('border-radius', '0px')
   await expect(menu.getByRole('button', { name: 'Save progress' })).toBeVisible()
   await menu.getByRole('button', { name: 'Save progress' }).click()
   await expect(menu.locator('[data-journal-save-state="saved"]')).toBeVisible()
@@ -87,6 +88,10 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await expect(menu.locator('.aw-journal__tabs')).toHaveJSProperty('scrollTop', 0)
   await page.keyboard.press('4')
   await expect(menu.getByText('Encounter ledger not active', { exact: true })).toBeVisible()
+  const wildlifeCard = menu.locator('[data-journal-entry-kind="wildlife"]').first()
+  await expect(wildlifeCard).toBeVisible()
+  await wildlifeCard.hover()
+  await expect(wildlifeCard).not.toHaveCSS('transform', 'none')
   await page.getByRole('tab', { name: 'Field map' }).click()
   await expect(menu.getByText('World seed', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('journal-desktop-field-map.png') })

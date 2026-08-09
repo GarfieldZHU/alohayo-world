@@ -306,40 +306,99 @@
 }
 
 .aw-game-ui__splash {
+  isolation: isolate;
+  overflow: hidden;
   background:
     radial-gradient(
-      circle at 50% 34%,
-      color-mix(in srgb, var(--aw-teal) 18%, transparent),
-      transparent 46%
+      ellipse at 50% 42%,
+      color-mix(in srgb, var(--aw-teal) 22%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 12% 16%,
+      color-mix(in srgb, var(--aw-brass) 14%, transparent),
+      transparent 28%
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--aw-ink) 46%, transparent),
-      color-mix(in srgb, var(--aw-ink) 72%, transparent)
+      color-mix(in srgb, var(--aw-ink) 28%, transparent),
+      color-mix(in srgb, var(--aw-ink) 76%, transparent)
+    ),
+    repeating-linear-gradient(
+      112deg,
+      color-mix(in srgb, var(--aw-silver) 3%, transparent) 0 1px,
+      transparent 1px 7px
     );
+}
+
+.aw-game-ui__splash::before,
+.aw-game-ui__splash::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+}
+
+.aw-game-ui__splash::before {
+  z-index: -1;
+  opacity: 0.42;
+  background:
+    repeating-radial-gradient(
+      ellipse at 34% 38%,
+      transparent 0 76px,
+      color-mix(in srgb, var(--aw-brass) 12%, transparent) 77px 78px,
+      transparent 79px 118px
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0 12%,
+      color-mix(in srgb, var(--aw-teal) 7%, transparent) 12.1% 12.2%,
+      transparent 12.3% 87.7%,
+      color-mix(in srgb, var(--aw-teal) 7%, transparent) 87.8% 87.9%,
+      transparent 88%
+    );
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 82%);
+}
+
+.aw-game-ui__splash::after {
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 35%,
+    color-mix(in srgb, var(--aw-ink) 52%, transparent) 100%
+  );
 }
 
 .aw-game-ui__splash-card {
   position: relative;
+  display: grid;
   box-sizing: border-box;
-  width: min(640px, calc(100% - 12px));
+  width: min(760px, calc(100% - 12px));
+  grid-template-columns: minmax(0, 1.12fr) minmax(238px, 0.88fr);
+  column-gap: clamp(24px, 5vw, 48px);
   padding: clamp(26px, 4vw, 42px);
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--aw-teal) 38%, transparent);
-  border-radius: 28px;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 68%, transparent);
+  border-radius: 10px;
   text-align: left;
   background:
     radial-gradient(
-      circle at 88% 8%,
-      color-mix(in srgb, var(--aw-teal) 13%, transparent),
-      transparent 28%
+      ellipse at 76% 12%,
+      color-mix(in srgb, var(--aw-teal) 14%, transparent),
+      transparent 34%
     ),
-    linear-gradient(145deg, color-mix(in srgb, var(--aw-teal) 10%, transparent), transparent 44%),
+    linear-gradient(125deg, color-mix(in srgb, var(--aw-brass) 10%, transparent), transparent 34%),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--aw-silver) 2.5%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
     var(--aw-deep);
   box-shadow:
-    0 24px 80px var(--aw-shadow),
-    0 0 0 1px color-mix(in srgb, var(--aw-brass) 12%, transparent),
-    inset 0 0 70px color-mix(in srgb, var(--aw-teal) 6%, transparent);
+    0 28px 90px color-mix(in srgb, var(--aw-shadow) 88%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--aw-silver) 8%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--aw-brass) 22%, transparent),
+    inset 0 0 80px color-mix(in srgb, var(--aw-teal) 8%, transparent);
   animation: aw-ui-arrive 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
@@ -351,22 +410,43 @@
 }
 
 .aw-game-ui__splash-card::before {
-  top: 0;
-  right: 34px;
-  left: 34px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--aw-brass), transparent);
+  inset: 10px;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 28%, transparent);
+  border-radius: 5px;
+  background:
+    linear-gradient(var(--aw-brass), var(--aw-brass)) left top / 52px 1px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) left top / 1px 52px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) right top / 52px 1px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) right top / 1px 52px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) left bottom / 52px 1px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) left bottom / 1px 52px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) right bottom / 52px 1px no-repeat,
+    linear-gradient(var(--aw-brass), var(--aw-brass)) right bottom / 1px 52px no-repeat;
   opacity: 0.7;
 }
 
 .aw-game-ui__splash-card::after {
-  top: 28px;
-  right: 28px;
-  width: 96px;
-  height: 96px;
-  border: 1px solid color-mix(in srgb, var(--aw-brass) 26%, transparent);
+  top: 22px;
+  right: 24px;
+  width: 108px;
+  height: 108px;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 38%, transparent);
   border-radius: 50%;
-  opacity: 0.42;
+  opacity: 0.52;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--aw-teal) 18%, transparent) 0 2px,
+      transparent 3px
+    ),
+    repeating-conic-gradient(
+      from 0deg,
+      color-mix(in srgb, var(--aw-brass) 34%, transparent) 0 1deg,
+      transparent 1deg 30deg
+    );
+  box-shadow:
+    inset 0 0 0 7px color-mix(in srgb, var(--aw-ink) 44%, transparent),
+    inset 0 0 0 8px color-mix(in srgb, var(--aw-brass) 18%, transparent);
 }
 
 .aw-game-ui__splash-header {
@@ -375,7 +455,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 24px;
+  grid-column: 1 / -1;
+  margin-bottom: 18px;
 }
 
 .aw-game-ui__splash-header-copy {
@@ -389,16 +470,16 @@
   height: 48px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--aw-brass) 86%, transparent);
-  border-radius: 50%;
-  color: var(--aw-mint);
-  font-size: 20px;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--aw-teal) 24%, transparent),
-    var(--aw-deep) 68%
-  );
+  border-radius: 7px;
+  color: #f8e8b8;
+  font-size: 21px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aw-brass) 28%, transparent), transparent 52%),
+    radial-gradient(circle, color-mix(in srgb, var(--aw-teal) 30%, transparent), var(--aw-deep) 68%);
+  transform: rotate(45deg);
   box-shadow:
-    0 0 0 7px color-mix(in srgb, var(--aw-deep) 86%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--aw-deep) 86%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--aw-brass) 22%, transparent),
     0 0 34px color-mix(in srgb, var(--aw-teal) 16%, transparent);
 }
 
@@ -426,22 +507,29 @@
 .aw-game-ui__splash h1 {
   position: relative;
   z-index: 1;
-  max-width: none;
-  font-size: clamp(38px, 7vw, 64px);
-  line-height: 0.96;
-  letter-spacing: -0.035em;
-  text-shadow: 0 5px 28px var(--aw-shadow);
+  grid-column: 1;
+  max-width: 8ch;
+  color: #f5e6c2;
+  font-size: clamp(42px, 7vw, 70px);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-shadow:
+    0 2px 0 color-mix(in srgb, var(--aw-brass) 22%, transparent),
+    0 8px 30px var(--aw-shadow);
 }
 
 .aw-game-ui__intro {
   position: relative;
   z-index: 1;
-  max-width: 48ch;
-  margin: 18px 0 22px;
-  color: var(--aw-silver);
+  grid-column: 1;
+  max-width: 34ch;
+  margin: 20px 0 20px;
+  color: color-mix(in srgb, var(--aw-silver) 88%, var(--aw-brass));
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 15px;
+  font-style: italic;
   line-height: 1.65;
-  opacity: 0.78;
+  opacity: 0.86;
 }
 
 .aw-game-ui__splash-meta {
@@ -450,14 +538,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 22px;
+  grid-column: 1;
+  margin-bottom: 0;
 }
 
 .aw-game-ui__splash-meta span {
-  padding: 7px 10px;
-  border: 1px solid color-mix(in srgb, var(--aw-teal) 24%, transparent);
-  border-radius: 999px;
-  color: var(--aw-muted);
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 32%, transparent);
+  border-radius: 3px;
+  color: color-mix(in srgb, var(--aw-muted) 88%, var(--aw-brass));
   font:
     10px/1.2 ui-monospace,
     SFMono-Regular,
@@ -465,6 +554,7 @@
     monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  background: color-mix(in srgb, var(--aw-ink) 28%, transparent);
 }
 
 .aw-game-ui__splash-meta span:first-child {
@@ -477,7 +567,12 @@
   z-index: 1;
   display: grid;
   width: 100%;
-  gap: 10px;
+  align-self: center;
+  gap: 12px;
+  grid-column: 2;
+  grid-row: 2 / span 3;
+  padding-left: clamp(22px, 3vw, 34px);
+  border-left: 1px solid color-mix(in srgb, var(--aw-brass) 34%, transparent);
 }
 
 .aw-game-ui__primary,
@@ -495,14 +590,15 @@
   display: grid;
   box-sizing: border-box;
   min-width: 0;
-  min-height: 74px;
+  min-height: 72px;
   grid-template-areas:
     'label shortcut'
     'detail shortcut';
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 18px;
-  padding: 13px 16px;
+  padding: 14px 15px;
+  border-radius: 5px 14px 5px 14px;
   text-align: left;
   transition:
     transform 140ms ease,
@@ -514,73 +610,80 @@
 .aw-game-ui__splash-action .aw-game-ui__button-label {
   grid-area: label;
   color: var(--aw-silver);
-  font-size: 15px;
-  font-weight: 750;
-  letter-spacing: 0.02em;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
 }
 
 .aw-game-ui__splash-action .aw-game-ui__button-detail {
   grid-area: detail;
   margin-top: 3px;
   overflow: hidden;
-  color: var(--aw-muted);
+  color: color-mix(in srgb, var(--aw-muted) 86%, var(--aw-brass));
   font-size: 12px;
   line-height: 1.3;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .aw-game-ui__splash-action .aw-game-ui__button-shortcut {
   display: grid;
   min-width: 42px;
-  min-height: 30px;
+  min-height: 28px;
   grid-area: shortcut;
   place-items: center;
   padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--aw-silver) 18%, transparent);
-  border-radius: 7px;
-  color: var(--aw-muted);
+  border: 1px solid color-mix(in srgb, var(--aw-brass) 48%, transparent);
+  border-radius: 3px;
+  color: var(--aw-brass);
   font:
     10px/1 ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
   letter-spacing: 0.08em;
+  background: color-mix(in srgb, var(--aw-ink) 42%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__primary {
-  border-color: color-mix(in srgb, var(--aw-teal) 70%, var(--aw-brass));
-  color: var(--aw-silver);
+  border-color: color-mix(in srgb, #f4d685 76%, var(--aw-brass));
+  color: var(--aw-ink);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--aw-teal) 28%, transparent), transparent 70%),
-    linear-gradient(135deg, #1e6474, #142b45);
+    linear-gradient(135deg, color-mix(in srgb, #fff2c4 72%, transparent), transparent 42%),
+    linear-gradient(110deg, #bd8b38, #f3d884 48%, #a66f29);
   box-shadow:
     0 12px 28px color-mix(in srgb, var(--aw-ink) 42%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--aw-mint) 28%, transparent);
+    inset 0 1px 0 #fff4c9,
+    inset 0 -2px 0 color-mix(in srgb, #6d441c 60%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__primary .aw-game-ui__button-label {
-  color: #ffffff;
+  color: #211609;
 }
 
 .aw-game-ui__splash-action.aw-game-ui__primary .aw-game-ui__button-detail {
-  color: color-mix(in srgb, var(--aw-silver) 76%, transparent);
+  color: color-mix(in srgb, #211609 74%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__primary .aw-game-ui__button-shortcut {
-  color: var(--aw-mint);
-  border-color: color-mix(in srgb, var(--aw-mint) 42%, transparent);
+  color: #211609;
+  border-color: color-mix(in srgb, #211609 42%, transparent);
+  background: color-mix(in srgb, #fff2c4 30%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__secondary {
-  border-color: color-mix(in srgb, var(--aw-silver) 17%, transparent);
-  background: color-mix(in srgb, var(--aw-panel) 68%, transparent);
+  border-color: color-mix(in srgb, var(--aw-brass) 48%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aw-teal) 12%, transparent), transparent 65%),
+    color-mix(in srgb, var(--aw-panel) 74%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__text-button {
-  min-height: 58px;
-  border-color: transparent;
-  background: transparent;
+  min-height: 54px;
+  border-color: color-mix(in srgb, var(--aw-silver) 14%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--aw-ink) 28%, transparent);
 }
 
 .aw-game-ui__splash-action.aw-game-ui__text-button .aw-game-ui__button-label {
@@ -589,10 +692,10 @@
 }
 
 .aw-game-ui__splash-action:hover {
-  border-color: var(--aw-teal);
-  background-color: color-mix(in srgb, var(--aw-teal) 12%, var(--aw-panel));
+  border-color: var(--aw-mint);
+  background-color: color-mix(in srgb, var(--aw-teal) 18%, var(--aw-panel));
   box-shadow: 0 10px 24px color-mix(in srgb, var(--aw-ink) 32%, transparent);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .aw-game-ui__panel-action {
@@ -640,11 +743,15 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px 14px;
+  grid-column: 1 / -1;
   margin-top: 20px;
   padding: 13px 14px;
   border: 1px solid color-mix(in srgb, var(--aw-silver) 13%, transparent);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--aw-ink) 38%, transparent);
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--aw-brass) 12%, transparent), transparent 38%),
+    color-mix(in srgb, var(--aw-ink) 48%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--aw-brass) 16%, transparent);
 }
 
 .aw-game-ui__splash-controls-label {
@@ -781,10 +888,12 @@
   width: 25px;
   height: 25px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--aw-brass) 35%, transparent);
-  border-radius: 50%;
+  border: 0;
+  border-radius: 0;
   color: var(--aw-brass);
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1;
+  background: transparent;
 }
 
 .aw-journal__tab-label {
@@ -1137,6 +1246,132 @@
   margin-top: 28px;
 }
 
+.aw-journal__bestiary-group .aw-journal__manual-grid {
+  gap: 14px;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card {
+  --aw-card-accent: var(--aw-teal);
+  position: relative;
+  isolation: isolate;
+  min-height: 168px;
+  overflow: hidden;
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--aw-card-accent) 42%, var(--aw-line));
+  border-radius: 14px 5px 14px 5px;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--aw-card-accent) 18%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--aw-card-accent) 8%, transparent),
+      transparent 46%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--aw-silver) 2%, transparent) 0 1px,
+      transparent 1px 6px
+    ),
+    color-mix(in srgb, var(--aw-panel) 82%, transparent);
+  box-shadow:
+    0 8px 18px color-mix(in srgb, var(--aw-ink) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--aw-card-accent) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--aw-silver) 4%, transparent);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card[data-journal-entry-kind='monster'] {
+  --aw-card-accent: #e4a078;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card::before,
+.aw-journal__bestiary-group .aw-journal__manual-card::after {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  content: '';
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card::before {
+  inset: 8px;
+  border: 1px solid color-mix(in srgb, var(--aw-card-accent) 22%, transparent);
+  border-radius: 9px 3px 9px 3px;
+  background:
+    linear-gradient(var(--aw-card-accent), var(--aw-card-accent)) left top / 34px 1px no-repeat,
+    linear-gradient(var(--aw-card-accent), var(--aw-card-accent)) right bottom / 34px 1px no-repeat;
+  opacity: 0.72;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card::after {
+  top: -48px;
+  right: -34px;
+  width: 138px;
+  height: 138px;
+  border: 1px solid color-mix(in srgb, var(--aw-card-accent) 34%, transparent);
+  border-radius: 50%;
+  opacity: 0.3;
+  background: repeating-conic-gradient(
+    from 8deg,
+    color-mix(in srgb, var(--aw-card-accent) 35%, transparent) 0 1deg,
+    transparent 1deg 28deg
+  );
+  box-shadow:
+    inset 0 0 0 7px color-mix(in srgb, var(--aw-ink) 28%, transparent),
+    inset 0 0 0 8px color-mix(in srgb, var(--aw-card-accent) 18%, transparent);
+  transform: rotate(18deg);
+  transition:
+    opacity 180ms ease,
+    transform 240ms ease;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card-header > .aw-journal__chip,
+.aw-journal__bestiary-group .aw-journal__manual-card .aw-journal__tag-list .aw-journal__chip {
+  border-color: color-mix(in srgb, var(--aw-card-accent) 62%, transparent);
+  color: color-mix(in srgb, var(--aw-card-accent) 82%, var(--aw-silver));
+  background: color-mix(in srgb, var(--aw-card-accent) 9%, transparent);
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card h4 {
+  max-width: 16ch;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.aw-journal__bestiary-group .aw-journal__manual-card .aw-journal__muted {
+  max-width: 34ch;
+  line-height: 1.6;
+}
+
+@media (hover: hover) {
+  .aw-journal__bestiary-group .aw-journal__manual-card:hover {
+    z-index: 2;
+    border-color: color-mix(in srgb, var(--aw-card-accent) 78%, var(--aw-line));
+    box-shadow:
+      0 14px 28px color-mix(in srgb, var(--aw-ink) 36%, transparent),
+      0 0 24px color-mix(in srgb, var(--aw-card-accent) 12%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--aw-card-accent) 42%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--aw-silver) 7%, transparent);
+    transform: translateY(-3px) rotate(-0.25deg);
+  }
+
+  .aw-journal__bestiary-group .aw-journal__manual-card:hover::after {
+    opacity: 0.58;
+    transform: rotate(8deg) scale(1.04);
+  }
+}
+
 .aw-journal__landmark-list,
 .aw-journal__settings-list {
   display: grid;
@@ -1288,9 +1523,10 @@
   }
 
   .aw-game-ui__splash-card {
+    grid-template-columns: 1fr;
     max-height: calc(100% - 4px);
     padding: 18px clamp(16px, 3vw, 30px) 14px;
-    border-radius: 22px;
+    border-radius: 8px;
     overflow-y: auto;
   }
 
@@ -1302,6 +1538,7 @@
   }
 
   .aw-game-ui__splash-header {
+    grid-column: 1;
     gap: 10px;
     margin-bottom: 12px;
   }
@@ -1314,19 +1551,30 @@
   }
 
   .aw-game-ui__splash h1 {
+    grid-column: 1;
     max-width: none;
     font-size: clamp(34px, 5vw, 48px);
   }
 
   .aw-game-ui__intro {
+    grid-column: 1;
     margin: 10px 0 14px;
     font-size: 13px;
     line-height: 1.45;
   }
 
   .aw-game-ui__splash-meta {
+    grid-column: 1;
     gap: 6px;
     margin-bottom: 14px;
+  }
+
+  .aw-game-ui__splash-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 14px;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .aw-game-ui__splash-meta span {
@@ -1358,6 +1606,7 @@
   }
 
   .aw-game-ui__splash-controls {
+    grid-column: 1;
     gap: 4px 10px;
     margin-top: 10px;
     padding: 8px 10px;
@@ -1394,9 +1643,10 @@
   }
 
   .aw-game-ui__splash-card {
+    grid-template-columns: 1fr;
     width: min(440px, 100%);
     padding: 24px 18px 18px;
-    border-radius: 22px;
+    border-radius: 8px;
   }
 
   .aw-game-ui__splash-card::after {
@@ -1407,6 +1657,7 @@
   }
 
   .aw-game-ui__splash-header {
+    grid-column: 1;
     gap: 10px;
     margin-bottom: 20px;
   }
@@ -1419,16 +1670,19 @@
   }
 
   .aw-game-ui__splash h1 {
+    grid-column: 1;
     max-width: 9ch;
     font-size: clamp(36px, 12vw, 52px);
   }
 
   .aw-game-ui__intro {
+    grid-column: 1;
     margin: 14px 0 18px;
     font-size: 14px;
   }
 
   .aw-game-ui__splash-meta {
+    grid-column: 1;
     margin-bottom: 16px;
   }
 
@@ -1441,11 +1695,20 @@
     padding: 11px 13px;
   }
 
+  .aw-game-ui__splash-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 14px;
+    padding-left: 0;
+    border-left: 0;
+  }
+
   .aw-game-ui__splash-action .aw-game-ui__button-detail {
     font-size: 11px;
   }
 
   .aw-game-ui__splash-controls {
+    grid-column: 1;
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;
@@ -1566,31 +1829,45 @@
    compact splash values after the mobile breakpoint so the actual container wins. */
 @container (max-height: 560px) {
   .aw-game-ui__splash-card {
+    grid-template-columns: 1fr;
     padding: 18px clamp(16px, 3vw, 30px) 14px;
+    border-radius: 8px;
   }
 
   .aw-game-ui__splash-header {
+    grid-column: 1;
     margin-bottom: 12px;
   }
 
   .aw-game-ui__splash h1 {
+    grid-column: 1;
     max-width: none;
     font-size: clamp(34px, 5vw, 48px);
   }
 
   .aw-game-ui__intro {
+    grid-column: 1;
     margin: 10px 0 14px;
     font-size: 13px;
     line-height: 1.45;
   }
 
   .aw-game-ui__splash-meta {
+    grid-column: 1;
     margin-bottom: 14px;
   }
 
   .aw-game-ui__splash .aw-game-ui__splash-action {
     min-height: 58px;
     padding: 9px 12px;
+  }
+
+  .aw-game-ui__splash-actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 14px;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .aw-game-ui__splash-action .aw-game-ui__button-label {
@@ -1612,6 +1889,7 @@
   }
 
   .aw-game-ui__splash-controls {
+    grid-column: 1;
     gap: 4px 10px;
     margin-top: 10px;
     padding: 8px 10px;

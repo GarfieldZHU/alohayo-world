@@ -29,8 +29,12 @@ skills, and field systems stay in the independently collapsible character dossie
   above or below the map.
 - A left rail and one active reading plane keep the hierarchy closer to a field folio
   than a dashboard.
-- The rail uses restrained brass selection lines, smoky navy surfaces, teal focus, and
-  serif section headings from the JRPG UI system.
+- The rail uses direct brass glyphs rather than circular icon containers, restrained
+  selection lines, smoky navy surfaces, teal focus, and serif section headings from the
+  JRPG UI system.
+- Bestiary reference cards use kind-specific field-record accents, layered contour/compass
+  details, and a restrained hover lift/glow. These effects are presentation-only; the cards
+  remain truthful reference entries and do not imply encounter history.
 - The left rail is a fixed-height navigation blade with no vertical scroll. Only the active
   right reading plane scrolls independently, so long terrain and ecology references do not
   stretch the outer modal or move the playfield behind it.

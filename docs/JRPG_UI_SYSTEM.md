@@ -26,17 +26,25 @@ skin. Keep the map visible around a compact launch folio, make the next action o
 with a high-contrast action card, keep HUD information at the edge, and let brass appear
 as a trace accent rather than a heavy frame.
 
+The 2026-08-09 tactile plate pass sharpens the splash toward a richly rendered title
+screen without shipping a JPEG skin. The DOM surface now layers CSS contour lines,
+scanline grain, a vignette, corner registration marks, a compass ring, beveled brass,
+and an editorial serif title over the live map. Desktop uses a title-and-action split
+when the embedded surface is tall enough; compact surfaces and mobile collapse to one
+column so the action remains readable without making the dialog taller than its host.
+
 ### Splash: the threshold
 
 ![JRPG splash concept](design/jrpg-ui/splash-concept.png)
 
 The splash is a threshold into the field map, not a generic centered dialog. Its production
-surface uses a small compass crest, a readable serif title, a local-world status row, and
-action cards that explain the difference between starting a survey, returning to a saved
-camp, and tuning settings. A labeled field-controls strip keeps the first shortcuts visible
-without asking the player to decode a low-contrast footer. The map remains visible around
-the translucent veil, and code-native borders, gradients, and the crest replace a full
-bitmap skin.
+surface uses a brass-framed field plate, a rotated wayfinder gem, a readable serif title
+lockup, a local-world status row, and material-specific actions that explain the difference
+between starting a survey, returning to a saved camp, and tuning settings. A labeled
+field-controls strip keeps the first shortcuts visible without asking the player to decode
+a low-contrast footer. The map remains visible around the vignette, and code-native
+contours, scanlines, bevels, and compass geometry provide image-like detail without a
+runtime bitmap dependency.
 
 ### HUD: the wayfinder edge
 
@@ -79,9 +87,13 @@ dark ink text. Theme values remain scoped to `.aw-game-ui`.
 
 - smoky vellum: layered translucent navy gradients without runtime blur;
 - rounded host surfaces: 12–22px radii echo the blog's cards without flattening the map;
-- aged brass: one-pixel borders and restrained selection lines, without ornate chrome;
-- compass gem: a small rotated square used as the common focus/wayfinding anchor;
-- cartography: low-opacity contour lines and grid marks created with CSS gradients;
+- field plate: the splash uses a tighter 8–10px framed silhouette with registration marks,
+  beveled edges, and a two-column title/action hierarchy on taller surfaces;
+- aged brass: one-pixel borders, corner marks, and action bevels give the launch surface
+  material depth without shipping a bitmap skin;
+- compass gem: a small rotated square and a secondary compass ring anchor wayfinding focus;
+- cartography: low-opacity contour lines, scanline grain, vignette, and grid marks created
+  with CSS gradients;
 - folio: a single layered menu plane, never a wall of equal-weight cards.
 
 ### Type
