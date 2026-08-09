@@ -33,6 +33,14 @@ ability rolls, appearance pools, equipment choices, and active weapon slots for 
 role. The engine consumes generated snapshots and does not own character definition
 logic.
 
+Character presentation flows through `@alohayo/character-renderer`. It resolves a
+renderer-neutral frame (facing, idle/walk/run/action state, one-ninth-cell footprint,
+equipment IDs, and optional sprite/GLB manifest) and adapts it to explicit Pixi layers:
+shadow, aura, body, head, equipment, and weapon. Reduced-motion rendering is
+deterministic, debug flight rings stay opt-in, and `dispose` releases every layer.
+Simulation, collision, equipment rules, and save contracts remain in `@alohayo/character`
+and `@alohayo/engine`.
+
 The active browser generator is currently TypeScript inside a Web Worker. The Rust crate
 contains deterministic primitives and a Wasm build path, but it does not become
 authoritative until a worker-side loader, coarse batch API, and cross-language parity
@@ -90,3 +98,8 @@ rollback is incomplete. Save, rename, duplicate, single-import, and archive-impo
 confirm replacement before overwriting. Journey cards are keyboard-selectable and the
 versioned archive importer reports malformed, duplicate, cancelled, and engine-rejected
 records independently; browser storage estimates are advisory only.
+The #52 regression fixtures inject a corrupt IndexedDB record beside a healthy journey and
+force a deterministic quota failure after a bounded number of writes, proving healthy
+listing/loading and oldest-backup pruning remain isolated. The #53 browser journey adds
+keyboard selection at a narrow viewport so remount and recovery affordances remain usable
+without a mouse.

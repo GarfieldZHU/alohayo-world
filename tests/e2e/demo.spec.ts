@@ -193,6 +193,62 @@ test('confirms a cross-seed journey remount and keeps a recovery slot', async ({
   await expect(page.locator('.save-card').filter({ hasText: 'First journey' })).toBeVisible()
 })
 
+test('keeps healthy journeys visible beside an injected corrupt record', async ({ page }) => {
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+
+  await page.getByPlaceholder('Save name').fill('Healthy crossing')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.locator('.save-card').filter({ hasText: 'Healthy crossing' })).toBeVisible()
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('alohayo-world')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+    })
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction('world-saves', 'readwrite')
+      transaction.objectStore('world-saves').put({
+        slotId: 'corrupt-browser-fixture',
+        label: 'Corrupt browser fixture',
+        kind: 'manual',
+        snapshot: { schemaVersion: 1, explorer: null },
+      })
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+    })
+    database.close()
+  })
+
+  await page.reload()
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.locator('.save-card').filter({ hasText: 'Healthy crossing' })).toBeVisible()
+  await expect(page.locator('.save-card[data-health="corrupt"]')).toContainText(
+    'Corrupt browser fixture'
+  )
+})
+
+test('supports keyboard selection and narrow save cards', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+
+  await page.getByPlaceholder('Save name').fill('Narrow crossing')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  const card = page.locator('.save-card').filter({ hasText: 'Narrow crossing' })
+  await expect(card).toBeVisible()
+  await card.focus()
+  await page.keyboard.press('Enter')
+  await expect(card).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('#save-list')).toBeVisible()
+})
+
 test('rehydrates topology aliases before streamed chunks after a browser restart', async ({
   page,
 }) => {

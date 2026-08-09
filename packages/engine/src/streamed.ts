@@ -19,6 +19,7 @@ import {
   type CharacterMotionState,
   type GeneratedCharacter,
 } from '@alohayo/character'
+import { createPixiCharacterRenderer } from '@alohayo/character-renderer'
 import type {
   BiomeDefinition,
   GameUiTab,
@@ -191,7 +192,8 @@ export async function createGame(
   let fogMaskTexture: Texture | null = null
   let previousFogVision: FogMaskVision | undefined
   const devLayer = new Graphics()
-  const characterLayer = new Graphics()
+  const characterLayer = new Container()
+  const characterRenderer = createPixiCharacterRenderer(characterLayer, devLayer)
   const overlay = new Container()
   const minimapLayer = new Graphics()
   viewport.addChild(chunkLayer, discoveryFogLayer, devLayer, characterLayer)
@@ -950,43 +952,11 @@ export async function createGame(
         })
       : null
 
-  const appearanceColor = (value: string, fallback: number) => {
-    const colors: Record<string, number> = {
-      porcelain: 0xf1d6c6,
-      fair: 0xe4bfa6,
-      warm: 0xc99370,
-      olive: 0xa77b55,
-      brown: 0x815536,
-      deep: 0x4f3023,
-      black: 0x151719,
-      'dark-brown': 0x33251e,
-      auburn: 0x7a3f2d,
-      blonde: 0xd2b36c,
-      silver: 0x9b9da1,
-      white: 0xe5e7e8,
-    }
-    return colors[value] ?? fallback
-  }
-
-  const itemColor = (slotIds: string[], fallback: number) => {
-    if (!explorer) return fallback
-    const selection = explorer.equipment.find(
-      (entry) => slotIds.includes(entry.slotId) && entry.itemId
-    )
-    const item = content.characters.items.find((candidate) => candidate.id === selection?.itemId)
-    const color = item?.appearance.color
-    return color?.startsWith('#') ? Number.parseInt(color.slice(1), 16) : fallback
-  }
-
-  const activeWeaponColor = (fallback: number) => {
-    if (!explorer?.activeWeaponSlot) return fallback
-    return itemColor([explorer.activeWeaponSlot], fallback)
-  }
-
   const drawExplorer = (elapsedSeconds = 0) => {
-    characterLayer.clear()
-    devLayer.clear()
-    if (!explorer || !explorerMotion) return
+    if (!explorer || !explorerMotion) {
+      characterRenderer.clear()
+      return
+    }
     app.canvas.dataset.characterX = explorerMotion.x.toFixed(4)
     app.canvas.dataset.characterY = explorerMotion.y.toFixed(4)
     app.canvas.dataset.characterState = explorerMotion.state
@@ -998,78 +968,22 @@ export async function createGame(
     app.canvas.dataset.devFastMove = devFastMove ? 'true' : 'false'
     app.canvas.dataset.devFly = devFly ? 'true' : 'false'
     app.canvas.dataset.locale = locale
-    const centerPixelX = explorerMotion.x * cellSize
-    const centerPixelY = explorerMotion.y * cellSize
-    const skin = appearanceColor(explorer.appearance.skinTone, 0xc99370)
-    const hair = appearanceColor(explorer.appearance.hairColor, 0x33251e)
-    const clothing = itemColor(['wear:outer', 'wear:torso'], 0x72d7c8)
-    const hat = itemColor(['wear:head', 'decor:head'], 0x9bb2bf)
-    const weapon = activeWeaponColor(0xf0d79b)
-    const footprint = cellSize * CHARACTER_CELL_FRACTION
-    const bodyWidthFactor =
-      explorer.appearance.bodyShape === 'broad'
-        ? 0.95
-        : explorer.appearance.bodyShape === 'slender'
-          ? 0.68
-          : 0.82
-    const bodyHeightFactor =
-      explorer.appearance.height === 'very-tall' || explorer.appearance.height === 'tall'
-        ? 0.46
-        : explorer.appearance.height === 'short'
-          ? 0.34
-          : 0.4
-    const moving = explorerMotion.state === 'walk' || explorerMotion.state === 'run'
-    const strideSpeed = explorerMotion.state === 'run' ? 15 : 9
-    const bob = moving ? Math.sin(elapsedSeconds * strideSpeed) * footprint * 0.08 : 0
-    const bodyWidth = footprint * bodyWidthFactor
-    const bodyHeight = footprint * bodyHeightFactor
-    const headRadius = footprint * 0.2
-    const facingOffsetX =
-      explorerMotion.facing === 'west'
-        ? -footprint * 0.12
-        : explorerMotion.facing === 'east'
-          ? footprint * 0.12
-          : 0
-    const actionPulse =
-      explorerMotion.state === 'action' ? 1 + Math.sin(elapsedSeconds * 24) * 0.15 : 1
-    if (devMode && devFly) {
-      devLayer
-        .circle(centerPixelX, centerPixelY, cellSize * 2.6)
-        .stroke({ color: 0x8ef2ff, width: Math.max(0.45, cellSize * 0.1), alpha: 0.9 })
-        .circle(centerPixelX, centerPixelY, cellSize * 2.05)
-        .stroke({ color: 0x1cc8e8, width: Math.max(0.35, cellSize * 0.08), alpha: 0.55 })
-    }
-    characterLayer
-      .circle(centerPixelX, centerPixelY, cellSize * 0.45 * actionPulse)
-      .stroke({
-        color: explorerMotion.state === 'action' ? 0xf0d79b : 0xffffff,
-        width: Math.max(0.35, cellSize * 0.08),
-        alpha: 0.78,
-      })
-      .circle(centerPixelX + facingOffsetX, centerPixelY - footprint * 0.27 + bob, headRadius)
-      .fill({ color: skin })
-      .circle(centerPixelX + facingOffsetX, centerPixelY - footprint * 0.34 + bob, headRadius * 0.9)
-      .fill({ color: hair, alpha: 0.92 })
-      .rect(
-        centerPixelX - headRadius * 1.05,
-        centerPixelY - footprint * 0.52 + bob,
-        headRadius * 2.1,
-        headRadius * 0.42
-      )
-      .fill({ color: hat, alpha: 0.88 })
-      .rect(
-        centerPixelX - bodyWidth / 2,
-        centerPixelY - footprint * 0.04 + bob,
-        bodyWidth,
-        bodyHeight
-      )
-      .fill({ color: clothing })
-      .moveTo(centerPixelX + bodyWidth * 0.55, centerPixelY + bob)
-      .lineTo(
-        centerPixelX + bodyWidth * 0.55 + footprint * 0.44,
-        centerPixelY + footprint * 0.18 + bob
-      )
-      .stroke({ color: weapon, width: Math.max(0.5, cellSize * 0.12), alpha: 0.92 })
+    characterRenderer.render({
+      character: explorer,
+      content: content.characters,
+      motion: explorerMotion,
+      frame: {
+        x: explorerMotion.x,
+        y: explorerMotion.y,
+        cellSize,
+        facing: explorerMotion.facing,
+        state: explorerMotion.state,
+        elapsedSeconds,
+        devMode,
+        devFly,
+        reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+      },
+    })
   }
 
   const redrawWorldFog = (incremental = false) => {
@@ -3112,6 +3026,7 @@ export async function createGame(
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('resize', onResize)
       performanceTracker.destroy()
+      characterRenderer.dispose()
       app.destroy(true, { children: true, texture: true })
       options.container.replaceChildren()
     },

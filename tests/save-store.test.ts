@@ -97,7 +97,7 @@ class FakeDatabase {
   constructor(
     private readonly stores: Set<string>,
     private readonly records: Map<string, unknown>,
-    private readonly failWrites = false
+    private readonly shouldFailWrite: () => boolean = () => false
   ) {
     this.objectStoreNames = new FakeObjectStoreNames(stores)
   }
@@ -107,10 +107,12 @@ class FakeDatabase {
     return {}
   }
 
-  transaction() {
+  transaction(_store?: string, mode?: IDBTransactionMode) {
     return new FakeTransaction(
       this.records,
-      this.failWrites ? new DOMException('quota', 'QuotaExceededError') : null
+      mode === 'readwrite' && this.shouldFailWrite()
+        ? new DOMException('quota', 'QuotaExceededError')
+        : null
     )
   }
 }
@@ -118,13 +120,25 @@ class FakeDatabase {
 class FakeIndexedDbFactory {
   private readonly stores = new Set<string>()
   readonly records = new Map<string, unknown>()
+  private quotaFailuresRemaining = 0
 
   constructor(private readonly failWrites = false) {}
+
+  failNextWrites(count: number) {
+    this.quotaFailuresRemaining = Math.max(0, Math.floor(count))
+  }
+
+  private shouldFailWrite() {
+    if (this.failWrites) return true
+    if (this.quotaFailuresRemaining <= 0) return false
+    this.quotaFailuresRemaining -= 1
+    return true
+  }
 
   open() {
     const request = new FakeOpenRequest()
     queueMicrotask(() => {
-      request.result = new FakeDatabase(this.stores, this.records, this.failWrites)
+      request.result = new FakeDatabase(this.stores, this.records, () => this.shouldFailWrite())
       request.onupgradeneeded?.()
       request.onsuccess?.()
     })
@@ -481,5 +495,24 @@ describe('world save store', () => {
     await expect(store.save(sampleSnapshot)).rejects.toMatchObject({
       code: 'quota-exceeded',
     })
+  })
+
+  it('prunes the oldest backup after a controllable quota retry', async () => {
+    const factory = new FakeIndexedDbFactory()
+    const store = createWorldSaveStore(factory as unknown as IDBFactory)
+    await store.save(sampleSnapshot, 'journey')
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-06T00:00:00.000Z' }, 'journey')
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-07T00:00:00.000Z' }, 'journey')
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-08T00:00:00.000Z' }, 'journey')
+
+    factory.failNextWrites(1)
+    await store.save({ ...sampleSnapshot, savedAt: '2026-07-09T00:00:00.000Z' }, 'journey')
+
+    const backups = await store.listBackups('journey')
+    expect(backups).toHaveLength(2)
+    expect(backups.map((backup) => backup.savedAt)).toEqual([
+      '2026-07-08T00:00:00.000Z',
+      '2026-07-07T00:00:00.000Z',
+    ])
   })
 })

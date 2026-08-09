@@ -35,6 +35,11 @@ Current implementation details:
   report malformed, duplicate, cancelled, and rejected records independently.
 - save journey cards expose compact metadata and keyboard selection while a best-effort
   `navigator.storage.estimate()` status remains advisory and never gates saves.
+- #52 regression coverage uses a controllable IndexedDB quota fixture to prove the retry
+  path prunes the oldest backup deterministically, and a browser fixture injects a corrupt
+  record beside a healthy card without blocking recovery.
+- #53 browser coverage exercises keyboard selection at a narrow viewport; the existing
+  remount journey keeps cancellation and failed-remount rollback non-destructive.
 
 Future work remains for optional visual thumbnails and chunk-history compression. These build
 on the same snapshot/backup contract rather than replacing it; issue #62 tracks the benchmarks,

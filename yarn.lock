@@ -5,6 +5,16 @@ __metadata:
   version: 10
   cacheKey: 10c0
 
+"@alohayo/character-renderer@workspace:*, @alohayo/character-renderer@workspace:packages/character-renderer":
+  version: 0.0.0-use.local
+  resolution: "@alohayo/character-renderer@workspace:packages/character-renderer"
+  dependencies:
+    "@alohayo/character": "workspace:*"
+    "@alohayo/config": "workspace:*"
+    pixi.js: "npm:^8.9.2"
+  languageName: unknown
+  linkType: soft
+
 "@alohayo/character-rules@workspace:packages/character-rules":
   version: 0.0.0-use.local
   resolution: "@alohayo/character-rules@workspace:packages/character-rules"
@@ -39,6 +49,7 @@ __metadata:
   resolution: "@alohayo/engine@workspace:packages/engine"
   dependencies:
     "@alohayo/character": "workspace:*"
+    "@alohayo/character-renderer": "workspace:*"
     "@alohayo/config": "workspace:*"
     "@alohayo/map": "workspace:*"
   languageName: unknown

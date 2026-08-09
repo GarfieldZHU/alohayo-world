@@ -1,6 +1,6 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.5.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
+> **Wiki page version:** EN 1.6.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-09
 > **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.5.0
 
 ## Dependency Direction
@@ -13,17 +13,18 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
 
 ## Workspace Ownership
 
-| Path                       | Owns                                                                                 | Must not own                     |
-| -------------------------- | ------------------------------------------------------------------------------------ | -------------------------------- |
-| `apps/game`                | standalone launcher, Pages shell                                                     | simulation rules                 |
-| `packages/config`          | public types, schemas, catalogs, i18n contracts                                      | rendering or executable content  |
-| `packages/map`             | deterministic fields, chunks, topology, hydrology, overlays, dynamic corridor ledger | DOM/PixiJS objects               |
-| `packages/character`       | identity, appearance, slots, fixed-step motion                                       | host UI and map mutation         |
-| `packages/character-rules` | optional pure resource/equipment/terrain queries                                     | saves, input, workers, rendering |
-| `packages/engine`          | runtime, PixiJS, camera, input, HUD, diagnostics, cleanup                            | content-pack authority           |
-| `packages/embed`           | `mountGame`, lazy assets, public lifecycle                                           | host navigation or theme policy  |
-| `crates/world-core`        | profiled deterministic typed-array batches                                           | per-frame scene ownership        |
-| `content`                  | validated data packs and authored areas                                              | arbitrary scripts                |
+| Path                          | Owns                                                                                 | Must not own                        |
+| ----------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------- |
+| `apps/game`                   | standalone launcher, Pages shell                                                     | simulation rules                    |
+| `packages/config`             | public types, schemas, catalogs, i18n contracts                                      | rendering or executable content     |
+| `packages/map`                | deterministic fields, chunks, topology, hydrology, overlays, dynamic corridor ledger | DOM/PixiJS objects                  |
+| `packages/character`          | identity, appearance, slots, fixed-step motion                                       | host UI and map mutation            |
+| `packages/character-renderer` | renderer-neutral poses and Pixi layer adapter                                        | simulation authority and save rules |
+| `packages/character-rules`    | optional pure resource/equipment/terrain queries                                     | saves, input, workers, rendering    |
+| `packages/engine`             | runtime, PixiJS, camera, input, HUD, diagnostics, cleanup                            | content-pack authority              |
+| `packages/embed`              | `mountGame`, lazy assets, public lifecycle                                           | host navigation or theme policy     |
+| `crates/world-core`           | profiled deterministic typed-array batches                                           | per-frame scene ownership           |
+| `content`                     | validated data packs and authored areas                                              | arbitrary scripts                   |
 
 ## Runtime Lifecycle
 
@@ -60,6 +61,11 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
   consumers. Regional weather also keeps bounded fixed-step state and optional save
   snapshots; its diagnostics stay on the canvas dataset and do not add normal HUD chrome.
   Moving traffic remains an optional follow-up (#60).
+- Character presentation is now a replaceable boundary in `@alohayo/character-renderer`:
+  deterministic pose frames resolve appearance/equipment/weapon IDs into explicit shadow,
+  aura, body, head, equipment, and weapon layers. Reduced-motion and debug capture paths
+  are covered without moving collision or save authority into Pixi; sprite/GLB manifests
+  remain an additive asset seam for the next visual phase (#63).
 
 ## Rust/Wasm Boundary
 
@@ -96,6 +102,10 @@ report malformed, duplicate, cancelled, and rejected entries independently. Brow
 estimates are advisory. No account, telemetry, remote save, or network gameplay service is
 part of the architecture. Optional visual thumbnails and chunk-history compression remain
 follow-up work in #62.
+
+#52/#53 verification includes a controllable quota retry that prunes the oldest backup, an
+injected corrupt-record browser fixture that leaves healthy journeys visible, and
+keyboard/narrow-viewport save-card coverage alongside the cross-seed remount rollback path.
 
 ## Verification Gates
 

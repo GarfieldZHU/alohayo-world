@@ -1,5 +1,5 @@
 {
-  "name": "@alohayo/engine",
+  "name": "@alohayo/character-renderer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,7 @@
   },
   "dependencies": {
     "@alohayo/character": "workspace:*",
-    "@alohayo/character-renderer": "workspace:*",
     "@alohayo/config": "workspace:*",
-    "@alohayo/map": "workspace:*"
+    "pixi.js": "^8.9.2"
   }
 }

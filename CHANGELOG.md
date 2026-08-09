@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Close #52/#53 save safety follow-through: add controllable quota/pruning and injected
+  corrupt-record browser fixtures, keyboard/narrow-viewport journey coverage, and document
+  non-destructive cross-seed remount rollback guarantees.
+
+- Implement the first #59 character presentation pipeline: extract deterministic pose and
+  equipment resolution into `@alohayo/character-renderer`, keep Pixi layers explicit and
+  disposable, support reduced-motion/debug capture, and leave sprite/GLB manifests as an
+  additive seam for the follow-up asset issue.
+
 - Close #43/#54 save recovery work: classify current/remountable/incompatible worlds before
   mutation, confirm cross-seed remounts with a temporary recovery slot and rollback path, and
   require replacement confirmation across save, rename, duplicate, and import flows. Add
