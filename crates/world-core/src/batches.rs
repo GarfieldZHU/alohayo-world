@@ -38,6 +38,12 @@ pub struct ChunkRenderHints {
     pub shore_distance: Vec<i8>,
 }
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct ChunkTerrainTextureHints {
+    /// High nibble is a stable biome-derived recipe family; low nibble is density.
+    pub pattern: Vec<u8>,
+}
+
 /// Deterministic, renderer-independent frontier paths produced by the contour batch.
 ///
 /// `points` is a flattened `x, y` stream in chunk-local cell-corner coordinates. Each

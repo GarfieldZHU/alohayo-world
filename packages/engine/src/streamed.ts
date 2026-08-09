@@ -61,6 +61,7 @@ import {
 } from '@alohayo/map'
 import WorldWorker from '../../map/src/world.worker.ts?worker&inline'
 import { CLOSE_DETAIL_KIND } from '../../map/src/render-hints'
+import { drawTerrainTextureOverlay } from './terrain-texture-render'
 import { applyThemeToDevPanel, createDevPanel, renderDevPanelLocale } from './dev-panel'
 import {
   applyThemeToMinimapControls,
@@ -1750,6 +1751,18 @@ export async function createGame(
       }
     }
 
+    if (scale >= 1.15 || devMode) {
+      drawTerrainTextureOverlay({
+        graphics: view.regionalDetails,
+        biomes: chunk.biomes,
+        hints: chunk.terrainTextureHints,
+        renderNoise: chunk.renderHints.noise,
+        biomeByCode,
+        chunkSize: chunk.chunkSize,
+        cellSize,
+      })
+    }
+
     drawWaterContours(view.transitions, chunk.chunkSize, cellSize, (localX, localY) => {
       if (localX >= 0 && localY >= 0 && localX < chunk.chunkSize && localY < chunk.chunkSize) {
         return biomeByCode.get(chunk.biomes[localY * chunk.chunkSize + localX]!)
@@ -1836,7 +1849,7 @@ export async function createGame(
         .stroke({ color: 0xffffff, width: 0.45, alpha: 0.8 })
     }
 
-    view.regionalDetails.visible = devMode ? scale >= 1.15 : scale >= 2.05
+    view.regionalDetails.visible = devMode ? scale >= 1.05 : scale >= 1.15
     view.closeDetails.visible = devMode ? scale >= 2.15 : scale >= 3.35
     view.grid.visible = devMode && devShowGrid
     view.surfaces.visible = scale >= 1
@@ -1910,6 +1923,8 @@ export async function createGame(
           app.canvas.dataset.workerImplementation = chunk.workerDiagnostics.implementation
           app.canvas.dataset.workerBaseLayers = chunk.workerDiagnostics.batches['chunk-base-layers']
           app.canvas.dataset.workerRenderHints = chunk.workerDiagnostics.batches['render-hints']
+          app.canvas.dataset.workerTerrainTextureHints =
+            chunk.workerDiagnostics.batches['terrain-texture-hints']
           app.canvas.dataset.workerHydrology = chunk.workerDiagnostics.batches['hydrology-raster']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
           app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)

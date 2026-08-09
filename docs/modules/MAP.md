@@ -26,6 +26,11 @@ D8 direction, accumulation, watershed IDs, and depression depth. TypeScript rema
 reference fallback and owns water masks, geomorphology policy, terrain classification,
 rivers, roads, overlays, and rendering.
 
+The feature-branch texture foundation follows the same split: a packed one-byte-per-cell
+`terrain-texture-hints` batch may be prepared in Rust/Wasm, while TypeScript owns terrain
+authority, palette, motif drawing, LOD, and Pixi lifecycle. See
+`../TERRAIN_TEXTURE_RENDERING.md` for the ABI, screenshots, and the deferred optional atlas.
+
 ## Next Slice
 
 Cross-chunk drainage and rivers, minimap LOD, benchmark budgets, shared shape hints consumed by the water

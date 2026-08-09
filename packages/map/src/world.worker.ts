@@ -4,17 +4,24 @@ import {
   generateWorld,
   hashSeed,
   type ChunkBaseLayers,
+  type ChunkTerrainTextureHints,
   type WorldWorkerCapabilities,
   type WorldWorkerDiagnostics,
   type WorldWorkerRequest,
   type WorldWorkerResponse,
 } from './index'
 import { generateChunkRenderHints } from './render-hints'
+import { generateChunkTerrainTextureHints } from './terrain-texture-hints'
 import {
   normalizeWasmRenderHints,
   wasmBatchEnabled,
   type WasmRenderHints,
 } from './render-hints-wasm'
+import {
+  normalizeWasmTerrainTextureHints,
+  terrainTextureBatchEnabled,
+  type WasmTerrainTextureHints,
+} from './terrain-texture-hints-wasm'
 import {
   buildHydrologyCoreRaster,
   type HydrologyCoreBuilder,
@@ -47,6 +54,15 @@ type WasmWorldCoreModule = {
     originX: number,
     originY: number
   ) => WasmRenderHints
+  prepare_chunk_texture_hints?: (
+    biomes: Uint8Array,
+    elevation: Uint8Array,
+    moisture: Uint8Array,
+    temperature: Uint8Array,
+    chunkSize: number,
+    originX: number,
+    originY: number
+  ) => WasmTerrainTextureHints
   build_hydrology_raster?: (
     rawElevation: Float32Array,
     water: Uint8Array,
@@ -96,7 +112,13 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
         const wasmUrl = new URL('wasm/world_core_bg.wasm', normalized).toString()
         const module = (await import(/* @vite-ignore */ moduleUrl)) as WasmWorldCoreModule
         if (typeof module.default === 'function') await module.default(wasmUrl)
-        if (typeof module.prepare_chunk_render_hints !== 'function') return null
+        if (
+          typeof module.generate_chunk_base_layers !== 'function' &&
+          typeof module.prepare_chunk_render_hints !== 'function' &&
+          typeof module.prepare_chunk_texture_hints !== 'function' &&
+          typeof module.build_hydrology_raster !== 'function'
+        )
+          return null
         return module
       } catch {
         return null
@@ -321,6 +343,73 @@ async function buildChunkRenderHints(
   }
 }
 
+async function buildChunkTerrainTextureHints(
+  chunk: ReturnType<typeof generateChunkWithAreas>,
+  wasmBaseUrl: string | undefined,
+  capabilities: WorldWorkerCapabilities | undefined
+): Promise<{
+  hints: ChunkTerrainTextureHints
+  implementation: 'typescript' | 'wasm'
+  fallbackReason?: string
+  elapsedMs: number
+}> {
+  const started = performance.now()
+  const fallback = () =>
+    generateChunkTerrainTextureHints({
+      biomes: chunk.biomes,
+      elevation: chunk.elevation,
+      moisture: chunk.moisture,
+      temperature: chunk.temperature,
+      chunkSize: chunk.chunkSize,
+      originX: chunk.originX,
+      originY: chunk.originY,
+    })
+  if (!terrainTextureBatchEnabled(capabilities)) {
+    return {
+      hints: fallback(),
+      implementation: 'typescript',
+      elapsedMs: performance.now() - started,
+    }
+  }
+  const module = await loadWasmRenderHintsModule(wasmBaseUrl)
+  if (!module?.prepare_chunk_texture_hints) {
+    return {
+      hints: fallback(),
+      implementation: 'typescript',
+      fallbackReason: 'wasm-module-unavailable',
+      elapsedMs: performance.now() - started,
+    }
+  }
+  try {
+    const wasmHints = module.prepare_chunk_texture_hints(
+      chunk.biomes,
+      chunk.elevation,
+      chunk.moisture,
+      chunk.temperature,
+      chunk.chunkSize,
+      chunk.originX,
+      chunk.originY
+    )
+    const hints = normalizeWasmTerrainTextureHints(wasmHints, chunk.chunkSize * chunk.chunkSize)
+    if (hints) {
+      return { hints, implementation: 'wasm', elapsedMs: performance.now() - started }
+    }
+    return {
+      hints: fallback(),
+      implementation: 'typescript',
+      fallbackReason: 'invalid-wasm-output',
+      elapsedMs: performance.now() - started,
+    }
+  } catch {
+    return {
+      hints: fallback(),
+      implementation: 'typescript',
+      fallbackReason: 'wasm-execution-failed',
+      elapsedMs: performance.now() - started,
+    }
+  }
+}
+
 workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
   if (event.data.type === 'generate') {
     let world = generateWorld(
@@ -397,7 +486,13 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.wasmBaseUrl,
       event.data.capabilities
     )
+    const terrainTextureHints = await buildChunkTerrainTextureHints(
+      chunk,
+      event.data.wasmBaseUrl,
+      event.data.capabilities
+    )
     chunk.renderHints = renderHints.hints
+    chunk.terrainTextureHints = terrainTextureHints.hints
     const transferables = [
       chunk.elevation.buffer,
       chunk.moisture.buffer,
@@ -420,6 +515,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       chunk.renderHints.detailOffsetX.buffer,
       chunk.renderHints.detailOffsetY.buffer,
       chunk.renderHints.shoreDistance.buffer,
+      chunk.terrainTextureHints.pattern.buffer,
       chunk.topology.componentIds.buffer,
       chunk.topology.edges.north.buffer,
       chunk.topology.edges.east.buffer,
@@ -433,6 +529,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       implementation: [
         baseLayers.implementation,
         renderHints.implementation,
+        terrainTextureHints.implementation,
         hydrology.implementation,
       ].every((implementation) => implementation === baseLayers.implementation)
         ? baseLayers.implementation
@@ -440,6 +537,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       batches: {
         'chunk-base-layers': baseLayers.implementation,
         'render-hints': renderHints.implementation,
+        'terrain-texture-hints': terrainTextureHints.implementation,
         'hydrology-raster': hydrology.implementation,
       },
       fallbacks: [
@@ -449,6 +547,14 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         ...(renderHints.fallbackReason
           ? [{ batch: 'render-hints' as const, reason: renderHints.fallbackReason }]
           : []),
+        ...(terrainTextureHints.fallbackReason
+          ? [
+              {
+                batch: 'terrain-texture-hints' as const,
+                reason: terrainTextureHints.fallbackReason,
+              },
+            ]
+          : []),
         ...(hydrology.fallbackReason
           ? [{ batch: 'hydrology-raster' as const, reason: hydrology.fallbackReason }]
           : []),
@@ -456,6 +562,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       timingsMs: {
         'chunk-base-layers': baseLayers.elapsedMs,
         'render-hints': renderHints.elapsedMs,
+        'terrain-texture-hints': terrainTextureHints.elapsedMs,
         'hydrology-raster': hydrology.elapsedMs,
       },
       wasmStartupMs,

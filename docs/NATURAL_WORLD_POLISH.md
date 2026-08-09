@@ -38,6 +38,12 @@ unknown, so load order cannot invent a coast. Water presentation classifies deep
 ocean shelf, beach, cliff, lake bank, estuary, delta, marsh, and reef materials from stable
 biome, distance, slope, river, deposition, and floodplain hints.
 
+The texture foundation adds a separate presentation-only recipe batch. WASM emits one packed
+pattern byte per cell; PixiJS reuses existing render-hint noise to draw the procedural motifs
+in the regional-details batch. Texture phase uses world coordinates, so it does not reset at
+chunk boundaries or become a second terrain authority. The optional authored 2D atlas is
+deferred to issue #64 until memory and LOD budgets are measured.
+
 Discovery fog is packed into one BGRA texture over the rendered neighborhood and composed
 by PixiJS on the GPU. The texture samples the same world-space visibility function as the
 CPU action reference, interpolates discovered memory between cell centers, and updates only

@@ -1,7 +1,7 @@
 # World and Terrain
 
-> **Wiki page version:** EN 1.4.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
-> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.4.0
+> **Wiki page version:** EN 1.5.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-09
+> **中文:** [世界与地形](World-and-Terrain-zh-CN) · **Translation status:** synced with EN 1.5.0
 
 The map is the central simulation model. Terrain is derived from continuous geography,
 not painted first and rationalized later. The same stable fields support exploration,
@@ -141,6 +141,28 @@ profile baseline. Never use a local field as proof that a river ends at a chunk 
 Issue [#44](https://github.com/GarfieldZHU/alohayo-world/issues/44) owns promotion from the
 local accounting kernel to canonical persistent erosion, flooding, channel evolution, and
 delta growth.
+
+## Terrain Texture Presentation
+
+The feature branch adds a presentation-only `terrain-texture-hints` batch. It receives the
+existing biome and climate arrays and returns one compact packed `pattern` byte layer. Its
+high nibble is the recipe family and its low nibble is density. Rust/Wasm prepares semantic
+recipes; TypeScript/PixiJS reuses existing render-hint noise and chooses the motif, palette,
+alpha, LOD, and display lifecycle in the existing regional-details batch.
+
+The overlay adds water ripples, coast striations, grass flecks, forest clusters, wetland reeds,
+rock facets, snow grain, and volcanic marks without changing terrain IDs, topology, hydrology,
+movement, saves, or the existing terrain colors. World-coordinate variation prevents chunk
+reloads and negative coordinates from resetting the visual phase.
+
+![Desktop terrain texture overlay](assets/terrain-texture-overlay-desktop.png)
+
+![Mobile terrain texture overlay](assets/terrain-texture-overlay-mobile.png)
+
+The first slice is intentionally assetless because this is a flat PixiJS map. An optional
+palette-neutral project-original or verified-CC0 2D atlas, with residency and mobile LOD
+budgets, is tracked in [#64](https://github.com/GarfieldZHU/alohayo-world/issues/64); GLB is not
+part of this rendering boundary.
 
 ## Developer Showcase
 

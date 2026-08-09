@@ -26,6 +26,8 @@ blindly.
   extension contracts.
 - `NATURAL_WORLD_POLISH.md`: the path from blended prototype visuals to natural fog,
   shoreline, lake, and river presentation.
+- `TERRAIN_TEXTURE_RENDERING.md`: the deterministic WASM texture-hint batch, Pixi overlay
+  boundary, asset decision, screenshots, and follow-up TODOs.
 - `TERRAIN_RULES.md`: terrain material rules, i18n contract, surface effects, physics,
   transformations, and dev showcase.
 - `MOVEMENT_AND_ACTIONS.md`: scale, controls, fixed-step motion, collision, and actions.

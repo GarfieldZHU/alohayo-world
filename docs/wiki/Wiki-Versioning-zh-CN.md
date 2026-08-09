@@ -1,7 +1,7 @@
 # Wiki 版本管理
 
-> **Wiki 页面版本：** zh-CN 1.3.0 · **英文源版本：** EN 1.3.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-08
-> **English:** [Wiki Versioning](Wiki-Versioning) · **同步状态：** 已同步至 EN 1.3.0
+> **Wiki 页面版本：** zh-CN 1.3.1 · **英文源版本：** EN 1.3.1 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-09
+> **English:** [Wiki Versioning](Wiki-Versioning) · **同步状态：** 已同步至 EN 1.3.1
 
 英文是编辑基准语言，简体中文是一等翻译版本。两者分别记录版本，使读者能直接知道中文
 是否落后于英文，而不是假设它们总是同步。
@@ -22,7 +22,7 @@ Wiki 页面版本不是游戏包版本；“产品基线”说明页面描述的
 | 英文页面                       |    EN | 中文页面                             | zh-CN | 翻译自 | 状态   |
 | ------------------------------ | ----: | ------------------------------------ | ----: | -----: | ------ |
 | Home                           | 1.0.0 | Home-zh-CN                           | 1.0.0 |  1.0.0 | 已同步 |
-| World and Terrain              | 1.4.0 | World-and-Terrain-zh-CN              | 1.4.0 |  1.4.0 | 已同步 |
+| World and Terrain              | 1.5.0 | World-and-Terrain-zh-CN              | 1.5.0 |  1.5.0 | 已同步 |
 | Background World               | 1.0.0 | Background-World-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Character System               | 1.0.0 | Character-System-zh-CN               | 1.0.0 |  1.0.0 | 已同步 |
 | Abilities and Roles            | 1.0.0 | Abilities-and-Roles-zh-CN            | 1.0.0 |  1.0.0 | 已同步 |

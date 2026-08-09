@@ -2,8 +2,9 @@
 
 **Program status:** first promotion program completed in GitHub issue #30.
 
-**Next measured candidate:** contour/frontier geometry in #50. Render hints (#49) are now
-stable and default-on with a deterministic TypeScript fallback.
+**Next measured candidate:** contour/frontier geometry in #50 and the terrain texture recipe
+batch from feature issue #64. Render hints (#49) are stable and default-on with a
+deterministic TypeScript fallback.
 **Principle:** Rust/Wasm accelerates deterministic worker batches; TypeScript continues to
 own content orchestration, rendering, UI, input, persistence, and public embed APIs.
 
@@ -40,7 +41,8 @@ No browser query string is a production rollout mechanism. The engine must recei
 explicit local developer capability and a versioned worker request field.
 
 The active protocol is `protocolVersion: 1`. The production default enables the promoted
-`chunk-base-layers`, `render-hints`, and `hydrology-raster` batches. A batch may load Wasm only when
+`chunk-base-layers`, `render-hints`, and `hydrology-raster` batches; the feature branch also
+enables `terrain-texture-hints` after its parity and browser gates. A batch may load Wasm only when
 `enabled` is true, ABI version 1 is present, and that batch appears in the request list. Responses report per-batch
 implementation and fallback reasons; request failures are structured and the engine
 rejects stalled requests after 15 seconds.
@@ -56,6 +58,7 @@ type WasmBatchRequest = {
     | 'chunk-base-layers'
     | 'hydrology-raster'
     | 'render-hints'
+    | 'terrain-texture-hints'
     | 'contour-geometry'
     | 'path-cost-grid'
   seed: number
@@ -114,6 +117,18 @@ p95, 0% transfer growth, and 0.501 ms module startup. Worker capability normaliz
 malformed-output fallback, and Playwright startup/navigation/destroy coverage pass for
 both the default Wasm path and explicit TypeScript fallback. Render hints are now
 default-on; TypeScript remains the authority for smoothing, LOD, and all Pixi draw calls.
+
+### M2.5: Terrain texture recipes (feature branch #64)
+
+- Inputs: existing biome, elevation, moisture, and temperature arrays plus world origin.
+- Outputs: one compact packed `pattern` `Uint8Array`; the high nibble is the family and the
+  low nibble is the density budget.
+- Rust/Wasm prepares semantic recipes only; TypeScript owns palette, motifs, alpha, LOD,
+  Pixi graphics, and the terrain/content authority.
+- The worker transfers the one-byte-per-cell array, reports a per-batch implementation and
+  fallback reason, and regenerates the byte-equivalent TypeScript reference on failure.
+- The initial feature branch is default-on after parity, Rust unit, and browser fallback
+  coverage. CPU-promotion measurements and a bitmap atlas remain deferred to #64.
 
 ### M3: Contour and frontier geometry (candidate #50)
 

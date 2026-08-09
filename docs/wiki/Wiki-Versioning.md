@@ -1,7 +1,7 @@
 # Wiki Versioning
 
-> **Wiki page version:** EN 1.3.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-08
-> **中文:** [Wiki 版本管理](Wiki-Versioning-zh-CN) · **Translation status:** synced with EN 1.3.0
+> **Wiki page version:** EN 1.3.1 · **Product baseline:** v0.1.3 · **Updated:** 2026-08-09
+> **中文:** [Wiki 版本管理](Wiki-Versioning-zh-CN) · **Translation status:** synced with EN 1.3.1
 
 English is the editorial source language. Simplified Chinese is a first-class translation,
 but its version is tracked separately so readers can see when it trails the source.
@@ -32,7 +32,7 @@ records which released behavior the page describes.
 | English page                   | EN version | Chinese page                         | zh-CN version | Source translated | Status |
 | ------------------------------ | ---------: | ------------------------------------ | ------------: | ----------------: | ------ |
 | Home                           |      1.0.0 | Home-zh-CN                           |         1.0.0 |             1.0.0 | synced |
-| World and Terrain              |      1.4.0 | World-and-Terrain-zh-CN              |         1.4.0 |             1.4.0 | synced |
+| World and Terrain              |      1.5.0 | World-and-Terrain-zh-CN              |         1.5.0 |             1.5.0 | synced |
 | Background World               |      1.0.0 | Background-World-zh-CN               |         1.0.0 |             1.0.0 | synced |
 | Character System               |      1.0.0 | Character-System-zh-CN               |         1.0.0 |             1.0.0 | synced |
 | Abilities and Roles            |      1.0.0 | Abilities-and-Roles-zh-CN            |         1.0.0 |             1.0.0 | synced |

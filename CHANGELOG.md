@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add the feature-branch terrain texture rendering foundation: a deterministic
+  `terrain-texture-hints` Rust/Wasm batch with TypeScript parity/fallback, compact worker
+  diagnostics, world-coordinate procedural water/coast/grass/forest/wetland/rock/snow/
+  volcanic motifs in the existing Pixi regional-details batch, and desktop/mobile evidence.
+  Keep the optional authored 2D atlas and its residency/LOD budget in follow-up issue #64;
+  no GLB or bitmap runtime dependency is introduced.
+
 - Redesign the in-game Adventurer's Chronicle into independent Save, Guide, Terrain
   Manual, Bestiary, Field Map, and Settings sections. The Save section now writes a real
   manual progress marker through the local save store; terrain and creature content stays

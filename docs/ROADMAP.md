@@ -9,6 +9,11 @@
 - [x] Stable Rust/Wasm chunk base-layer, render-hint, and hydrology batches with
       deterministic TypeScript fallback, measured promotion gates, and live browser
       diagnostics.
+- [x] Feature-branch terrain texture-hint batch: deterministic WASM recipe layers, Pixi
+      motif overlay, transfer/fallback diagnostics, and desktop/mobile evidence.
+- [ ] Issue `#64`: author the optional CC0/project-original 2D terrain atlas, then measure
+      atlas residency, mobile GPU memory, LOD, reduced-motion, and frame pacing before
+      introducing bitmap assets.
 - [x] Weather, transport, render-hint, and contour expansion decomposed into ordered,
       independently closeable issues.
 - [x] Regional weather diagnostics, transport structure/traversal records, aggregate
@@ -78,6 +83,10 @@
       hydrology raster are stable worker batches with exact TypeScript parity, structured
       fallback, transfer/benchmark gates, and browser coverage. Contour geometry remains
       a measured candidate in issue `#50`; biome/content authority stays in TypeScript.
+- [x] Terrain texture rendering foundation keeps biome and terrain authority in TypeScript,
+      moves only compact deterministic recipe hints through the worker/WASM boundary, and
+      reuses the existing regional-details Graphics batch. See
+      `docs/TERRAIN_TEXTURE_RENDERING.md`.
 - [x] IndexedDB discovery/save snapshots, import/export, migration guards, and
       restoration, including named-slot management, isolated corrupt records, bounded
       rolling backups, compact journey previews, and explicit previous-version recovery.

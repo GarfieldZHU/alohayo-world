@@ -27,6 +27,10 @@ import {
   type ResolvedAuthoredOverlays,
 } from './authored-overlays'
 import { generateChunkRenderHints, type ChunkRenderHints } from './render-hints'
+import {
+  generateChunkTerrainTextureHints,
+  type ChunkTerrainTextureHints,
+} from './terrain-texture-hints'
 import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
 import { buildTransportStructures, type TransportCellSample } from './transport'
 
@@ -94,6 +98,12 @@ export {
   buildSignedShoreDistance,
   type ChunkRenderHints,
 } from './render-hints'
+export {
+  generateChunkTerrainTextureHints,
+  TERRAIN_TEXTURE_PATTERN,
+  type ChunkTerrainTextureHints,
+  type TerrainTexturePattern,
+} from './terrain-texture-hints'
 export {
   AUTHORED_ENTITY_CAPABILITY_KINDS,
   AUTHORED_ENTITY_LIFECYCLE_MAX_BYTES,
@@ -252,6 +262,7 @@ export interface GeneratedChunk {
   floodplain: Uint8Array
   drainageSummary: ChunkDrainageSummary
   renderHints: ChunkRenderHints
+  terrainTextureHints: ChunkTerrainTextureHints
   topology: ChunkTopologySummary
   authoredArea: Uint16Array
   region: Uint8Array
@@ -380,7 +391,7 @@ export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   wasm: {
     abiVersion: 1,
     enabled: true,
-    batches: ['chunk-base-layers', 'render-hints', 'hydrology-raster'],
+    batches: ['chunk-base-layers', 'render-hints', 'terrain-texture-hints', 'hydrology-raster'],
   },
 }
 
@@ -2497,6 +2508,15 @@ function applyAreasToChunk(
     originX: chunk.originX,
     originY: chunk.originY,
   })
+  chunk.terrainTextureHints = generateChunkTerrainTextureHints({
+    biomes: chunk.biomes,
+    elevation: chunk.elevation,
+    moisture: chunk.moisture,
+    temperature: chunk.temperature,
+    chunkSize: chunk.chunkSize,
+    originX: chunk.originX,
+    originY: chunk.originY,
+  })
   const hydrology = buildHydrologyFromElevationAndWater(
     chunk.elevation,
     chunk.chunkSize,
@@ -2808,6 +2828,15 @@ export function generateChunk(
     renderHints: generateChunkRenderHints({
       biomes,
       elevation,
+      chunkSize,
+      originX,
+      originY,
+    }),
+    terrainTextureHints: generateChunkTerrainTextureHints({
+      biomes,
+      elevation,
+      moisture,
+      temperature,
       chunkSize,
       originX,
       originY,

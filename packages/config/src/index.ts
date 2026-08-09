@@ -882,7 +882,11 @@ export interface WorldManifest {
   characters?: CharacterContentDefinition
 }
 
-export type WorldWorkerWasmBatch = 'chunk-base-layers' | 'render-hints' | 'hydrology-raster'
+export type WorldWorkerWasmBatch =
+  | 'chunk-base-layers'
+  | 'render-hints'
+  | 'terrain-texture-hints'
+  | 'hydrology-raster'
 
 export interface WorldWorkerCapabilities {
   protocolVersion: 1

@@ -36,7 +36,7 @@ Wiki semantic versions describe documentation, not runtime packages. A page may 
    ```bash
    git clone https://github.com/GarfieldZHU/alohayo-world.wiki.git ../alohayo-world.wiki
    git -C ../alohayo-world.wiki pull --ff-only
-   rsync -av --delete --include='*.md' --exclude='*' docs/wiki/ ../alohayo-world.wiki/
+   rsync -av --delete --include='*.md' --include='assets/***' --exclude='*' docs/wiki/ ../alohayo-world.wiki/
    git -C ../alohayo-world.wiki diff --check
    git -C ../alohayo-world.wiki diff
    ```

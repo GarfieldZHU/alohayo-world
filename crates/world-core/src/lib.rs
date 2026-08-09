@@ -3,8 +3,12 @@ use wasm_bindgen::prelude::*;
 mod batches;
 mod contours;
 mod shape;
+mod texture_hints;
 
-pub use batches::{ChunkBaseLayers, ChunkRenderHints, ContourGeometry, HydrologyCoreRaster};
+pub use batches::{
+    ChunkBaseLayers, ChunkRenderHints, ChunkTerrainTextureHints, ContourGeometry,
+    HydrologyCoreRaster,
+};
 pub use contours::CONTOUR_GEOMETRY_ABI_VERSION;
 use shape::checked_raster_size;
 
@@ -458,7 +462,7 @@ pub fn generate_chunk_base_layers(
     }
 }
 
-fn render_hint_noise(x: i32, y: i32, salt: u8) -> u32 {
+pub(crate) fn render_hint_noise(x: i32, y: i32, salt: u8) -> u32 {
     // Keep the bit operations unsigned to match the TypeScript reference's
     // `>>>` shifts for negative world coordinates.
     let mut value = (x.wrapping_add(salt as i32) as u32).wrapping_mul(374_761_393)
@@ -475,6 +479,59 @@ fn close_detail_kind_for_biome(biome: u8) -> u8 {
         BIOME_WETLAND => CLOSE_DETAIL_WETLAND,
         _ => CLOSE_DETAIL_GENERIC,
     }
+}
+
+pub(crate) fn texture_pattern_for_biome(biome: u8) -> u8 {
+    match biome {
+        BIOME_DEEP_OCEAN | BIOME_OCEAN | BIOME_SHALLOW_SEA => 1,
+        BIOME_COAST | BIOME_BEACH | BIOME_REEF => 2,
+        6 | 7 | 8 | 17 => 3,
+        BIOME_FOREST | BIOME_RAINFOREST => 4,
+        BIOME_LAKE | BIOME_WETLAND | BIOME_MARSH | 23 => 5,
+        10 => 6,
+        BIOME_HIGHLAND | BIOME_BARE_ROCK | 20 | 21 => 7,
+        BIOME_MOUNTAIN => 8,
+        15 | 16 | 25 => 9,
+        24 => 10,
+        _ => 0,
+    }
+}
+
+pub(crate) fn texture_pattern_base_strength(pattern: u8) -> u8 {
+    match pattern {
+        1 => 44,
+        2 => 58,
+        3 => 34,
+        4 => 54,
+        5 => 60,
+        6 => 46,
+        7 => 48,
+        8 => 62,
+        9 => 52,
+        10 => 64,
+        _ => 36,
+    }
+}
+
+#[wasm_bindgen]
+pub fn prepare_chunk_texture_hints(
+    biomes: &[u8],
+    elevation: &[u8],
+    moisture: &[u8],
+    temperature: &[u8],
+    chunk_size: usize,
+    origin_x: i32,
+    origin_y: i32,
+) -> ChunkTerrainTextureHints {
+    texture_hints::prepare_chunk_texture_hints(
+        biomes,
+        elevation,
+        moisture,
+        temperature,
+        chunk_size,
+        origin_x,
+        origin_y,
+    )
 }
 
 fn is_water_biome(biome: u8) -> bool {
@@ -644,6 +701,28 @@ mod tests {
             .iter()
             .zip(hints.close_detail_kind.iter())
             .any(|(regional, close)| *regional > 0 || *close > 0));
+    }
+
+    #[test]
+    fn chunk_terrain_texture_hints_are_deterministic_and_biome_driven() {
+        let biomes = vec![0, 3, 8, 9, 11, 14, 15, 24, 99];
+        let elevation = vec![42, 43, 80, 81, 110, 190, 210, 160, 96];
+        let moisture = vec![20, 80, 120, 180, 210, 40, 30, 60, 140];
+        let temperature = vec![30, 100, 160, 120, 190, 80, 20, 180, 140];
+        let first =
+            prepare_chunk_texture_hints(&biomes, &elevation, &moisture, &temperature, 3, -2, 5);
+        let second =
+            prepare_chunk_texture_hints(&biomes, &elevation, &moisture, &temperature, 3, -2, 5);
+        assert_eq!(first.pattern, second.pattern);
+        assert_eq!(
+            first
+                .pattern
+                .iter()
+                .map(|value| value >> 4)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5, 8, 9, 10, 0]
+        );
+        assert!(first.pattern.iter().all(|value| value & 0x0f <= 15));
     }
 
     #[test]
