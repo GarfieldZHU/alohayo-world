@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add the first closeable follow-up contracts for issues #57, #60, #61, #62, #63, and
+  #64: seasonal geomorphology forcing/proposals with bounded save validation, deterministic
+  settlement agents, a versioned contour-geometry worker batch with fallback diagnostics,
+  gzip archive/thumbnail helpers, character directional-clip manifests with residency, and
+  an original eight-family terrain atlas with LOD/residency budgets. The full promotion gates
+  for hardware evidence, cross-chunk hydrology, authored character assets, and bitmap shipping
+  remain explicit rather than being claimed by the contracts alone.
+
+- Pin every GitHub Actions dependency to an immutable commit and refresh the Yarn security
+  resolutions. `yarn npm audit --all --recursive` now reports no audit suggestions.
+
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
   point-reserve plate, generated loadout records, and a truthful field item catalog with

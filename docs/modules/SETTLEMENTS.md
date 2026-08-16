@@ -1,6 +1,7 @@
 # Settlement Module
 
-**Status:** deterministic site layer active; aggregate traffic consumer shipped (`#48`).
+**Status:** deterministic site layer active; aggregate traffic and bounded agent contract
+shipped (`#48`, `#60`); moving agents remain dev-only.
 
 ## Owns
 
@@ -17,9 +18,12 @@ resources, and grow a small settlement over deterministic ticks.
 `simulateSettlementTraffic` produces bounded, deterministic snapshots for retained
 settlements. Demand, congestion, maintenance, and supply access consume settlement road
 access, dominant road traffic, transport-structure markers, regional weather, and the
-configurable traffic scales. The engine publishes aggregate values as developer
-diagnostics; it does not spawn per-frame agents or mutate settlement state. Fully simulated
-routes and moving agents are tracked in #60.
+configurable traffic scales. `createSettlementAgents` turns those snapshots into sorted,
+profile-driven route-choice records capped at 256 agents per retained chunk; a waiting agent
+spends one tick yielding to congestion before moving. `stepSettlementAgents` is pure and
+save-safe, and never owns Pixi objects or schedules. The engine still publishes aggregate
+values as diagnostics rather than spawning agents in game mode; worker presentation and
+maintenance/supply consumer wiring remain tracked in #60.
 
 ## Dependencies and Tests
 

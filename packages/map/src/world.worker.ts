@@ -13,6 +13,13 @@ import {
 import { generateChunkRenderHints } from './render-hints'
 import { generateChunkTerrainTextureHints } from './terrain-texture-hints'
 import {
+  contourBatchEnabled,
+  generateChunkContourGeometry,
+  normalizeWasmContourGeometry,
+  type ChunkContourGeometry,
+  type WasmContourGeometry,
+} from './contour-geometry'
+import {
   normalizeWasmRenderHints,
   wasmBatchEnabled,
   type WasmRenderHints,
@@ -63,6 +70,14 @@ type WasmWorldCoreModule = {
     originX: number,
     originY: number
   ) => WasmTerrainTextureHints
+  prepare_contour_geometry?: (
+    inside: Uint8Array,
+    knownHalo: Uint8Array,
+    width: number,
+    height: number,
+    originX: number,
+    originY: number
+  ) => WasmContourGeometry
   build_hydrology_raster?: (
     rawElevation: Float32Array,
     water: Uint8Array,
@@ -116,7 +131,8 @@ async function loadWasmRenderHintsModule(baseUrl?: string) {
           typeof module.generate_chunk_base_layers !== 'function' &&
           typeof module.prepare_chunk_render_hints !== 'function' &&
           typeof module.prepare_chunk_texture_hints !== 'function' &&
-          typeof module.build_hydrology_raster !== 'function'
+          typeof module.build_hydrology_raster !== 'function' &&
+          typeof module.prepare_contour_geometry !== 'function'
         )
           return null
         return module
@@ -410,6 +426,81 @@ async function buildChunkTerrainTextureHints(
   }
 }
 
+async function buildChunkContourGeometry(
+  chunk: ReturnType<typeof generateChunkWithAreas>,
+  wasmBaseUrl: string | undefined,
+  capabilities: WorldWorkerCapabilities | undefined
+): Promise<{
+  geometry: ChunkContourGeometry
+  implementation: 'typescript' | 'wasm'
+  fallbackReason?: string
+  elapsedMs: number
+}> {
+  const started = performance.now()
+  const inside = Uint8Array.from(chunk.biomes, (biome) => (biome <= 2 || biome === 4 ? 1 : 0))
+  const fallback = () =>
+    generateChunkContourGeometry({
+      inside,
+      width: chunk.chunkSize,
+      height: chunk.chunkSize,
+      originX: chunk.originX,
+      originY: chunk.originY,
+    })
+  if (!contourBatchEnabled(capabilities)) {
+    return {
+      geometry: fallback(),
+      implementation: 'typescript',
+      elapsedMs: performance.now() - started,
+    }
+  }
+  const module = await loadWasmRenderHintsModule(wasmBaseUrl)
+  if (!module?.prepare_contour_geometry) {
+    return {
+      geometry: fallback(),
+      implementation: 'typescript',
+      fallbackReason: 'wasm-module-unavailable',
+      elapsedMs: performance.now() - started,
+    }
+  }
+  const knownHalo = new Uint8Array((chunk.chunkSize + 2) * (chunk.chunkSize + 2))
+  for (let y = 0; y < chunk.chunkSize; y += 1) {
+    for (let x = 0; x < chunk.chunkSize; x += 1) {
+      knownHalo[(y + 1) * (chunk.chunkSize + 2) + x + 1] = 1
+    }
+  }
+  try {
+    const result = normalizeWasmContourGeometry(
+      module.prepare_contour_geometry(
+        inside,
+        knownHalo,
+        chunk.chunkSize,
+        chunk.chunkSize,
+        chunk.originX,
+        chunk.originY
+      ),
+      chunk.chunkSize,
+      chunk.chunkSize,
+      chunk.originX,
+      chunk.originY
+    )
+    return result
+      ? { geometry: result, implementation: 'wasm', elapsedMs: performance.now() - started }
+      : {
+          geometry: fallback(),
+          implementation: 'typescript',
+          fallbackReason: 'invalid-wasm-output',
+          elapsedMs: performance.now() - started,
+        }
+  } catch {
+    return {
+      geometry: fallback(),
+      implementation: 'typescript',
+      fallbackReason: 'wasm-execution-failed',
+      elapsedMs: performance.now() - started,
+    }
+  }
+}
+
 workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
   if (event.data.type === 'generate') {
     let world = generateWorld(
@@ -491,8 +582,14 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       event.data.wasmBaseUrl,
       event.data.capabilities
     )
+    const contourGeometry = await buildChunkContourGeometry(
+      chunk,
+      event.data.wasmBaseUrl,
+      event.data.capabilities
+    )
     chunk.renderHints = renderHints.hints
     chunk.terrainTextureHints = terrainTextureHints.hints
+    chunk.contourGeometry = contourGeometry.geometry
     const transferables = [
       chunk.elevation.buffer,
       chunk.moisture.buffer,
@@ -516,6 +613,10 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
       chunk.renderHints.detailOffsetY.buffer,
       chunk.renderHints.shoreDistance.buffer,
       chunk.terrainTextureHints.pattern.buffer,
+      chunk.contourGeometry.pathOffsets.buffer,
+      chunk.contourGeometry.pathLengths.buffer,
+      chunk.contourGeometry.points.buffer,
+      chunk.contourGeometry.closed.buffer,
       chunk.topology.componentIds.buffer,
       chunk.topology.edges.north.buffer,
       chunk.topology.edges.east.buffer,
@@ -530,6 +631,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         baseLayers.implementation,
         renderHints.implementation,
         terrainTextureHints.implementation,
+        contourGeometry.implementation,
         hydrology.implementation,
       ].every((implementation) => implementation === baseLayers.implementation)
         ? baseLayers.implementation
@@ -539,6 +641,7 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         'render-hints': renderHints.implementation,
         'terrain-texture-hints': terrainTextureHints.implementation,
         'hydrology-raster': hydrology.implementation,
+        'contour-geometry': contourGeometry.implementation,
       },
       fallbacks: [
         ...(baseLayers.fallbackReason
@@ -558,12 +661,16 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         ...(hydrology.fallbackReason
           ? [{ batch: 'hydrology-raster' as const, reason: hydrology.fallbackReason }]
           : []),
+        ...(contourGeometry.fallbackReason
+          ? [{ batch: 'contour-geometry' as const, reason: contourGeometry.fallbackReason }]
+          : []),
       ],
       timingsMs: {
         'chunk-base-layers': baseLayers.elapsedMs,
         'render-hints': renderHints.elapsedMs,
         'terrain-texture-hints': terrainTextureHints.elapsedMs,
         'hydrology-raster': hydrology.elapsedMs,
+        'contour-geometry': contourGeometry.elapsedMs,
       },
       wasmStartupMs,
       transferBytes: transferables.reduce((sum, buffer) => sum + buffer.byteLength, 0),

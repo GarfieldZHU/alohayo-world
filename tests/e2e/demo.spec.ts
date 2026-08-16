@@ -28,6 +28,7 @@ test('loads game resources only after start', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-hydrology', 'wasm')
+  await expect(canvas).toHaveAttribute('data-worker-contour-geometry', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-fallbacks', '0')
   await expect(canvas).toHaveAttribute('data-worker-transfer-bytes', /[1-9][0-9]*/)
   await expect(canvas).toHaveAttribute('data-last-chunk-ms', /[0-9.]+/)
@@ -68,6 +69,7 @@ test('keeps the explicit TypeScript worker fallback browser-safe', async ({ page
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-hydrology', 'typescript')
+  await expect(canvas).toHaveAttribute('data-worker-contour-geometry', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-fallbacks', '0')
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
 })
@@ -84,7 +86,8 @@ test('falls back when the promoted Wasm artifact is unavailable', async ({ page 
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-hydrology', 'typescript')
-  await expect(canvas).toHaveAttribute('data-worker-fallbacks', '4')
+  await expect(canvas).toHaveAttribute('data-worker-contour-geometry', 'typescript')
+  await expect(canvas).toHaveAttribute('data-worker-fallbacks', '5')
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
 })
 
@@ -295,8 +298,11 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
 
 const readPerformanceMetrics = (page: Page) =>
   page.evaluate(() => {
-    return (window as Window & { __ALOHAYO_WORLD_PERF__?: Record<string, number | null> })
-      .__ALOHAYO_WORLD_PERF__
+    return (
+      window as Window & {
+        __ALOHAYO_WORLD_PERF__?: Record<string, number | string | null>
+      }
+    ).__ALOHAYO_WORLD_PERF__
   })
 
 const readRenderer = (page: Page) =>
@@ -321,6 +327,16 @@ const waitForRuntimeSample = async (page: Page) => {
 const frameBudget = (renderer: string, hardwareBudget: number, softwareBudget: number) =>
   /swiftshader|llvmpipe|software/i.test(renderer) ? softwareBudget : hardwareBudget
 
+const expectFramePacingMetrics = (metrics: Record<string, number | string | null> | undefined) => {
+  expect(Number(metrics?.p50FrameMs)).toBeGreaterThan(0)
+  expect(Number(metrics?.p95FrameMs)).toBeGreaterThanOrEqual(Number(metrics?.p50FrameMs))
+  expect(Number(metrics?.p99FrameMs)).toBeGreaterThanOrEqual(Number(metrics?.p95FrameMs))
+  expect(Number(metrics?.onePercentLowFps)).toBeGreaterThan(0)
+  expect(Number(metrics?.droppedFrameCount)).toBeGreaterThanOrEqual(0)
+  expect(metrics?.qualityTier).toMatch(/^(high|balanced|safe)$/)
+  expect(Number(metrics?.qualityResolutionScale)).toBeGreaterThan(0)
+}
+
 test('tracks broad desktop runtime performance budgets', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
@@ -335,6 +351,7 @@ test('tracks broad desktop runtime performance budgets', async ({ page }) => {
   expect(Number(metrics?.lastChunkGenerationMs)).toBeLessThan(150)
   expect(Number(metrics?.estimatedDrawCalls)).toBeLessThan(220)
   expect(Number(metrics?.maxLongTaskMs)).toBeLessThan(220)
+  expectFramePacingMetrics(metrics)
 })
 
 test('tracks broad mobile runtime performance budgets', async ({ page }) => {
@@ -352,4 +369,5 @@ test('tracks broad mobile runtime performance budgets', async ({ page }) => {
   expect(Number(metrics?.lastChunkGenerationMs)).toBeLessThan(150)
   expect(Number(metrics?.estimatedDrawCalls)).toBeLessThan(220)
   expect(Number(metrics?.maxLongTaskMs)).toBeLessThan(200)
+  expectFramePacingMetrics(metrics)
 })

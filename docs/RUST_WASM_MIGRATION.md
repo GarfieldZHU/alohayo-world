@@ -2,7 +2,7 @@
 
 **Program status:** first promotion program completed in GitHub issue #30.
 
-**Next measured candidate:** contour/frontier geometry in #50 and the terrain texture recipe
+**Next measured candidate:** contour/frontier geometry in #61 and the terrain texture recipe
 batch from feature issue #64. Render hints (#49) are stable and default-on with a
 deterministic TypeScript fallback.
 **Principle:** Rust/Wasm accelerates deterministic worker batches; TypeScript continues to
@@ -152,8 +152,16 @@ The first candidate ABI is now available as the renderer-independent
   frontier suppression. `tests/wasm-contours.test.ts` compares built-Wasm output with the
   TypeScript tracer across positive/negative origins and unknown frontiers.
 
+**Worker candidate result (#61):** the contour batch is now capability-negotiated by the
+worker, reports implementation/fallback/timing/transfer diagnostics, and transfers only
+typed geometry buffers. The TypeScript fallback suppresses unknown chunk borders, while the
+Rust path and reference share the same ABI and negative-coordinate fixtures. The remaining
+release decision is a repeatable built-artifact CPU/p95/heap and visual browser review; the
+batch remains fallback-safe if that evidence is not worthwhile.
+
 **Gate:** contour topology handles negative chunks and eviction/reload; visual browser
-review and seam fixtures pass.
+review, seam fixtures, and the documented 15% CPU / 5% transfer gate pass on the release
+artifact.
 
 Issue #50 owns the coarse typed-segment ABI and promotion review. The optional candidate
 is not in the worker capability list yet: the existing TypeScript contour implementation

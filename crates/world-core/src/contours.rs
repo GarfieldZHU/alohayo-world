@@ -273,4 +273,25 @@ mod tests {
         assert_eq!(first.points, second.points);
         assert_eq!(first.closed, vec![1, 1]);
     }
+
+    #[test]
+    fn traces_a_dense_deterministic_pattern() {
+        let width = 16;
+        let height = 16;
+        let inside: Vec<u8> = (0..height)
+            .flat_map(|y| {
+                (0..width).map(move |x| u8::from((x * 13 + y * 7 + x * y) % 17 < 7))
+            })
+            .collect();
+        let result = prepare_contour_geometry(
+            &inside,
+            &halo(width, height, 1),
+            width,
+            height,
+            -16,
+            16,
+        );
+        assert!(!result.path_offsets.is_empty());
+        assert_eq!(result.path_offsets.len(), result.closed.len());
+    }
 }

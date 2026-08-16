@@ -31,6 +31,9 @@ Tracked fields:
 
 - `avgFrameMs`
 - `maxFrameMs`
+- `p50FrameMs`, `p95FrameMs`, and `p99FrameMs`
+- `onePercentLowFps` and `droppedFrameCount`
+- `qualityTier` and `qualityResolutionScale`
 - `fps`
 - `lastChunkGenerationMs`
 - `maxChunkGenerationMs`
@@ -67,6 +70,13 @@ Notes:
 - memory uses `performance.memory` when the browser exposes it. When unavailable, the
   metric remains `null` instead of inventing a fake number.
 - long tasks use `PerformanceObserver` when supported.
+
+The runtime now samples a rolling 600-frame trace and evaluates 60-frame windows through a
+hysteretic controller. Three bad windows lower the presentation tier and six good windows
+raise it again. The controller changes Pixi renderer resolution only; fixed-step simulation,
+world generation, saves, and worker contracts are not quality-dependent. `high`, `balanced`,
+and `safe` tiers use resolution scales `1.00`, `0.85`, and `0.68`, with reduced-motion and
+low-memory callers selecting the safe terrain-atlas LOD.
 
 ## Enforced Budgets
 
@@ -126,5 +136,5 @@ Future iterations can tighten this system by:
 - storing benchmark history per release
 - splitting budgets by renderer backend or device tier
 - adding explicit regression comments to release notes and roadmap entries
-- capturing a hardware/GPU matrix for movement p50/p95/p99 and the 1%-low target in #55's
-  follow-up issue, then selecting adaptive quality tiers from those traces
+- capturing a hardware/GPU matrix for movement p50/p95/p99 and the 1%-low target in issue
+  `#58`; local and software-browser telemetry is not a substitute for that matrix

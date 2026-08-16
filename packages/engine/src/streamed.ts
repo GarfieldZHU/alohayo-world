@@ -316,10 +316,14 @@ export async function createGame(
   let minimapMode: 'fit' | 'manual' = 'fit'
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
+  const rendererResolution = app.renderer.resolution
   const performanceTracker = createRuntimePerformanceTracker({
     canvas: app.canvas,
     sampleDrawCalls: () => estimateDrawCalls(chunkViews),
     sampleLoadedChunks: () => chunks.size,
+    applyQuality: (preset) => {
+      app.renderer.resolution = Math.max(0.5, rendererResolution * preset.resolutionScale)
+    },
   })
   const fixedStep = 1 / 60
   const surveyWidth = Math.max(
@@ -1926,6 +1930,8 @@ export async function createGame(
           app.canvas.dataset.workerTerrainTextureHints =
             chunk.workerDiagnostics.batches['terrain-texture-hints']
           app.canvas.dataset.workerHydrology = chunk.workerDiagnostics.batches['hydrology-raster']
+          app.canvas.dataset.workerContourGeometry =
+            chunk.workerDiagnostics.batches['contour-geometry']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
           app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)
           app.canvas.dataset.workerWasmStartupMs = chunk.workerDiagnostics.wasmStartupMs.toFixed(3)

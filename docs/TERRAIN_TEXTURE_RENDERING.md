@@ -1,7 +1,7 @@
 # Terrain Texture Rendering Foundation
 
 **Status:** feature branch `codex/wasm-terrain-texture-foundation` · procedural vertical slice
-complete · optional authored atlas tracked in [issue #64](https://github.com/GarfieldZHU/alohayo-world/issues/64)
+and original eight-family atlas contract complete · bitmap promotion tracked in [issue #64](https://github.com/GarfieldZHU/alohayo-world/issues/64)
 
 The map face now has a deterministic texture language without moving terrain authority into
 WASM or adding a 3D asset path. The texture layer is presentation metadata: it enriches the
@@ -66,10 +66,12 @@ would be the wrong first asset boundary. The first slice is assetless and determ
 keeps startup, streaming, seam behavior, and mobile memory predictable while the terrain
 system remains the visual authority.
 
-The optional authored atlas is intentionally deferred to issue #64. It should be a small,
-palette-neutral, project-original or verified-CC0 2D atlas with gutters, followed by residency,
-eviction, mobile GPU-memory, LOD, reduced-motion, and frame-pacing measurements. Do not add
-KTX2/WebP or GLB until those measurements justify a shipping asset path.
+`assets/terrain-texture-atlas.svg` is the first project-original, palette-neutral eight-family
+atlas with transparent gutters. `TerrainAtlasResidency` tracks chunk references, bytes, LRU
+eviction, and LOD 0/1 selection. Safe/balanced quality, low-memory devices, and reduced motion
+choose LOD 1. The atlas is not yet the default Pixi texture path: optimized bitmap loading,
+mobile GPU-memory measurements, and procedural-versus-authored browser comparison still need
+to pass before shipping it as the renderer authority.
 
 ## Evidence
 

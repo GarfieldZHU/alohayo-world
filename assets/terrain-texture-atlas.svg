@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256" viewBox="0 0 512 256" fill="none">
+  <title>Alohayo World original terrain texture atlas</title>
+  <desc>Eight transparent, palette-neutral 64 pixel terrain motif tiles with gutters.</desc>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <g id="water" transform="translate(8 8)" stroke="#FFFFFF" stroke-opacity=".72" stroke-width="3">
+      <path d="M4 15c10-7 19 7 29 0s19 7 29 0"/><path d="M4 31c10-7 19 7 29 0s19 7 29 0"/>
+    </g>
+    <g id="coast" transform="translate(72 8)" stroke="#FFFFFF" stroke-opacity=".62" stroke-width="3">
+      <path d="M6 54 20 40l9 8 12-17 13 12 7-8"/><path d="M6 59h56"/>
+    </g>
+    <g id="grass" transform="translate(136 8)" stroke="#FFFFFF" stroke-opacity=".58" stroke-width="3">
+      <path d="M9 56c1-20 4-27 9-37M20 56c-1-14 2-23 8-31M34 56c0-19 5-30 12-39M49 56c-1-13 2-20 8-27"/>
+    </g>
+    <g id="forest" transform="translate(200 8)" stroke="#FFFFFF" stroke-opacity=".62" stroke-width="3">
+      <path d="m10 47 11-26 11 26M16 38h10M43 54l9-23 9 23M48 42h8"/>
+    </g>
+    <g id="wetland" transform="translate(264 8)" stroke="#FFFFFF" stroke-opacity=".62" stroke-width="3">
+      <path d="M12 56V20M12 27c8-7 11-7 17-5M28 56V31M28 37c7-6 11-6 16-4M47 56V17M47 25c7-6 11-6 15-4"/>
+    </g>
+    <g id="arid" transform="translate(328 8)" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="3">
+      <path d="M5 18c12 9 20-4 31 5s20-4 27 2M5 35c12 9 20-4 31 5s20-4 27 2M5 52c12 9 20-4 31 5s20-4 27 2"/>
+    </g>
+    <g id="rock" transform="translate(392 8)" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="3">
+      <path d="m5 55 18-31 12 17 12-24 17 38Z"/><path d="m23 24 12 17M47 17l-1 24"/>
+    </g>
+    <g id="snow-volcanic" transform="translate(456 8)" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="3">
+      <path d="m6 53 18-31 15 18 12-25 12 38Z"/><path d="m24 22 7 10M51 15l-2 16"/>
+    </g>
+  </g>
+</svg>

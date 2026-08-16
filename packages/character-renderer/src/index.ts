@@ -20,10 +20,17 @@ export const CHARACTER_RENDER_LAYER_ORDER = [
 export type CharacterRenderLayer = (typeof CHARACTER_RENDER_LAYER_ORDER)[number]
 
 export interface CharacterRenderAssetManifest {
+  schemaVersion?: 1
+  assetId?: string
+  license?: 'project-original' | 'CC0'
+  version?: string
   spriteSheetUrl?: string
   glbUrl?: string
   attribution?: string
   directionalClips?: Partial<Record<CharacterFacing, string>>
+  fallback?: 'geometric'
+  clips?: Partial<Record<CharacterFacing, Partial<Record<string, string>>>>
+  byteSize?: number
 }
 
 export interface CharacterRenderFrame {
@@ -277,3 +284,17 @@ export function createPixiCharacterRenderer(
   }
   return renderer
 }
+
+export {
+  CHARACTER_ASSET_MANIFEST_SCHEMA_VERSION,
+  CHARACTER_ASSET_MAX_CLIPS,
+  CHARACTER_ASSET_MAX_RESIDENT,
+  CharacterAssetResidency,
+  resolveCharacterAssetClip,
+  selectCharacterAssetAdapter,
+  validateCharacterAssetManifest,
+  type CharacterAssetAdapter,
+  type CharacterAssetClipSource,
+  type CharacterAssetManifestV1,
+  type ResolvedCharacterAssetClip,
+} from './asset-manifest'

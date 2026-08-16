@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   SAVE_ARCHIVE_MAX_RECORDS,
+  decodeCompressedSaveArchive,
   decodeSaveArchive,
+  encodeCompressedSaveArchive,
   encodeSaveArchive,
   formatBytes,
 } from '../apps/game/src/save-archive'
@@ -50,5 +52,41 @@ describe('save journey archives', () => {
     expect(formatBytes(0)).toBe('0 B')
     expect(formatBytes(1024)).toBe('1.0 KB')
     expect(formatBytes(1024 * 1024)).toBe('1.0 MB')
+  })
+
+  it('round-trips a compressed archive and preserves bounded thumbnails', async () => {
+    const thumbnail = {
+      mimeType: 'image/png' as const,
+      width: 32,
+      height: 18,
+      dataUrl: 'data:image/png;base64,AAAA',
+    }
+    const serialized = await encodeCompressedSaveArchive([{ ...record, thumbnail }])
+    const parsed = await decodeCompressedSaveArchive(serialized)
+    expect(parsed.rejected).toEqual([])
+    expect(parsed.archive.records[0]?.thumbnail).toEqual(thumbnail)
+  })
+
+  it('rejects an oversized thumbnail without discarding neighboring journeys', () => {
+    const parsed = decodeSaveArchive(
+      JSON.stringify({
+        schemaVersion: 1,
+        records: [
+          record,
+          {
+            ...record,
+            slotId: 'oversized',
+            thumbnail: {
+              mimeType: 'image/png',
+              width: 512,
+              height: 512,
+              dataUrl: `data:image/png;base64,${'A'.repeat(300_000)}`,
+            },
+          },
+        ],
+      })
+    )
+    expect(parsed.archive.records.map((entry) => entry.slotId)).toEqual(['journey-one'])
+    expect(parsed.rejected).toEqual(['record 2: thumbnail is invalid or exceeds its budget'])
   })
 })

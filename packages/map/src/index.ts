@@ -31,6 +31,7 @@ import {
   generateChunkTerrainTextureHints,
   type ChunkTerrainTextureHints,
 } from './terrain-texture-hints'
+import type { ChunkContourGeometry } from './contour-geometry'
 import { summarizeChunkTopology, type ChunkTopologySummary } from './topology'
 import { buildTransportStructures, type TransportCellSample } from './transport'
 
@@ -56,6 +57,14 @@ export {
 } from './topology'
 export { extractMaskContours, type MaskContourOptions } from './contours'
 export {
+  CONTOUR_GEOMETRY_ABI_VERSION,
+  contourBatchEnabled,
+  generateChunkContourGeometry,
+  normalizeWasmContourGeometry,
+  type ChunkContourGeometry,
+  type WasmContourGeometry,
+} from './contour-geometry'
+export {
   buildTransportStructures,
   DEFAULT_TRANSPORT_SYSTEM,
   evaluateTransportTraversal,
@@ -71,6 +80,18 @@ export {
   type SettlementTrafficSnapshot,
   type VehicleTraversalProfile,
 } from './traffic'
+export {
+  DEFAULT_SETTLEMENT_AGENT_BUDGET,
+  SETTLEMENT_AGENT_MAX_PER_CHUNK,
+  SETTLEMENT_AGENT_SCHEMA_VERSION,
+  createSettlementAgents,
+  snapshotSettlementAgents,
+  stepSettlementAgents,
+  validateSettlementAgentSnapshot,
+  type SettlementAgent,
+  type SettlementAgentBatchSnapshot,
+  type SettlementAgentBudget,
+} from './settlement-agents'
 export { sampleRegionalWeather, type RegionalWeatherSample } from './regional-weather'
 export {
   advanceRegionalWeatherState,
@@ -126,6 +147,18 @@ export {
   type DrainageEdgeSample,
 } from './drainage-summary'
 export {
+  CROSS_CHUNK_HYDROLOGY_MAX_ALIASES,
+  CROSS_CHUNK_HYDROLOGY_MAX_SEAMS,
+  CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION,
+  CrossChunkHydrologyResolver,
+  reconcileDrainageSeam,
+  type CrossChunkHydrologyAlias,
+  type CrossChunkHydrologySnapshot,
+  type CrossChunkRiverSegment,
+  type HydrologySeamPair,
+  type HydrologySeamResult,
+} from './cross-chunk-hydrology'
+export {
   modifierStrengthAt,
   overlayBlockedAt,
   pointInProtectedRegion,
@@ -167,6 +200,20 @@ export {
   type DynamicGeomorphologyLedgerSnapshot,
   type DynamicGeomorphologyLedgerStats,
 } from './dynamic-geomorphology-ledger'
+export {
+  DEFAULT_SEASONAL_GEOMORPHOLOGY,
+  DYNAMIC_GEOMORPHOLOGY_EVOLUTION_SCHEMA_VERSION,
+  DYNAMIC_GEOMORPHOLOGY_MAX_PROPOSALS,
+  deriveTerrainPromotionProposals,
+  seasonalGeomorphologyForcing,
+  snapshotDynamicGeomorphologyEvolution,
+  stepSeasonalGeomorphology,
+  validateDynamicGeomorphologyEvolutionSnapshot,
+  type DynamicGeomorphologyEvolutionSnapshot,
+  type SeasonalGeomorphologyDefinition,
+  type SeasonalGeomorphologyStep,
+  type TerrainPromotionProposal,
+} from './dynamic-geomorphology-evolution'
 
 export const BIOME = {
   deepOcean: 0,
@@ -263,6 +310,7 @@ export interface GeneratedChunk {
   drainageSummary: ChunkDrainageSummary
   renderHints: ChunkRenderHints
   terrainTextureHints: ChunkTerrainTextureHints
+  contourGeometry?: ChunkContourGeometry
   topology: ChunkTopologySummary
   authoredArea: Uint16Array
   region: Uint8Array
@@ -391,7 +439,13 @@ export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   wasm: {
     abiVersion: 1,
     enabled: true,
-    batches: ['chunk-base-layers', 'render-hints', 'terrain-texture-hints', 'hydrology-raster'],
+    batches: [
+      'chunk-base-layers',
+      'render-hints',
+      'terrain-texture-hints',
+      'hydrology-raster',
+      'contour-geometry',
+    ],
   },
 }
 

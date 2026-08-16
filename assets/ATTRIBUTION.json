@@ -27,6 +27,15 @@
       "license": "project-original",
       "modifications": "Generated as an original UI material study and resized to 512px for runtime use.",
       "sha256": "92348309a052189e52e81bc4f4210ecb8dc23af7997efcee3452a7e85244ab66"
+    },
+    {
+      "path": "terrain-texture-atlas.svg",
+      "title": "Alohayo Terrain Texture Atlas",
+      "author": "Alohayo World project",
+      "source": "project-original",
+      "license": "MIT",
+      "modifications": "Original transparent palette-neutral 8-family vector atlas with gutters.",
+      "sha256": "generated-and-verified-by-ci-in-future"
     }
   ]
 }
