@@ -101,17 +101,13 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(collapseBox).toBeTruthy()
   expect(clockBox).toBeTruthy()
   expect(collapseBox!.y).toBeGreaterThanOrEqual(clockBox!.y + clockBox!.height)
-  const hitTarget = await page.evaluate(
-    ({ x, y }) =>
-      document
-        .elementFromPoint(x, y)
-        ?.closest<HTMLElement>('[aria-label]')
-        ?.getAttribute('aria-label'),
-    {
-      x: collapseBox!.x + collapseBox!.width / 2,
-      y: collapseBox!.y + collapseBox!.height / 2,
-    }
-  )
+  const hitTarget = await collapse.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    return document
+      .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      ?.closest<HTMLElement>('[aria-label]')
+      ?.getAttribute('aria-label')
+  })
   expect(hitTarget).toBe('Hide')
   await collapse.click()
   const expand = page.getByRole('button', { name: 'Show' })
@@ -123,17 +119,13 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(expandBox).toBeTruthy()
   expect(collapsedClockBox).toBeTruthy()
   expect(expandBox!.x).toBeGreaterThanOrEqual(collapsedClockBox!.x + collapsedClockBox!.width)
-  const expandHitTarget = await page.evaluate(
-    ({ x, y }) =>
-      document
-        .elementFromPoint(x, y)
-        ?.closest<HTMLElement>('[aria-label]')
-        ?.getAttribute('aria-label'),
-    {
-      x: expandBox!.x + expandBox!.width / 2,
-      y: expandBox!.y + expandBox!.height / 2,
-    }
-  )
+  const expandHitTarget = await expand.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    return document
+      .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      ?.closest<HTMLElement>('[aria-label]')
+      ?.getAttribute('aria-label')
+  })
   expect(expandHitTarget).toBe('Show')
   await expand.click()
   await expect(page.getByRole('button', { name: 'Hide' })).toBeVisible()
@@ -195,6 +187,11 @@ test('confirms a cross-seed journey remount and keeps a recovery slot', async ({
 
   await page.getByLabel('World seed').fill('second-journey')
   await page.getByRole('button', { name: 'Resurvey' }).click()
+  await expect(page.locator('canvas[aria-label="Alohayo World map"]')).toHaveAttribute(
+    'data-initial-presentation',
+    'complete',
+    { timeout: 60_000 }
+  )
   await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   const card = page.locator('.save-card').filter({ hasText: 'First journey' })
   await card.click()

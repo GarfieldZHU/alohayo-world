@@ -17,6 +17,9 @@
   workers, disable shared-memory pressure, wait on the streamed world's explicit ready marker,
   and make responsive hit-testing assertions tolerant of subpixel layout rounding.
 
+- Stop per-frame Chronicle and Dossier DOM reconstruction when their snapshot content is unchanged,
+  preserving live updates while keeping hidden UI surfaces and open controls stable under load.
+
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
   point-reserve plate, generated loadout records, and a truthful field item catalog with

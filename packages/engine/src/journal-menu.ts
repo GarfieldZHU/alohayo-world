@@ -142,6 +142,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
   let savePending = false
   let saveFeedback: { text: string; error: boolean } | null = null
   let destroyed = false
+  let renderedContentKey = ''
 
   const root = element('div', 'aw-journal')
   root.dataset.journalMenu = 'true'
@@ -575,6 +576,12 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
                 ? renderMap()
                 : renderSettings()
     )
+    renderedContentKey =
+      activeTab === 'save'
+        ? JSON.stringify(snapshot.save)
+        : activeTab === 'map'
+          ? JSON.stringify(snapshot.map)
+          : ''
   }
 
   const openTab = (tab: JournalTabId) => {
@@ -613,8 +620,17 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     },
     setSnapshot(nextSnapshot) {
       if (destroyed) return
+      const previousContentKey = renderedContentKey
       snapshot = nextSnapshot
-      if (activeTab === 'save' || activeTab === 'map') render()
+      const nextContentKey =
+        activeTab === 'save'
+          ? JSON.stringify(snapshot.save)
+          : activeTab === 'map'
+            ? JSON.stringify(snapshot.map)
+            : ''
+      if ((activeTab === 'save' || activeTab === 'map') && nextContentKey !== previousContentKey) {
+        render()
+      }
     },
     setLocale(nextLocale) {
       if (destroyed) return

@@ -165,6 +165,37 @@ const ITEM_GLYPHS: Record<string, string> = {
   hatchet: '†',
 }
 
+function characterSnapshotKey(snapshot: CharacterDossierSnapshot): string {
+  return [
+    snapshot.id,
+    snapshot.name,
+    snapshot.archetype,
+    snapshot.role,
+    snapshot.description,
+    snapshot.position,
+    snapshot.state,
+    snapshot.biome,
+    snapshot.region,
+    snapshot.activeWeaponSlot,
+    snapshot.activeWeaponName,
+    snapshot.walkSpeed,
+    snapshot.runMultiplier,
+    snapshot.actionRange,
+    snapshot.abilityPointsAvailable,
+    snapshot.abilities.map((ability) => ability.id + ':' + ability.value).join(','),
+    snapshot.equipment
+      .map((slot) => slot.slotId + ':' + slot.itemId + ':' + slot.itemName + ':' + slot.shared)
+      .join(','),
+    snapshot.items.map((item) => item.id + ':' + item.equippedSlotId).join(','),
+    snapshot.skills.map((skill) => skill.id + ':' + skill.status).join(','),
+    snapshot.field.loadedChunks,
+    snapshot.field.discoveredChunks,
+    snapshot.field.discoveredCells,
+    snapshot.field.traversalReady,
+    snapshot.field.traversalNote,
+  ].join('|')
+}
+
 function cloneEquipment(
   equipment: CharacterDossierEquipmentSlot[]
 ): CharacterDossierEquipmentSlot[] {
@@ -226,6 +257,7 @@ export function createCharacterDossier(
   let draftActiveWeaponSlot = snapshot.activeWeaponSlot
   let hasEquipmentPreview = false
   let destroyed = false
+  let renderedSnapshotKey = ''
 
   const root = element('div', 'aw-character-dossier')
   root.dataset.characterDossier = 'true'
@@ -858,6 +890,7 @@ export function createCharacterDossier(
         target?.focus({ preventScroll: true })
       })
     }
+    renderedSnapshotKey = characterSnapshotKey(snapshot)
   }
 
   const controller: CharacterDossierController = {
@@ -905,9 +938,10 @@ export function createCharacterDossier(
       return false
     },
     setSnapshot(nextSnapshot) {
+      const nextSnapshotKey = characterSnapshotKey(nextSnapshot)
       syncDraftAbilities(nextSnapshot)
       snapshot = nextSnapshot
-      render()
+      if (nextSnapshotKey !== renderedSnapshotKey) render()
     },
     setLocale(nextLocale) {
       locale = nextLocale

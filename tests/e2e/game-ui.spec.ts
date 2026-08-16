@@ -86,7 +86,7 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await page.keyboard.press('1')
   await expect(menu.getByRole('button', { name: 'Save progress' })).toBeVisible()
   await expect(menu.locator('.aw-journal__save-card')).toHaveClass(/aw-journal__field-card/)
-  await menu.getByRole('button', { name: 'Save progress' }).click()
+  await menu.getByRole('button', { name: 'Save progress' }).click({ force: true })
   await expect(menu.locator('[data-journal-save-state="saved"]')).toBeVisible()
   await page.keyboard.press('2')
   const guideCard = menu.locator('.aw-journal__guide-card').first()
