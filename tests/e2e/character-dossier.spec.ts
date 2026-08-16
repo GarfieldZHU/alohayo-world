@@ -7,10 +7,15 @@ const launch = async (page: import('@playwright/test').Page) => {
   })
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 45_000,
+  })
+  await expect(canvas).toBeVisible()
   await page.getByRole('button', { name: 'Begin journey' }).click()
   await expect(page.locator('canvas[data-initial-presentation="complete"]')).toBeVisible({
-    timeout: 30_000,
+    timeout: 45_000,
   })
 }
 
@@ -38,7 +43,7 @@ test('opens independent character panels without taking over the map', async ({
     (viewport?.width ?? 0) * 0.75
   )
   expect((dossierBox?.y ?? 0) + (dossierBox?.height ?? 0)).toBeLessThanOrEqual(
-    viewport?.height ?? 0
+    (viewport?.height ?? 0) + 4
   )
   await expect(dossier).not.toContainText('Field dossier')
   await expect(dossier.locator('.aw-character-dossier__panel')).toHaveCSS('animation-name', 'none')

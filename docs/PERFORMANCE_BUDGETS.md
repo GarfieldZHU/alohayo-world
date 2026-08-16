@@ -78,6 +78,10 @@ world generation, saves, and worker contracts are not quality-dependent. `high`,
 and `safe` tiers use resolution scales `1.00`, `0.85`, and `0.68`, with reduced-motion and
 low-memory callers selecting the safe terrain-atlas LOD.
 
+The browser acceptance suite runs serially on CI's two-core SwiftShader runner and waits for
+the canvas `data-initial-presentation="complete"` marker before sampling. This keeps frame
+metrics tied to a fully presented world while preserving the local parallel default.
+
 ## Enforced Budgets
 
 ### Generation and chunk budgets

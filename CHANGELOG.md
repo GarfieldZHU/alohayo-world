@@ -13,6 +13,10 @@
 - Pin every GitHub Actions dependency to an immutable commit and refresh the Yarn security
   resolutions. `yarn npm audit --all --recursive` now reports no audit suggestions.
 
+- Stabilize the CI browser contract for the two-core SwiftShader runner: serialize Playwright
+  workers, disable shared-memory pressure, wait on the streamed world's explicit ready marker,
+  and make responsive hit-testing assertions tolerant of subpixel layout rounding.
+
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
   point-reserve plate, generated loadout records, and a truthful field item catalog with

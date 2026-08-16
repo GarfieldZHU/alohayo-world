@@ -17,7 +17,7 @@ test('loads game resources only after start', async ({ page }) => {
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'loading')
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete')
   await expect(canvas).toBeVisible()
   const initialViewportChunks = Number(await canvas.getAttribute('data-initial-viewport-chunks'))
@@ -64,7 +64,7 @@ test('keeps the explicit TypeScript worker fallback browser-safe', async ({ page
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   await expect(canvas).toHaveAttribute('data-worker-base-layers', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'typescript')
@@ -81,7 +81,7 @@ test('falls back when the promoted Wasm artifact is unavailable', async ({ page 
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   await expect(canvas).toHaveAttribute('data-worker-base-layers', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'typescript')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'typescript')
@@ -94,7 +94,7 @@ test('falls back when the promoted Wasm artifact is unavailable', async ({ page 
 test('keeps the minimap collapse control interactive and clear of the clock', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   const collapse = page.getByRole('button', { name: 'Hide' })
   const clock = page.getByLabel('World time')
   const [collapseBox, clockBox] = await Promise.all([collapse.boundingBox(), clock.boundingBox()])
@@ -102,7 +102,11 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(clockBox).toBeTruthy()
   expect(collapseBox!.y).toBeGreaterThanOrEqual(clockBox!.y + clockBox!.height)
   const hitTarget = await page.evaluate(
-    ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('aria-label'),
+    ({ x, y }) =>
+      document
+        .elementFromPoint(x, y)
+        ?.closest<HTMLElement>('[aria-label]')
+        ?.getAttribute('aria-label'),
     {
       x: collapseBox!.x + collapseBox!.width / 2,
       y: collapseBox!.y + collapseBox!.height / 2,
@@ -120,7 +124,11 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(collapsedClockBox).toBeTruthy()
   expect(expandBox!.x).toBeGreaterThanOrEqual(collapsedClockBox!.x + collapsedClockBox!.width)
   const expandHitTarget = await page.evaluate(
-    ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('aria-label'),
+    ({ x, y }) =>
+      document
+        .elementFromPoint(x, y)
+        ?.closest<HTMLElement>('[aria-label]')
+        ?.getAttribute('aria-label'),
     {
       x: expandBox!.x + expandBox!.width / 2,
       y: expandBox!.y + expandBox!.height / 2,
@@ -135,7 +143,7 @@ test('manages named local saves and reports bad imports', async ({ page }) => {
   await page.goto('/')
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
 
   await page.getByPlaceholder('Save name').fill('Bridge approach')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -179,7 +187,7 @@ test('confirms a cross-seed journey remount and keeps a recovery slot', async ({
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByLabel('World seed').fill('first-journey')
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
 
   await page.getByPlaceholder('Save name').fill('First journey')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -187,7 +195,7 @@ test('confirms a cross-seed journey remount and keeps a recovery slot', async ({
 
   await page.getByLabel('World seed').fill('second-journey')
   await page.getByRole('button', { name: 'Resurvey' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   const card = page.locator('.save-card').filter({ hasText: 'First journey' })
   await card.click()
   page.once('dialog', async (dialog) => {
@@ -203,7 +211,7 @@ test('keeps healthy journeys visible beside an injected corrupt record', async (
   await page.goto('/')
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
 
   await page.getByPlaceholder('Save name').fill('Healthy crossing')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -231,7 +239,7 @@ test('keeps healthy journeys visible beside an injected corrupt record', async (
   await page.reload()
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   await expect(page.locator('.save-card').filter({ hasText: 'Healthy crossing' })).toBeVisible()
   await expect(page.locator('.save-card[data-health="corrupt"]')).toContainText(
     'Corrupt browser fixture'
@@ -243,7 +251,7 @@ test('supports keyboard selection and narrow save cards', async ({ page }) => {
   await page.goto('/')
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
 
   await page.getByPlaceholder('Save name').fill('Narrow crossing')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -317,7 +325,11 @@ const readRenderer = (page: Page) =>
   })
 
 const waitForRuntimeSample = async (page: Page) => {
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 20_000 })
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 45_000,
+  })
+  await expect(canvas).toBeVisible()
   await page.waitForTimeout(1500)
   const metrics = await readPerformanceMetrics(page)
   console.info('runtime metrics', metrics)

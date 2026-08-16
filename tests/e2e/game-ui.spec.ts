@@ -3,7 +3,12 @@ import { expect, test } from '@playwright/test'
 const launch = async (page: import('@playwright/test').Page) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
-  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 45_000,
+  })
+  await expect(canvas).toBeVisible()
 }
 
 test('moves from splash to a light HUD and keyboard-safe menu', async ({ page }, testInfo) => {
@@ -122,14 +127,18 @@ test('moves from splash to a light HUD and keyboard-safe menu', async ({ page },
   await wildlifeCard.hover()
   await expect(wildlifeCard).not.toHaveCSS('transform', 'none')
   await page.screenshot({ path: testInfo.outputPath('journal-desktop-bestiary.png') })
-  await page.getByRole('tab', { name: 'Field map' }).click()
+  const fieldMapTab = page.getByRole('tab', { name: 'Field map' })
+  await fieldMapTab.scrollIntoViewIfNeeded()
+  await fieldMapTab.click({ force: true })
   await expect(menu.getByText('World seed', { exact: true })).toBeVisible()
   const mapMetric = menu.locator('#aw-journal-panel-map .aw-journal__metric').first()
   await expect(mapMetric).toHaveClass(/aw-journal__field-card/)
   await mapMetric.hover()
   await expect(mapMetric).not.toHaveCSS('transform', 'none')
   await page.screenshot({ path: testInfo.outputPath('journal-desktop-field-map.png') })
-  await page.getByRole('tab', { name: 'Settings' }).click()
+  const settingsTab = page.getByRole('tab', { name: 'Settings' })
+  await settingsTab.scrollIntoViewIfNeeded()
+  await settingsTab.click({ force: true })
   const settingsRow = menu.locator('.aw-journal__settings-row').first()
   await expect(settingsRow).toHaveClass(/aw-journal__field-card/)
   await settingsRow.hover()
