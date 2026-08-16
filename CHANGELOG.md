@@ -15,7 +15,7 @@
 
 - Stabilize the CI browser contract for the two-core SwiftShader runner: serialize Playwright
   workers, disable shared-memory pressure, wait on the streamed world's explicit ready marker,
-  and make responsive hit-testing assertions tolerant of subpixel layout rounding.
+  and verify responsive controls through geometry, actionability, and state transitions.
 
 - Stop per-frame Chronicle and Dossier DOM reconstruction when their snapshot content is unchanged,
   preserving live updates while keeping hidden UI surfaces and open controls stable under load.

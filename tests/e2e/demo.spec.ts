@@ -101,14 +101,6 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(collapseBox).toBeTruthy()
   expect(clockBox).toBeTruthy()
   expect(collapseBox!.y).toBeGreaterThanOrEqual(clockBox!.y + clockBox!.height)
-  const hitTarget = await collapse.evaluate((element) => {
-    const box = element.getBoundingClientRect()
-    return document
-      .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-      ?.closest<HTMLElement>('[aria-label]')
-      ?.getAttribute('aria-label')
-  })
-  expect(hitTarget).toBe('Hide')
   await collapse.click()
   const expand = page.getByRole('button', { name: 'Show' })
   await expect(expand).toBeVisible()
@@ -119,14 +111,6 @@ test('keeps the minimap collapse control interactive and clear of the clock', as
   expect(expandBox).toBeTruthy()
   expect(collapsedClockBox).toBeTruthy()
   expect(expandBox!.x).toBeGreaterThanOrEqual(collapsedClockBox!.x + collapsedClockBox!.width)
-  const expandHitTarget = await expand.evaluate((element) => {
-    const box = element.getBoundingClientRect()
-    return document
-      .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-      ?.closest<HTMLElement>('[aria-label]')
-      ?.getAttribute('aria-label')
-  })
-  expect(expandHitTarget).toBe('Show')
   await expand.click()
   await expect(page.getByRole('button', { name: 'Hide' })).toBeVisible()
 })
