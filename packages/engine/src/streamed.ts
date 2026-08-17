@@ -316,10 +316,14 @@ export async function createGame(
   let minimapMode: 'fit' | 'manual' = 'fit'
   const chunkSize = content.world.chunkSize
   const cellSize = content.world.cellSize
+  const rendererResolution = app.renderer.resolution
   const performanceTracker = createRuntimePerformanceTracker({
     canvas: app.canvas,
     sampleDrawCalls: () => estimateDrawCalls(chunkViews),
     sampleLoadedChunks: () => chunks.size,
+    applyQuality: (preset) => {
+      app.renderer.resolution = Math.max(0.5, rendererResolution * preset.resolutionScale)
+    },
   })
   const fixedStep = 1 / 60
   const surveyWidth = Math.max(
@@ -1926,6 +1930,8 @@ export async function createGame(
           app.canvas.dataset.workerTerrainTextureHints =
             chunk.workerDiagnostics.batches['terrain-texture-hints']
           app.canvas.dataset.workerHydrology = chunk.workerDiagnostics.batches['hydrology-raster']
+          app.canvas.dataset.workerContourGeometry =
+            chunk.workerDiagnostics.batches['contour-geometry']
           app.canvas.dataset.workerFallbacks = String(chunk.workerDiagnostics.fallbacks.length)
           app.canvas.dataset.workerTransferBytes = String(chunk.workerDiagnostics.transferBytes)
           app.canvas.dataset.workerWasmStartupMs = chunk.workerDiagnostics.wasmStartupMs.toFixed(3)
@@ -2301,19 +2307,24 @@ export async function createGame(
             body: journal.JournalGuideActBody!,
           },
           {
+            key: 'Esc',
+            title: journal.JournalGuideSettingsTitle!,
+            body: journal.JournalGuideSettingsBody!,
+          },
+          {
             key: 'M',
-            title: journal.JournalGuideJournalTitle!,
-            body: journal.JournalGuideJournalBody!,
+            title: journal.JournalGuideMapTitle!,
+            body: journal.JournalGuideMapBody!,
+          },
+          {
+            key: 'I',
+            title: journal.JournalGuideItemsTitle!,
+            body: journal.JournalGuideItemsBody!,
           },
           {
             key: 'C',
             title: journal.JournalGuideCharacterTitle!,
             body: journal.JournalGuideCharacterBody!,
-          },
-          {
-            key: 'N',
-            title: journal.JournalGuideMapTitle!,
-            body: journal.JournalGuideMapBody!,
           },
           {
             key: '1–6',
@@ -2373,10 +2384,26 @@ export async function createGame(
       const slot = slotById.get(selection.slotId)
       const currentItem = content.characters.items.find((item) => item.id === selection.itemId)
       const options = [
-        { id: null, name: devText('unequip') },
+        {
+          id: null,
+          name: devText('unequip'),
+          tags: [],
+          modifiers: {},
+          appearanceColor: '#7c8a8d',
+          appearanceShape: 'empty',
+          shareable: false,
+        },
         ...content.characters.items
           .filter((item) => item.allowedSlots.includes(selection.slotId))
-          .map((item) => ({ id: item.id, name: translateItemName(item.id, item.name) })),
+          .map((item) => ({
+            id: item.id,
+            name: translateItemName(item.id, item.name),
+            tags: [...item.tags],
+            modifiers: { ...(item.modifiers ?? {}) },
+            appearanceColor: item.appearance.color ?? '#7c8a8d',
+            appearanceShape: item.appearance.shape ?? 'empty',
+            shareable: item.shareable,
+          })),
       ]
       return {
         slotId: selection.slotId,
@@ -2386,10 +2413,30 @@ export async function createGame(
         itemName: currentItem
           ? translateItemName(currentItem.id, currentItem.name)
           : devText('unequip'),
+        itemTags: currentItem?.tags ? [...currentItem.tags] : [],
+        itemModifiers: { ...(currentItem?.modifiers ?? {}) },
+        itemColor: currentItem?.appearance.color ?? '#7c8a8d',
+        itemShape: currentItem?.appearance.shape ?? 'empty',
         shared: selection.shared,
         options,
       }
     })
+    const equippedSlotByItem = new Map(
+      characterEquipment
+        .filter((selection) => selection.itemId)
+        .map((selection) => [selection.itemId!, selection.slotId])
+    )
+    const characterItems = content.characters.items.map((item) => ({
+      id: item.id,
+      name: translateItemName(item.id, item.name),
+      tags: [...item.tags],
+      allowedSlots: [...item.allowedSlots],
+      modifiers: { ...(item.modifiers ?? {}) },
+      appearanceColor: item.appearance.color ?? '#7c8a8d',
+      appearanceShape: item.appearance.shape ?? 'empty',
+      shareable: item.shareable,
+      equippedSlotId: equippedSlotByItem.get(item.id) ?? null,
+    }))
     const characterSkills = [
       ...(explorer?.actionIds ?? []).flatMap((actionId) => {
         const action = content.characters.actions.find((candidate) => candidate.id === actionId)
@@ -2464,6 +2511,7 @@ export async function createGame(
         abilities: characterAbilities,
         abilityPointsAvailable: 4,
         equipment: characterEquipment,
+        items: characterItems,
         skills: characterSkills,
         field: {
           loadedChunks: chunks.size,

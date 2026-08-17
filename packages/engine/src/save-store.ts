@@ -6,6 +6,7 @@ import {
   type WorldSaveSnapshot,
   type WorldSaveSummary,
   type WorldSaveWorldState,
+  type WorldSaveGeomorphologyState,
   type WorldSaveWeatherState,
 } from '@alohayo/config'
 import {
@@ -518,6 +519,40 @@ function validateWeatherState(weather: unknown): asserts weather is WorldSaveWea
   }
 }
 
+function validateGeomorphologyState(value: unknown): asserts value is WorldSaveGeomorphologyState {
+  if (!value || typeof value !== 'object') {
+    throw new WorldSaveError('corrupt', 'save snapshot geomorphology state is invalid')
+  }
+  const candidate = value as Partial<WorldSaveGeomorphologyState>
+  if (
+    candidate.schemaVersion !== 1 ||
+    !Number.isSafeInteger(candidate.tick) ||
+    (candidate.tick ?? -1) < 0 ||
+    !Number.isSafeInteger(candidate.seasonPhase) ||
+    (candidate.seasonPhase ?? -1) < 0 ||
+    !Array.isArray(candidate.proposals) ||
+    candidate.proposals.length > 4_096
+  ) {
+    throw new WorldSaveError(
+      'corrupt',
+      'save snapshot geomorphology state does not match schema version 1'
+    )
+  }
+  for (const proposal of candidate.proposals) {
+    if (
+      !proposal ||
+      !Number.isSafeInteger(proposal.cellIndex) ||
+      proposal.cellIndex < 0 ||
+      !['floodplain-promotion', 'delta-growth', 'channel-migration'].includes(proposal.kind) ||
+      !Number.isInteger(proposal.strength) ||
+      proposal.strength < 0 ||
+      proposal.strength > 255
+    ) {
+      throw new WorldSaveError('corrupt', 'save snapshot geomorphology proposal is invalid')
+    }
+  }
+}
+
 async function requireRecord(
   record: PersistedWorldSaveRecord | null,
   slotId: string
@@ -597,6 +632,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     validateTopologyLedger(migrated.topology)
     validateAuthoredEntityLifecycleSnapshot(migrated.authoredEntities)
     if (migrated.weather !== undefined) validateWeatherState(migrated.weather)
+    if (migrated.geomorphology !== undefined) validateGeomorphologyState(migrated.geomorphology)
   } catch (error) {
     if (error instanceof TopologyLedgerError) {
       throw new WorldSaveError(

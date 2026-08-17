@@ -65,6 +65,13 @@ Guide, Terrain Manual, Bestiary, Field Map, and Settings are stable Chronicle se
 unavailable systems use explicit empty states. Legacy `journey`, `party`, and `gear` tab
 IDs remain accepted as aliases for embedders.
 
+Chronicle reading surfaces share the Bestiary's field-record material: a layered atlas wash,
+contour rings, inset registration marks, accent tinting, and restrained hover or focus lift.
+The character dossier extends that language with two project-local, low-opacity material
+textures: engraved slate for interactive records and contour vellum for points and archival
+summaries. They are loaded through the Vite asset graph, veiled by CSS gradients, and never
+replace the live map or become a full bitmap skin.
+
 ## Wayfinder Relic language
 
 ### Palette
@@ -241,7 +248,8 @@ default. Explicitly enabling game UI in dev mode gives the menu priority.
 
 ## Performance contract
 
-- no generated concept bitmap is imported by application or engine code;
+- no generated concept-board bitmap is imported by application or engine code; authored
+  material textures are the separate, registered dossier surface assets;
 - UI snapshot updates are dirty/cadenced rather than per-cell DOM rebuilds;
 - no `backdrop-filter` or continuous decorative animation;
 - hidden panels use `hidden` and are not updated as separate animation loops;

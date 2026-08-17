@@ -1,6 +1,20 @@
+import {
+  createAdaptiveQualityController,
+  summarizeFramePacing,
+  type RuntimeQualityTier,
+  type RuntimeQualityPreset,
+} from './performance-quality'
+
 export interface RuntimePerformanceMetrics {
   avgFrameMs: number
   maxFrameMs: number
+  p50FrameMs: number
+  p95FrameMs: number
+  p99FrameMs: number
+  onePercentLowFps: number
+  droppedFrameCount: number
+  qualityTier: RuntimeQualityTier
+  qualityResolutionScale: number
   fps: number
   lastChunkGenerationMs: number
   maxChunkGenerationMs: number
@@ -23,6 +37,7 @@ interface RuntimePerformanceTrackerOptions {
   canvas: HTMLCanvasElement
   sampleDrawCalls: () => number
   sampleLoadedChunks: () => number
+  applyQuality?: (preset: RuntimeQualityPreset) => void
 }
 
 export interface RuntimePerformanceTracker {
@@ -39,10 +54,18 @@ export function createRuntimePerformanceTracker({
   canvas,
   sampleDrawCalls,
   sampleLoadedChunks,
+  applyQuality,
 }: RuntimePerformanceTrackerOptions): RuntimePerformanceTracker {
   const metrics: RuntimePerformanceMetrics = {
     avgFrameMs: 0,
     maxFrameMs: 0,
+    p50FrameMs: 0,
+    p95FrameMs: 0,
+    p99FrameMs: 0,
+    onePercentLowFps: 0,
+    droppedFrameCount: 0,
+    qualityTier: 'high',
+    qualityResolutionScale: 1,
     fps: 0,
     lastChunkGenerationMs: 0,
     maxChunkGenerationMs: 0,
@@ -55,6 +78,9 @@ export function createRuntimePerformanceTracker({
   }
 
   let frameSamples = 0
+  const frameTrace: number[] = []
+  let qualityWindow: number[] = []
+  const qualityController = createAdaptiveQualityController()
   let lastFrameNow: number | null = null
   let longTaskObserver: PerformanceObserver | null = null
   let runtimeWindowStartedAt = performance.now()
@@ -84,6 +110,13 @@ export function createRuntimePerformanceTracker({
 
     canvas.dataset.avgFrameMs = metrics.avgFrameMs.toFixed(2)
     canvas.dataset.maxFrameMs = metrics.maxFrameMs.toFixed(2)
+    canvas.dataset.p50FrameMs = metrics.p50FrameMs.toFixed(2)
+    canvas.dataset.p95FrameMs = metrics.p95FrameMs.toFixed(2)
+    canvas.dataset.p99FrameMs = metrics.p99FrameMs.toFixed(2)
+    canvas.dataset.onePercentLowFps = metrics.onePercentLowFps.toFixed(1)
+    canvas.dataset.droppedFrameCount = String(metrics.droppedFrameCount)
+    canvas.dataset.qualityTier = metrics.qualityTier
+    canvas.dataset.qualityResolutionScale = metrics.qualityResolutionScale.toFixed(2)
     canvas.dataset.lastChunkMs = metrics.lastChunkGenerationMs.toFixed(1)
     canvas.dataset.maxChunkMs = metrics.maxChunkGenerationMs.toFixed(1)
     canvas.dataset.estimatedDrawCalls = String(metrics.estimatedDrawCalls)
@@ -132,6 +165,22 @@ export function createRuntimePerformanceTracker({
           ? frameMs
           : (metrics.avgFrameMs * (frameSamples - 1) + frameMs) / frameSamples
       metrics.maxFrameMs = Math.max(metrics.maxFrameMs, frameMs)
+      frameTrace.push(frameMs)
+      qualityWindow.push(frameMs)
+      if (frameTrace.length > 600) frameTrace.shift()
+      if (qualityWindow.length >= 60) {
+        const quality = qualityController.observe(summarizeFramePacing(qualityWindow))
+        metrics.qualityTier = quality.tier
+        metrics.qualityResolutionScale = quality.resolutionScale
+        applyQuality?.(quality)
+        qualityWindow = []
+      }
+      const summary = summarizeFramePacing(frameTrace)
+      metrics.p50FrameMs = summary.p50FrameMs
+      metrics.p95FrameMs = summary.p95FrameMs
+      metrics.p99FrameMs = summary.p99FrameMs
+      metrics.onePercentLowFps = summary.onePercentLowFps
+      metrics.droppedFrameCount = summary.droppedFrameCount
       metrics.fps = fps
       sync()
     },
@@ -146,9 +195,20 @@ export function createRuntimePerformanceTracker({
       lastFrameNow = null
       metrics.avgFrameMs = 0
       metrics.maxFrameMs = 0
+      metrics.p50FrameMs = 0
+      metrics.p95FrameMs = 0
+      metrics.p99FrameMs = 0
+      metrics.onePercentLowFps = 0
+      metrics.droppedFrameCount = 0
       metrics.fps = 0
       metrics.longTaskCount = 0
       metrics.maxLongTaskMs = 0
+      frameTrace.length = 0
+      qualityWindow = []
+      qualityController.reset()
+      metrics.qualityTier = qualityController.tier
+      metrics.qualityResolutionScale = qualityController.preset.resolutionScale
+      applyQuality?.(qualityController.preset)
       sync()
     },
   }

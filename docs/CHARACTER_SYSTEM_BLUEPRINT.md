@@ -1,7 +1,7 @@
 # Character System Blueprint
 
 **Status:** design baseline and optional rules delta in progress (`#39`); presentation
-extraction planned in `#59`.
+extraction and the validated asset-adapter contract are active (`#59`, `#63`).
 
 ## Product Goal
 
@@ -29,6 +29,10 @@ This document defines direction. Current executable behavior is listed in
   contract for base appearance, equipment/weapon overlays, and action states. PixiJS is
   an adapter and never becomes simulation authority; directional sprite or GLB adapters
   can be added without changing movement or saves.
+- `CharacterRenderAssetManifest` is schema-one, license-aware, and optional. The pure
+  `resolveCharacterAssetClip` helper chooses an action-and-direction clip, then a directional
+  idle clip, then geometric fallback. `CharacterAssetResidency` bounds reference-counted
+  resources; it does not own GPU objects, so adapter disposal remains explicit.
 
 ## Rules Model
 

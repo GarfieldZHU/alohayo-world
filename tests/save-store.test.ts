@@ -332,6 +332,27 @@ describe('world save store', () => {
     ).toThrow('weather state')
   })
 
+  it('validates optional seasonal geomorphology proposals and bounds', () => {
+    const geomorphology = {
+      schemaVersion: 1 as const,
+      tick: 12,
+      seasonPhase: 12,
+      proposals: [{ cellIndex: 4, kind: 'delta-growth' as const, strength: 120 }],
+    }
+    expect(validateWorldSaveSnapshot({ ...sampleSnapshot, geomorphology }).geomorphology).toEqual(
+      geomorphology
+    )
+    expect(() =>
+      validateWorldSaveSnapshot({
+        ...sampleSnapshot,
+        geomorphology: {
+          ...geomorphology,
+          proposals: Array.from({ length: 4_097 }, () => geomorphology.proposals[0]!),
+        },
+      })
+    ).toThrow('geomorphology state')
+  })
+
   it('lists, renames, duplicates, and deletes named save slots', async () => {
     const store = createWorldSaveStore(new FakeIndexedDbFactory() as unknown as IDBFactory)
     await store.save(sampleSnapshot, 'manual-one', { label: 'Before the bridge' })

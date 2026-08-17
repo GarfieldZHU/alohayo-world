@@ -165,6 +165,19 @@ export interface WorldSaveWeatherState {
   history: WorldSaveWeatherHistoryEntry[]
 }
 
+export interface WorldSaveGeomorphologyProposal {
+  cellIndex: number
+  kind: 'floodplain-promotion' | 'delta-growth' | 'channel-migration'
+  strength: number
+}
+
+export interface WorldSaveGeomorphologyState {
+  schemaVersion: 1
+  tick: number
+  seasonPhase: number
+  proposals: WorldSaveGeomorphologyProposal[]
+}
+
 export interface WorldSavePreferences {
   locale: LocaleCode
   devMode: boolean
@@ -193,6 +206,7 @@ export interface WorldSaveSnapshot {
   topology: WorldSaveTopologyLedger
   authoredEntities: WorldSaveAuthoredEntityLifecycle
   weather?: WorldSaveWeatherState
+  geomorphology?: WorldSaveGeomorphologyState
   preferences: WorldSavePreferences
   contentPacks: ContentPackSaveMetadata
 }
@@ -887,6 +901,7 @@ export type WorldWorkerWasmBatch =
   | 'render-hints'
   | 'terrain-texture-hints'
   | 'hydrology-raster'
+  | 'contour-geometry'
 
 export interface WorldWorkerCapabilities {
   protocolVersion: 1

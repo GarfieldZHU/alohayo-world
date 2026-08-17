@@ -5,7 +5,12 @@ import {
   type WorldSaveSummary,
   type WorldSaveWorldState,
 } from '@alohayo/config'
-import { decodeSaveArchive, encodeSaveArchive, formatBytes } from './save-archive'
+import {
+  decodeCompressedSaveArchive,
+  decodeSaveArchive,
+  encodeCompressedSaveArchive,
+  formatBytes,
+} from './save-archive'
 
 const saveCopy: Record<LocaleCode, Record<string, string>> = {
   en: {
@@ -410,7 +415,10 @@ export function createSaveManager(options: SaveManagerOptions): SaveManager {
         })
         return
       }
-      downloadText('alohayo-journeys.alohayo-archive.json', encodeSaveArchive(records))
+      downloadText(
+        'alohayo-journeys.alohayo-archive.gz.json',
+        await encodeCompressedSaveArchive(records)
+      )
       saveStatus.textContent = format('saveArchiveReady', { count: records.length })
       if (rejected.length) saveStatus.textContent += ` · ${rejected.join(', ')}`
     })
@@ -428,7 +436,13 @@ export function createSaveManager(options: SaveManagerOptions): SaveManager {
   )
   saveImportAll.addEventListener('click', () =>
     run(async () => {
-      const { archive, rejected } = decodeSaveArchive(saveImportData.value)
+      let decoded: Awaited<ReturnType<typeof decodeCompressedSaveArchive>>
+      try {
+        decoded = await decodeCompressedSaveArchive(saveImportData.value)
+      } catch {
+        decoded = decodeSaveArchive(saveImportData.value)
+      }
+      const { archive, rejected } = decoded
       const errors = [...rejected]
       const seen = new Set<string>()
       let success = 0

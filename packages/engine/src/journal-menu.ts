@@ -142,6 +142,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
   let savePending = false
   let saveFeedback: { text: string; error: boolean } | null = null
   let destroyed = false
+  let renderedContentKey = ''
 
   const root = element('div', 'aw-journal')
   root.dataset.journalMenu = 'true'
@@ -177,7 +178,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
   }
 
   const metric = (label: string, value: string | number) => {
-    const node = element('div', 'aw-journal__metric')
+    const node = element('div', 'aw-journal__metric aw-journal__field-card')
     node.append(textNode('span', label), textNode('strong', String(value)))
     return node
   }
@@ -218,7 +219,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
       )
     )
 
-    const saveCard = element('section', 'aw-journal__save-card')
+    const saveCard = element('section', 'aw-journal__save-card aw-journal__field-card')
     saveCard.dataset.journalSection = 'save'
     const status = element('div', 'aw-journal__save-status')
     status.dataset.journalSaveState = savePending
@@ -284,7 +285,13 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     current.appendChild(metrics)
     panel.appendChild(current)
     if (!save.canSave)
-      panel.appendChild(textNode('p', copy(locale, 'JournalSaveUnavailable'), 'aw-journal__notice'))
+      panel.appendChild(
+        textNode(
+          'p',
+          copy(locale, 'JournalSaveUnavailable'),
+          'aw-journal__notice aw-journal__field-card'
+        )
+      )
     return panel
   }
 
@@ -303,7 +310,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     )
     const steps = element('div', 'aw-journal__guide-grid')
     snapshot.guide.steps.forEach((step, index) => {
-      const card = element('article', 'aw-journal__guide-card')
+      const card = element('article', 'aw-journal__guide-card aw-journal__field-card')
       card.append(
         textNode('span', String(index + 1).padStart(2, '0'), 'aw-journal__card-index'),
         textNode('kbd', step.key, 'aw-journal__key'),
@@ -313,7 +320,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
       steps.appendChild(card)
     })
     panel.appendChild(steps)
-    const note = element('div', 'aw-journal__callout')
+    const note = element('div', 'aw-journal__callout aw-journal__field-card')
     note.append(
       textNode('strong', copy(locale, 'JournalGuideNoteTitle')),
       textNode('p', snapshot.guide.note)
@@ -343,12 +350,18 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     )
     const list = element('div', 'aw-journal__manual-grid')
     if (!snapshot.terrain.length) {
-      list.appendChild(textNode('p', copy(locale, 'JournalTerrainEmpty'), 'aw-journal__notice'))
+      list.appendChild(
+        textNode(
+          'p',
+          copy(locale, 'JournalTerrainEmpty'),
+          'aw-journal__notice aw-journal__field-card'
+        )
+      )
     }
     snapshot.terrain.forEach((entry) => {
       const card = element(
         'article',
-        `aw-journal__manual-card${entry.current ? ' is-current' : ''}`
+        `aw-journal__manual-card aw-journal__field-card${entry.current ? ' is-current' : ''}`
       )
       card.dataset.journalEntryId = entry.id
       card.dataset.journalEntryStatus = entry.current ? 'current' : 'available'
@@ -389,7 +402,13 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
       list.appendChild(card)
     })
     panel.appendChild(list)
-    panel.appendChild(textNode('p', copy(locale, 'JournalTerrainSourceNote'), 'aw-journal__notice'))
+    panel.appendChild(
+      textNode(
+        'p',
+        copy(locale, 'JournalTerrainSourceNote'),
+        'aw-journal__notice aw-journal__field-card'
+      )
+    )
     return panel
   }
 
@@ -406,7 +425,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
         copy(locale, 'JournalBestiaryLead')
       )
     )
-    const notice = element('div', 'aw-journal__callout')
+    const notice = element('div', 'aw-journal__callout aw-journal__field-card')
     notice.append(
       textNode('strong', copy(locale, 'JournalEncounterLedgerTitle')),
       textNode('p', copy(locale, 'JournalEncounterLedgerUnavailable'))
@@ -419,7 +438,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
       const group = section(title, 'aw-journal__section aw-journal__bestiary-group')
       const grid = element('div', 'aw-journal__manual-grid')
       entries.forEach((entry) => {
-        const card = element('article', 'aw-journal__manual-card')
+        const card = element('article', 'aw-journal__manual-card aw-journal__field-card')
         card.dataset.journalEntryKind = entry.kind
         const header = element('header', 'aw-journal__manual-card-header')
         const titleNode = element('div')
@@ -437,7 +456,13 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
         grid.appendChild(card)
       })
       if (!entries.length)
-        grid.appendChild(textNode('p', copy(locale, 'JournalBestiaryEmpty'), 'aw-journal__notice'))
+        grid.appendChild(
+          textNode(
+            'p',
+            copy(locale, 'JournalBestiaryEmpty'),
+            'aw-journal__notice aw-journal__field-card'
+          )
+        )
       group.appendChild(grid)
       return group
     }
@@ -472,11 +497,17 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     panel.appendChild(metrics)
     const landmarks = section(copy(locale, 'JournalLoadedLandmarks'))
     if (!snapshot.map.landmarks.length) {
-      landmarks.appendChild(textNode('p', copy(locale, 'JournalNoLandmarks'), 'aw-journal__notice'))
+      landmarks.appendChild(
+        textNode(
+          'p',
+          copy(locale, 'JournalNoLandmarks'),
+          'aw-journal__notice aw-journal__field-card'
+        )
+      )
     } else {
       const list = element('div', 'aw-journal__landmark-list')
       snapshot.map.landmarks.forEach((landmark) => {
-        const card = element('article', 'aw-journal__landmark-card')
+        const card = element('article', 'aw-journal__landmark-card aw-journal__field-card')
         card.append(
           textNode('span', landmark.kind, 'aw-journal__id'),
           textNode('h4', landmark.name),
@@ -506,7 +537,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     )
     const settings = section(copy(locale, 'JournalInterface'))
     const rows = element('div', 'aw-journal__settings-list')
-    const hudRow = element('div', 'aw-journal__settings-row')
+    const hudRow = element('div', 'aw-journal__settings-row aw-journal__field-card')
     hudRow.append(
       textNode('div', copy(locale, 'JournalHudSetting'), 'aw-journal__settings-copy'),
       makeButton(
@@ -515,7 +546,7 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
         () => options.onAction({ type: 'toggle-hud' })
       )
     )
-    const mapRow = element('div', 'aw-journal__settings-row')
+    const mapRow = element('div', 'aw-journal__settings-row aw-journal__field-card')
     mapRow.append(
       textNode('div', copy(locale, 'JournalMapSetting'), 'aw-journal__settings-copy'),
       makeButton(
@@ -545,6 +576,12 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
                 ? renderMap()
                 : renderSettings()
     )
+    renderedContentKey =
+      activeTab === 'save'
+        ? JSON.stringify(snapshot.save)
+        : activeTab === 'map'
+          ? JSON.stringify(snapshot.map)
+          : ''
   }
 
   const openTab = (tab: JournalTabId) => {
@@ -583,8 +620,17 @@ export function createJournalMenu(options: CreateJournalMenuOptions): JournalMen
     },
     setSnapshot(nextSnapshot) {
       if (destroyed) return
+      const previousContentKey = renderedContentKey
       snapshot = nextSnapshot
-      if (activeTab === 'save' || activeTab === 'map') render()
+      const nextContentKey =
+        activeTab === 'save'
+          ? JSON.stringify(snapshot.save)
+          : activeTab === 'map'
+            ? JSON.stringify(snapshot.map)
+            : ''
+      if ((activeTab === 'save' || activeTab === 'map') && nextContentKey !== previousContentKey) {
+        render()
+      }
     },
     setLocale(nextLocale) {
       if (destroyed) return

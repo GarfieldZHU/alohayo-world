@@ -63,6 +63,23 @@ Phase 0 intentionally does not read the live clock or weather system.
 These are safety ceilings, not targets. The canonical handoff ledger applies tighter
 serialized-byte and per-tick propagation limits before any data crosses a chunk boundary.
 
+## Phase 2–3 follow-up contract (`#57`)
+
+`packages/map/src/dynamic-geomorphology-evolution.ts` adds a deterministic seasonal layer
+without changing the phase-zero static fallback:
+
+- wet/dry forcing is an integer `0..255` envelope derived from a wrapped year tick;
+- changed active cells produce a bounded, sorted proposal buffer for floodplain promotion,
+  delta growth, or channel migration;
+- pause/resume is represented by the explicit tick and the existing step state, so replaying
+  the same state and tick yields the same accounting and proposal order;
+- the proposal snapshot is schema-one and capped at 4,096 entries. `save-store` validates the
+  same shape when it is present, while older saves remain valid because the field is optional.
+
+The engine does not yet mutate terrain or invent a live geomorphology state. A consumer must
+first feed canonical outlet identities through the ledger below and then opt into the proposal
+snapshot. This keeps save migration and renderer behavior reversible.
+
 ## Phase 1: canonical cross-chunk ledger
 
 `packages/map/src/dynamic-geomorphology-ledger.ts` is the closeable Phase 1 contract.
@@ -81,17 +98,19 @@ tick and the topology resolver remains the authority for identity resolution.
    and 512 KiB serialized bytes. Uint32 mass overflow and schema/resolver mismatches are
    typed errors. These limits are checked before state is committed.
 
-The ledger does not yet invent seasonal forcing, mutate terrain, or promote a delta to a
-renderer-owned feature. Those behaviors are intentionally moved to the follow-up issue
-for Phase 2–4 so the static fallback and topology authority remain reversible.
+The ledger does not mutate terrain or promote a delta to a renderer-owned feature. The #57
+follow-up now defines the seasonal/proposal/save contracts, but canonical river identity,
+consumer wiring, dev visualization, and live performance promotion remain open.
 
 ## Planned promotion
 
 1. **Phase 1:** replace provisional local outlet indices with `#38` canonical drainage
    identities and add bounded eviction/rehydration. **Implemented in the ledger module.**
-2. **Phase 2:** deterministic seasonal inundation, residence, and recession (follow-up).
+2. **Phase 2:** deterministic seasonal inundation, residence, and recession. The forcing and
+   bounded proposal contract is implemented in `dynamic-geomorphology-evolution.ts`.
 3. **Phase 3:** persistent delta/fan accumulation, channel pressure, migration, and
-   terrain-transition proposals with hysteresis.
+   terrain-transition proposals with hysteresis. Only the proposal buffer is implemented;
+   persistent consumer state remains open.
 4. **Phase 4:** save migration, consumers, dev-only visualization, desktop/mobile
    performance, and live promotion.
 

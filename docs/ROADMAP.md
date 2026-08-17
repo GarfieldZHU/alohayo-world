@@ -11,15 +11,20 @@
       diagnostics.
 - [x] Feature-branch terrain texture-hint batch: deterministic WASM recipe layers, Pixi
       motif overlay, transfer/fallback diagnostics, and desktop/mobile evidence.
-- [ ] Issue `#64`: author the optional CC0/project-original 2D terrain atlas, then measure
-      atlas residency, mobile GPU memory, LOD, reduced-motion, and frame pacing before
-      introducing bitmap assets.
+- [x] Issue `#64` contract slice: add an original transparent eight-family SVG atlas plus
+      bounded chunk residency, mobile-safe LOD selection, and reduced-motion policy.
+- [ ] Issue `#64` final promotion: measure optimized bitmap load/GPU memory and compare the
+      authored atlas against the procedural overlay in desktop/mobile browser evidence.
 - [x] Weather, transport, render-hint, and contour expansion decomposed into ordered,
       independently closeable issues.
 - [x] Regional weather diagnostics, transport structure/traversal records, aggregate
       settlement traffic, and mount/vehicle profile contracts (`#46`, `#47`, `#48`).
-- [ ] Worker promotion evidence for Rust contour geometry (`#61`) and standalone
-      character presentation (`#59`).
+- [x] Issue `#61` worker candidate: versioned contour geometry capability, typed transfer,
+      fallback diagnostics, and negative-coordinate seam fixtures.
+- [ ] Issue `#61` final promotion review: repeat the benchmark and browser seam evidence on
+      the release artifact before treating the batch as a permanent stable authority.
+- [x] Issue `#63` contract slice: validated character sprite/GLB manifests, directional/action
+      clip fallback, and bounded asset residency.
 
 ## v0.1.2-foundation-checkpoint
 
@@ -54,6 +59,9 @@
 - [x] Deterministic terrain transitions and zoom-dependent geographic detail.
 - [x] Build-time discovered custom map-area configs, landmarks, and topology refresh.
 - [x] Shared configurable character generation for player, NPC, and enemy archetypes.
+- [x] Detailed map-safe Wayfinder Dossier treatment with authored slate/vellum materials,
+      catalog-backed ability groups, segmented point preview, generated loadout detail,
+      and a reference-only field item catalog.
 - [x] One-ninth-cell character scale with fixed-step walk, run, collision, and actions.
 - [x] Infinite chunk coordinate runtime with streamed retention and distance-based eviction.
 - [x] Explorer traversal across streamed chunks with minimap and local discovery fog.
@@ -67,15 +75,18 @@
 - [x] Deterministic hydrology pass with slope, depression handling, flow direction,
       accumulation, watersheds, and flow-following river source selection.
 - [ ] Cross-chunk watershed aliases, seam-safe drainage outlets, and continuous river
-      graph segments in issue `#38`.
+      graph segments in issue `#38`; the new pairwise alias resolver is still a stage-1
+      handoff and does not yet repair authoritative raster accumulation.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river
       presentation completed in issue `#41`.
 - [x] Phase-zero deterministic active-corridor erosion/flood/deposition kernel with exact
       integer accounting and static fallback for issue `#44`.
+- [x] Issue `#57` contract slice: deterministic seasonal forcing, bounded terrain-promotion
+      proposals, and optional schema-one save validation.
 - [ ] Canonical cross-chunk erosion/flood history, seasonal recession, channel migration,
-      and persistent delta growth in later issue `#44` phases.
+      and persistent delta growth in later issue `#57` phases.
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
       versioned persistent aliases, typed merge/frontier events, legacy-save migration,
       and browser-restart coverage completed in issue `#37`.
@@ -103,6 +114,9 @@
 - [x] Explicit desktop/mobile performance budgets with runtime telemetry, benchmark
       gates, and build-budget enforcement. See `docs/PERFORMANCE_BUDGETS.md` and issue
       `#10`.
+- [x] Issue `#58` telemetry slice: p50/p95/p99, 1%-low FPS, dropped-frame buckets, and
+      hysteretic renderer-resolution protection with visible diagnostics.
+- [ ] Issue `#58` hardware/GPU matrix and blog-host evidence remain required for closure.
 
 ## Staged Modules
 
