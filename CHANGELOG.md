@@ -25,6 +25,10 @@
   localized corruption/size errors, archive benchmarks, and desktop/narrow browser round-trip
   coverage. The remaining promotion gate is long-running mobile quota/decompression evidence.
 
+- Start issue #66 by migrating pinned GitHub Actions to Node24-native checkout, setup-node,
+  Pages, deployment, and release action revisions while preserving immutable SHA pinning and
+  existing workflow permissions.
+
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
   point-reserve plate, generated loadout records, and a truthful field item catalog with
