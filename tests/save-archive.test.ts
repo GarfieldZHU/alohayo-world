@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   SAVE_ARCHIVE_MAX_RECORDS,
+  SAVE_ARCHIVE_MAX_COMPRESSED_BYTES,
   decodeCompressedSaveArchive,
   decodeSaveArchive,
   encodeCompressedSaveArchive,
   encodeSaveArchive,
   formatBytes,
+  SaveArchiveError,
 } from '../apps/game/src/save-archive'
 
 const record = {
@@ -88,5 +90,22 @@ describe('save journey archives', () => {
     )
     expect(parsed.archive.records.map((entry) => entry.slotId)).toEqual(['journey-one'])
     expect(parsed.rejected).toEqual(['record 2: thumbnail is invalid or exceeds its budget'])
+  })
+
+  it('rejects an oversized compressed payload before base64 allocation', async () => {
+    const payload = 'A'.repeat(Math.ceil((SAVE_ARCHIVE_MAX_COMPRESSED_BYTES * 4) / 3) + 8)
+    await expect(
+      decodeCompressedSaveArchive(
+        JSON.stringify({ schemaVersion: 1, format: 'gzip-base64', payload })
+      )
+    ).rejects.toMatchObject({ code: 'compressed-too-large' } satisfies Partial<SaveArchiveError>)
+  })
+
+  it('classifies a damaged gzip archive without leaking decompressor errors', async () => {
+    await expect(
+      decodeCompressedSaveArchive(
+        JSON.stringify({ schemaVersion: 1, format: 'gzip-base64', payload: 'AAAA' })
+      )
+    ).rejects.toMatchObject({ code: 'corrupt' } satisfies Partial<SaveArchiveError>)
   })
 })

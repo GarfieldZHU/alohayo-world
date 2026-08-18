@@ -10,6 +10,7 @@ import {
   decodeSaveArchive,
   encodeCompressedSaveArchive,
   formatBytes,
+  SaveArchiveError,
 } from './save-archive'
 
 const saveCopy: Record<LocaleCode, Record<string, string>> = {
@@ -21,6 +22,8 @@ const saveCopy: Record<LocaleCode, Record<string, string>> = {
     saveArchiveReady: 'Archive ready · {count} journey(s)',
     saveArchiveImported: 'Imported {success} journey(s); {rejected} rejected.',
     saveArchiveRejected: 'Archive rejected: {message}',
+    saveArchiveTooLarge: 'Archive exceeds the safe browser size limit.',
+    saveArchiveCorrupt: 'Archive is damaged or cannot be decompressed.',
     saveQuota:
       'Browser storage is full. Older backups were pruned where possible; free space and try again.',
     saveCardHealthy: 'Healthy · {size}',
@@ -45,6 +48,8 @@ const saveCopy: Record<LocaleCode, Record<string, string>> = {
     saveArchiveReady: '存档包已准备 · {count} 个旅程',
     saveArchiveImported: '已导入 {success} 个旅程；拒绝 {rejected} 个。',
     saveArchiveRejected: '存档包拒绝：{message}',
+    saveArchiveTooLarge: '存档包超过浏览器安全大小限制。',
+    saveArchiveCorrupt: '存档包已损坏或无法解压。',
     saveQuota: '浏览器存储空间已满。系统会尽可能清理旧备份，请释放空间后重试。',
     saveCardHealthy: '正常 · {size}',
     saveCardCorrupt: '需要恢复 · {code}',
@@ -278,7 +283,14 @@ export function createSaveManager(options: SaveManagerOptions): SaveManager {
       if (actionStatus !== before) saveStatus.textContent = actionStatus
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      const friendly = /quota|storage.*full/i.test(message) ? text('saveQuota') : message
+      const friendly = /quota|storage.*full/i.test(message)
+        ? text('saveQuota')
+        : error instanceof SaveArchiveError &&
+            (error.code === 'compressed-too-large' || error.code === 'uncompressed-too-large')
+          ? text('saveArchiveTooLarge')
+          : error instanceof SaveArchiveError && error.code === 'corrupt'
+            ? text('saveArchiveCorrupt')
+            : message
       saveStatus.textContent = format('saveError', { message: friendly })
       saveStatus.dataset.state = 'error'
     } finally {
@@ -437,10 +449,16 @@ export function createSaveManager(options: SaveManagerOptions): SaveManager {
   saveImportAll.addEventListener('click', () =>
     run(async () => {
       let decoded: Awaited<ReturnType<typeof decodeCompressedSaveArchive>>
+      let compressedError: unknown
       try {
         decoded = await decodeCompressedSaveArchive(saveImportData.value)
-      } catch {
-        decoded = decodeSaveArchive(saveImportData.value)
+      } catch (error) {
+        compressedError = error
+        try {
+          decoded = decodeSaveArchive(saveImportData.value)
+        } catch {
+          throw compressedError
+        }
       }
       const { archive, rejected } = decoded
       const errors = [...rejected]

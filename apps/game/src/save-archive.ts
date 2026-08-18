@@ -10,6 +10,21 @@ export const SAVE_ARCHIVE_SCHEMA_VERSION = 1 as const
 export const SAVE_ARCHIVE_MAX_RECORDS = 64
 export const SAVE_ARCHIVE_COMPRESSED_SCHEMA_VERSION = 1 as const
 export const SAVE_ARCHIVE_MAX_THUMBNAIL_BYTES = 192 * 1024
+export const SAVE_ARCHIVE_MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
+export const SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES = 8 * 1024 * 1024
+
+export type SaveArchiveErrorCode = 'corrupt' | 'compressed-too-large' | 'uncompressed-too-large'
+
+export class SaveArchiveError extends Error {
+  constructor(
+    readonly code: SaveArchiveErrorCode,
+    message: string,
+    readonly causeValue?: unknown
+  ) {
+    super(message)
+    this.name = 'SaveArchiveError'
+  }
+}
 
 export interface SaveArchiveThumbnail {
   mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
@@ -160,6 +175,26 @@ export function captureSaveArchiveThumbnail(
   return isValidThumbnail(thumbnail) ? thumbnail : undefined
 }
 
+/** Defers optional thumbnail work until the browser has yielded from gameplay. */
+export async function captureSaveArchiveThumbnailAsync(
+  canvas: HTMLCanvasElement,
+  options: { width?: number; height?: number; mimeType?: SaveArchiveThumbnail['mimeType'] } = {}
+) {
+  await new Promise<void>((resolve) => {
+    const idle = (
+      globalThis as typeof globalThis & {
+        requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      }
+    ).requestIdleCallback
+    if (idle) {
+      idle(resolve, { timeout: 250 })
+      return
+    }
+    globalThis.setTimeout(resolve, 0)
+  })
+  return captureSaveArchiveThumbnail(canvas, options)
+}
+
 interface CompressedSaveArchive {
   schemaVersion: typeof SAVE_ARCHIVE_COMPRESSED_SCHEMA_VERSION
   format: 'gzip-base64' | 'identity-base64'
@@ -172,11 +207,65 @@ function toBase64(bytes: Uint8Array) {
   return btoa(binary)
 }
 
-function fromBase64(value: string) {
-  const binary = atob(value)
+function fromBase64(value: string, maxBytes = SAVE_ARCHIVE_MAX_COMPRESSED_BYTES) {
+  if (value.length > Math.ceil((maxBytes * 4) / 3) + 4) {
+    throw new SaveArchiveError(
+      'compressed-too-large',
+      `save archive payload exceeds ${maxBytes} bytes`
+    )
+  }
+  let binary: string
+  try {
+    binary = atob(value)
+  } catch (error) {
+    throw new SaveArchiveError(
+      'corrupt',
+      'compressed save archive payload is not valid base64',
+      error
+    )
+  }
   const bytes = new Uint8Array(binary.length)
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  if (bytes.byteLength > maxBytes) {
+    throw new SaveArchiveError(
+      'compressed-too-large',
+      `save archive payload exceeds ${maxBytes} bytes`
+    )
+  }
   return bytes
+}
+
+async function readBoundedBytes(stream: ReadableStream<Uint8Array>, maxBytes: number) {
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  let byteLength = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!(value instanceof Uint8Array)) {
+        throw new SaveArchiveError('corrupt', 'compressed save archive stream is invalid')
+      }
+      byteLength += value.byteLength
+      if (byteLength > maxBytes) {
+        await reader.cancel()
+        throw new SaveArchiveError(
+          'uncompressed-too-large',
+          `decompressed save archive exceeds ${maxBytes} bytes`
+        )
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const result = new Uint8Array(byteLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return result
 }
 
 /** Encodes an archive with browser-native gzip when available, retaining a portable fallback. */
@@ -185,6 +274,13 @@ export async function encodeCompressedSaveArchive(
   exportedAt = new Date().toISOString()
 ): Promise<string> {
   const serialized = encodeSaveArchive(records, exportedAt)
+  const serializedBytes = new TextEncoder().encode(serialized)
+  if (serializedBytes.byteLength > SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES) {
+    throw new SaveArchiveError(
+      'uncompressed-too-large',
+      `save archive exceeds ${SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES} bytes before compression`
+    )
+  }
   if (typeof CompressionStream === 'undefined') {
     return JSON.stringify({
       schemaVersion: SAVE_ARCHIVE_COMPRESSED_SCHEMA_VERSION,
@@ -194,6 +290,12 @@ export async function encodeCompressedSaveArchive(
   }
   const stream = new Blob([serialized]).stream().pipeThrough(new CompressionStream('gzip'))
   const compressed = new Uint8Array(await new Response(stream).arrayBuffer())
+  if (compressed.byteLength > SAVE_ARCHIVE_MAX_COMPRESSED_BYTES) {
+    throw new SaveArchiveError(
+      'compressed-too-large',
+      `compressed save archive exceeds ${SAVE_ARCHIVE_MAX_COMPRESSED_BYTES} bytes`
+    )
+  }
   return JSON.stringify({
     schemaVersion: SAVE_ARCHIVE_COMPRESSED_SCHEMA_VERSION,
     format: 'gzip-base64',
@@ -219,15 +321,36 @@ export async function decodeCompressedSaveArchive(serialized: string): Promise<P
   ) {
     throw new Error('compressed save archive schema is not supported')
   }
-  const bytes = fromBase64(candidate.payload)
+  const bytes = fromBase64(
+    candidate.payload,
+    candidate.format === 'identity-base64'
+      ? SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES
+      : SAVE_ARCHIVE_MAX_COMPRESSED_BYTES
+  )
   if (candidate.format === 'identity-base64') {
+    if (bytes.byteLength > SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES) {
+      throw new SaveArchiveError(
+        'uncompressed-too-large',
+        `decompressed save archive exceeds ${SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES} bytes`
+      )
+    }
     return decodeSaveArchive(new TextDecoder().decode(bytes))
   }
   if (typeof DecompressionStream === 'undefined') {
     throw new Error('gzip decompression is not available in this browser')
   }
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
-  return decodeSaveArchive(await new Response(stream).text())
+  try {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+    const decompressed = await readBoundedBytes(stream, SAVE_ARCHIVE_MAX_UNCOMPRESSED_BYTES)
+    return decodeSaveArchive(new TextDecoder().decode(decompressed))
+  } catch (error) {
+    if (error instanceof SaveArchiveError) throw error
+    throw new SaveArchiveError(
+      'corrupt',
+      'compressed save archive could not be decompressed',
+      error
+    )
+  }
 }
 
 export function formatBytes(bytes: number): string {

@@ -70,7 +70,9 @@
     "savePreviewHealthy": "{backups} backups · {size} KB",
     "savePreviewCorrupt": "Needs recovery · {code}",
     "saveUnknown": "Unknown time",
-    "saveError": "Save recovery: {message}"
+    "saveError": "Save recovery: {message}",
+    "saveArchiveTooLarge": "Archive exceeds the safe browser size limit.",
+    "saveArchiveCorrupt": "Archive is damaged or cannot be decompressed."
   },
   "hud": {
     "devPrefix": "DEV",
