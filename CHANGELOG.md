@@ -27,7 +27,8 @@
 
 - Start issue #66 by migrating pinned GitHub Actions to Node24-native checkout, setup-node,
   Pages, deployment, and release action revisions while preserving immutable SHA pinning and
-  existing workflow permissions.
+  existing workflow permissions. Disable setup-node's pre-Corepack package-manager cache so
+  Yarn 4 is not probed through the runner's global Yarn 1 binary.
 
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
