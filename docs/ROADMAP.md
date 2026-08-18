@@ -87,6 +87,11 @@
       proposals, and optional schema-one save validation.
 - [ ] Canonical cross-chunk erosion/flood history, seasonal recession, channel migration,
       and persistent delta growth in later issue `#57` phases.
+- [x] Issue `#62` archive safety slice: gzip/plain migration fallback, bounded compressed and
+      decompressed payloads, idle thumbnail capture, corruption classification, quota fixtures,
+      representative archive benchmark, and desktop/narrow browser round-trip coverage.
+- [ ] Issue `#62` final promotion review: collect long-running mobile quota/decompression traces
+      and publish the release-artifact evidence before closing the issue.
 - [x] Retained-horizon landmass/waterbody identity merge beyond chunk-local region labels;
       versioned persistent aliases, typed merge/frontier events, legacy-save migration,
       and browser-restart coverage completed in issue `#37`.

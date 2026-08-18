@@ -20,6 +20,11 @@
 - Stop per-frame Chronicle and Dossier DOM reconstruction when their snapshot content is unchanged,
   preserving live updates while keeping hidden UI surfaces and open controls stable under load.
 
+- Harden issue #62 save archives with gzip/plain migration fallback, four-megabyte compressed and
+  eight-megabyte decompressed budgets, bounded streaming decompression, idle thumbnail capture,
+  localized corruption/size errors, archive benchmarks, and desktop/narrow browser round-trip
+  coverage. The remaining promotion gate is long-running mobile quota/decompression evidence.
+
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
   point-reserve plate, generated loadout records, and a truthful field item catalog with

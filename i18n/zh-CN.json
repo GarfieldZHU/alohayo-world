@@ -70,7 +70,9 @@
     "savePreviewHealthy": "{backups} 个备份 · {size} KB",
     "savePreviewCorrupt": "需要恢复 · {code}",
     "saveUnknown": "未知时间",
-    "saveError": "存档恢复：{message}"
+    "saveError": "存档恢复：{message}",
+    "saveArchiveTooLarge": "存档包超过浏览器安全大小限制。",
+    "saveArchiveCorrupt": "存档包已损坏或无法解压。"
   },
   "hud": {
     "devPrefix": "开发",

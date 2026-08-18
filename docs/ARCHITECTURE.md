@@ -102,4 +102,8 @@ The #52 regression fixtures inject a corrupt IndexedDB record beside a healthy j
 force a deterministic quota failure after a bounded number of writes, proving healthy
 listing/loading and oldest-backup pruning remain isolated. The #53 browser journey adds
 keyboard selection at a narrow viewport so remount and recovery affordances remain usable
-without a mouse.
+without a mouse. Archive exports use a version-one gzip envelope when browser compression
+is available and retain the plain archive as a migration/fallback format. Both compressed
+input and decompressed output are bounded before allocation, optional thumbnails can be
+captured during an idle callback, and corruption/size errors are classified without exposing
+decompressor internals to the player.

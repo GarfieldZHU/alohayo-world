@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 
 test('loads game resources only after start', async ({ page }) => {
@@ -156,6 +157,72 @@ test('manages named local saves and reports bad imports', async ({ page }) => {
   await page.getByPlaceholder('Paste exported save JSON').fill('{bad json')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   await expect(page.locator('#save-status')).toContainText('Save recovery:')
+})
+
+test('round-trips a compressed archive and rejects corrupted payloads', async ({ page }) => {
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
+
+  await page.getByPlaceholder('Save name').fill('Archive crossing')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.locator('.save-card').filter({ hasText: 'Archive crossing' })).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export all' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('alohayo-journeys.alohayo-archive.gz.json')
+  const archivePath = await download.path()
+  expect(archivePath).toBeTruthy()
+  const archive = await readFile(archivePath!, 'utf8')
+
+  page.once('dialog', async (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete' }).click()
+  await expect(page.locator('.save-card').filter({ hasText: 'Archive crossing' })).toHaveCount(0)
+
+  page.on('dialog', async (dialog) => dialog.accept())
+  await page.getByPlaceholder('Paste exported save JSON').fill(archive)
+  await page.getByRole('button', { name: 'Import archive' }).click()
+  await expect(page.locator('#save-status')).toHaveText(
+    /Imported [1-9][0-9]* journey\(s\); 0 rejected\./
+  )
+  await expect(page.locator('.save-card').filter({ hasText: 'Archive crossing' })).toBeVisible()
+
+  const corrupted = JSON.parse(archive) as { payload?: string }
+  corrupted.payload = `${corrupted.payload?.slice(0, -4) ?? ''}AAAA`
+  await page.getByPlaceholder('Paste exported save JSON').fill(JSON.stringify(corrupted))
+  await page.getByRole('button', { name: 'Import archive' }).click()
+  await expect(page.locator('#save-status')).toContainText(
+    'Archive is damaged or cannot be decompressed.'
+  )
+})
+
+test('imports a compressed archive from the narrow save surface', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByText('Local saves', { exact: true }).click()
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
+
+  await page.getByPlaceholder('Save name').fill('Narrow archive')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export all' }).click()
+  const download = await downloadPromise
+  const archivePath = await download.path()
+  expect(archivePath).toBeTruthy()
+  const archive = await readFile(archivePath!, 'utf8')
+
+  page.once('dialog', async (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete' }).click()
+  page.on('dialog', async (dialog) => dialog.accept())
+  await page.getByPlaceholder('Paste exported save JSON').fill(archive)
+  await page.getByRole('button', { name: 'Import archive' }).click()
+  await expect(page.locator('#save-status')).toHaveText(
+    /Imported [1-9][0-9]* journey\(s\); 0 rejected\./
+  )
+  await expect(page.locator('.save-card').filter({ hasText: 'Narrow archive' })).toBeVisible()
 })
 
 test('confirms a cross-seed journey remount and keeps a recovery slot', async ({ page }) => {
