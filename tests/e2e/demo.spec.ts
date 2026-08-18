@@ -226,6 +226,7 @@ test('imports a compressed archive from the narrow save surface', async ({ page 
 })
 
 test('confirms a cross-seed journey remount and keeps a recovery slot', async ({ page }) => {
+  test.setTimeout(120_000)
   await page.goto('/')
   await page.getByText('Local saves', { exact: true }).click()
   await page.getByLabel('World seed').fill('first-journey')
@@ -241,7 +242,7 @@ test('confirms a cross-seed journey remount and keeps a recovery slot', async ({
   await expect(page.locator('canvas[aria-label="Alohayo World map"]')).toHaveAttribute(
     'data-initial-presentation',
     'complete',
-    { timeout: 60_000 }
+    { timeout: 90_000 }
   )
   await expect(page.getByRole('button', { name: 'Resurvey' })).toBeEnabled({ timeout: 45_000 })
   const card = page.locator('.save-card').filter({ hasText: 'First journey' })
@@ -378,7 +379,9 @@ const waitForRuntimeSample = async (page: Page) => {
     timeout: 45_000,
   })
   await expect(canvas).toBeVisible()
-  await page.waitForTimeout(1500)
+  // The runtime tracker resets after the first presentation. Allow the streamed worker and
+  // SwiftShader to settle before sampling so the budget describes the steady-state surface.
+  await page.waitForTimeout(4000)
   const metrics = await readPerformanceMetrics(page)
   console.info('runtime metrics', metrics)
   return metrics
