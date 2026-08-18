@@ -23,12 +23,16 @@
 - Harden issue #62 save archives with gzip/plain migration fallback, four-megabyte compressed and
   eight-megabyte decompressed budgets, bounded streaming decompression, idle thumbnail capture,
   localized corruption/size errors, archive benchmarks, and desktop/narrow browser round-trip
-  coverage. The remaining promotion gate is long-running mobile quota/decompression evidence.
+  coverage. Release-artifact main CI, Pages, and published-entry verification complete the
+  promotion gate.
 
-- Start issue #66 by migrating pinned GitHub Actions to Node24-native checkout, setup-node,
+- Complete issue #66 by migrating pinned GitHub Actions to Node24-native checkout, setup-node,
   Pages, deployment, and release action revisions while preserving immutable SHA pinning and
   existing workflow permissions. Disable setup-node's pre-Corepack package-manager cache so
   Yarn 4 is not probed through the runner's global Yarn 1 binary.
+
+- Start issue #69 by evaluating setup-node v7's ESM/dependency refresh as a targeted fix for the
+  remaining Node DEP0040 punycode warning in action setup and cleanup logs.
 
 - Expand the Wayfinder Dossier into a detailed ability/items surface: generated slate and
   vellum material assets, catalog-backed ability groups with segmented preview meters,
