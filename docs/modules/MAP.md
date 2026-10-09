@@ -33,9 +33,8 @@ authority, palette, motif drawing, LOD, and Pixi lifecycle. See
 
 ## Next Slice
 
-Stable cross-chunk river graphs, minimap LOD, benchmark budgets, shared shape hints
-consumed by the water module, and a resolved content-pack overlay stream with
-dependency-safe provenance.
+Cross-chunk river consumers, minimap LOD, benchmark budgets, shared shape hints consumed by the
+water module, and a resolved content-pack overlay stream with dependency-safe provenance.
 
 Issue `#38` follows the staged contract in `../CROSS_CHUNK_HYDROLOGY.md`. A fixed halo is
 generated over 16 cells of world-coordinate terrain and authored overlays, then cropped to

@@ -5,7 +5,7 @@
 bounded persisted alias ledger, public cell queries/change events, stable retained-chunk D8
 river links, and signed accumulation-delta propagation through loaded downstream paths are
 implemented. Unknown downstream cells remain explicit frontier nodes and the snapshot is
-capped at 16,384 segments. Full continuity proof and consumer integration remain open.
+capped at 16,384 segments. Full frontier continuity and consumer integration remain open.
 
 ## Goal
 
@@ -306,10 +306,10 @@ budgets; hardware/browser-matrix variance and full stream-travel measurements re
    splits and consumer integration remain open.
 5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
    identities, accumulation deltas, and downstream consumer queries.
-6. **Runtime/browser proof.** Streamed travel, minimap/inspection refresh, context cleanup,
-   performance budgets, CI, Pages, and live verification.
+6. **Runtime/browser proof.** Streamed travel and identity through eviction/reload are tested.
+   Minimap/inspection refresh, context cleanup, hosted CI, Pages, and live verification remain.
 
-Do not close issue `#38` yet. Closure still requires consumer integration, eviction/restart
-graph identity across streamed travel, browser travel proof, and retained-horizon performance
-evidence in addition to the implemented halo, seam lifecycle, retained-chunk D8 graph, and
-downstream accumulation deltas.
+Do not close issue `#38` yet. Closure still requires global frontier continuity, consumer
+integration, minimap/inspection refresh, context cleanup, and hosted CI/Pages verification in
+addition to the implemented halo, seam lifecycle, retained-chunk D8 graph, downstream
+accumulation deltas, and streamed eviction/reload identity proof.

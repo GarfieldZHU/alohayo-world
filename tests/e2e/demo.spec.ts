@@ -601,6 +601,107 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
   })
 })
 
+test('preserves watershed and river identity through streamed chunk eviction and reload', async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 45_000,
+  })
+  const seamIdentity = await page.evaluate(() => {
+    const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+    const segment = handle
+      ?.getRiverGraph?.()
+      .segments.find(
+        (candidate) =>
+          candidate.targetKind !== 'frontier' &&
+          (Math.floor(candidate.source.x / 64) !== Math.floor(candidate.target.x / 64) ||
+            Math.floor(candidate.source.y / 64) !== Math.floor(candidate.target.y / 64))
+      )
+    if (!handle?.queryHydrologyCell || !segment) return null
+    const source = handle.queryHydrologyCell(segment.source.x, segment.source.y)
+    const target = handle.queryHydrologyCell(segment.target.x, segment.target.y)
+    if (!source || !target) return null
+    return {
+      source: segment.source,
+      target: segment.target,
+      identityId: segment.identityId,
+      sourceWatershedId: source.watershedId,
+      targetWatershedId: target.watershedId,
+    }
+  })
+  if (!seamIdentity) throw new Error('initial loaded cross-chunk river segment is unavailable')
+  expect(seamIdentity.sourceWatershedId).toBe(seamIdentity.identityId)
+  expect(seamIdentity.targetWatershedId).toBe(seamIdentity.identityId)
+
+  await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(true))
+  await expect(canvas).toHaveAttribute('data-dev-mode', 'true')
+  await page.getByLabel('Fly').check()
+  const teleport = async (x: number, y: number) => {
+    await page.locator('#game input[placeholder="x"]').fill(String(x))
+    await page.locator('#game input[placeholder="y"]').fill(String(y))
+    await page.getByRole('button', { name: 'Teleport' }).click()
+    await expect(canvas).toHaveAttribute('data-explorer-x', (x + 0.5).toFixed(3), {
+      timeout: 45_000,
+    })
+  }
+
+  await teleport(1024, 1024)
+  await expect
+    .poll(
+      () =>
+        page.evaluate(({ source, target }) => {
+          const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+          return {
+            sourceLoaded: handle?.queryHydrologyCell?.(source.x, source.y) !== null,
+            targetLoaded: handle?.queryHydrologyCell?.(target.x, target.y) !== null,
+          }
+        }, seamIdentity),
+      { timeout: 30_000 }
+    )
+    .toEqual({ sourceLoaded: false, targetLoaded: false })
+  expect(Number(await canvas.getAttribute('data-loaded-chunks'))).toBeLessThan(50)
+
+  await teleport(seamIdentity.source.x, seamIdentity.source.y)
+  await expect
+    .poll(
+      () =>
+        page.evaluate(({ source, target, identityId }) => {
+          const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+          const sourceCell = handle?.queryHydrologyCell?.(source.x, source.y)
+          const targetCell = handle?.queryHydrologyCell?.(target.x, target.y)
+          const segment = handle
+            ?.getRiverGraph?.()
+            .segments.find(
+              (candidate) =>
+                candidate.source.x === source.x &&
+                candidate.source.y === source.y &&
+                candidate.target.x === target.x &&
+                candidate.target.y === target.y
+            )
+          return {
+            sourceWatershedId: sourceCell?.watershedId ?? null,
+            targetWatershedId: targetCell?.watershedId ?? null,
+            graphIdentityId: segment?.identityId ?? null,
+            exactDownstream:
+              sourceCell?.downstream?.x === target.x && sourceCell.downstream.y === target.y,
+            originalIdentity: identityId,
+          }
+        }, seamIdentity),
+      { timeout: 45_000 }
+    )
+    .toEqual({
+      sourceWatershedId: seamIdentity.identityId,
+      targetWatershedId: seamIdentity.identityId,
+      graphIdentityId: seamIdentity.identityId,
+      exactDownstream: true,
+      originalIdentity: seamIdentity.identityId,
+    })
+})
+
 const readPerformanceMetrics = (page: Page) =>
   page.evaluate(() => {
     return (

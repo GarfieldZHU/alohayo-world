@@ -15,9 +15,9 @@
   stale results after eviction, and restore neighboring provisional patches on release.
   Persist a bounded versioned `watershed:` alias ledger and migrate older schema-one saves.
   Expose retained-cell queries, hydrology change events, and stable cardinal/diagonal seam
-  segments through `GameHandle`. Browser checks cover the Wasm pair path and save restart;
-  global frontier continuity, gameplay consumers, streamed-travel identity, and
-  retained-horizon browser performance evidence remain tracked by #38.
+  segments through `GameHandle`. Browser checks cover the Wasm pair path, save restart, and
+  watershed/river identity after streamed travel crosses an eviction boundary. Global frontier
+  continuity, gameplay consumers, and hosted CI/Pages evidence remain tracked by #38.
 
 - Add the first closeable follow-up contracts for issues #57, #60, #61, #62, #63, and
   #64: seasonal geomorphology forcing/proposals with bounded save validation, deterministic
