@@ -18,9 +18,11 @@ import {
 } from './hydrology'
 import {
   buildHydrologyUpstreamCounts,
+  buildChunkDrainageFrontierInflows,
   buildChunkDrainageSummary,
   type CardinalDirection,
   type ChunkDrainageSummary,
+  type DrainageFrontierInflow,
   type DrainageEdgeSample,
 } from './drainage-summary'
 import {
@@ -149,9 +151,11 @@ export {
 export { HYDROLOGY_DIRECTIONS, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
 export {
   buildHydrologyUpstreamCounts,
+  buildChunkDrainageFrontierInflows,
   buildChunkDrainageSummary,
   type CardinalDirection,
   type ChunkDrainageSummary,
+  type DrainageFrontierInflow,
   type DrainageEdgeSample,
 } from './drainage-summary'
 export {
@@ -365,6 +369,7 @@ export interface ChunkHydrologySeamPatch {
   height: number
   fields: HydrologySeamPatchFields
   edgeSamples: DrainageEdgeSample[]
+  frontierInflows?: DrainageFrontierInflow[]
 }
 
 export interface ReconciledHydrologyPair {
@@ -1348,6 +1353,7 @@ interface ChunkHydrologyWindow {
   raster: HydrologyRaster
   chunkRaster: HydrologyRaster
   chunkUpstreamCounts: Uint8Array
+  frontierInflows: DrainageFrontierInflow[]
   halo: number
 }
 
@@ -1590,6 +1596,14 @@ function buildChunkHydrologyWindow(args: {
     surveyHeight,
   })
   const upstreamCounts = buildHydrologyUpstreamCounts(raster)
+  const frontierInflows = buildChunkDrainageFrontierInflows({
+    chunkX,
+    chunkY,
+    chunkSize,
+    windowOriginX: chunkOriginX - halo,
+    windowOriginY: chunkOriginY - halo,
+    hydrology: raster,
+  })
   return {
     raster,
     chunkRaster: cropHydrologyRaster(raster, halo, halo, chunkSize, chunkSize),
@@ -1601,6 +1615,7 @@ function buildChunkHydrologyWindow(args: {
       chunkSize,
       chunkSize
     ),
+    frontierInflows,
     halo,
   }
 }
@@ -1662,6 +1677,14 @@ function hydrologySeamPatch(args: {
     hydrology: chunkRaster,
     upstreamCounts: chunkUpstreamCounts,
   }).edges[direction]
+  const frontierInflows = buildChunkDrainageFrontierInflows({
+    chunkX,
+    chunkY,
+    chunkSize,
+    windowOriginX: chunkX * chunkSize - chunkSourceX,
+    windowOriginY: chunkY * chunkSize - chunkSourceY,
+    hydrology: raster,
+  })
   const patchRaster = cropHydrologyRaster(raster, patchSourceX, patchSourceY, width, height)
   return {
     chunkX,
@@ -1683,6 +1706,7 @@ function hydrologySeamPatch(args: {
       floodplain: patchRaster.floodplain,
     },
     edgeSamples,
+    frontierInflows,
   }
 }
 
@@ -1945,6 +1969,28 @@ export function applyHydrologySeamPatch(
     patch.height
   )
   chunk.drainageSummary.edges[patch.direction] = patch.edgeSamples.map((sample) => ({ ...sample }))
+  if (patch.frontierInflows) {
+    const isInsidePatch = (inflow: DrainageFrontierInflow) => {
+      const localX = inflow.target.x - chunk.originX
+      const localY = inflow.target.y - chunk.originY
+      return (
+        localX >= patch.x &&
+        localY >= patch.y &&
+        localX < patch.x + patch.width &&
+        localY < patch.y + patch.height
+      )
+    }
+    chunk.drainageSummary.frontierInflows = [
+      ...(chunk.drainageSummary.frontierInflows ?? []).filter((inflow) => !isInsidePatch(inflow)),
+      ...patch.frontierInflows.filter(isInsidePatch),
+    ].sort(
+      (left, right) =>
+        left.source.y - right.source.y ||
+        left.source.x - right.source.x ||
+        left.target.y - right.target.y ||
+        left.target.x - right.target.x
+    )
+  }
   return chunk
 }
 
@@ -3634,6 +3680,7 @@ function generateChunkWithHydrologyWindow(
       chunkY,
       hydrology: chunkHydrology,
       upstreamCounts: hydrologyWindow.chunkUpstreamCounts,
+      frontierInflows: hydrologyWindow.frontierInflows,
     }),
     renderHints: generateChunkRenderHints({
       biomes,

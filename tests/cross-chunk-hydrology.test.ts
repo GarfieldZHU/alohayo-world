@@ -37,6 +37,7 @@ function summary(chunkX: number, chunkY: number, component: number, elevation = 
       south: [],
       west: [receiving],
     },
+    frontierInflows: [],
   } satisfies ChunkDrainageSummary
 }
 
@@ -75,7 +76,7 @@ function cornerSummary(
     ...edges[selected.edge][selected.offset]!,
     ...selected.sample,
   }
-  return { chunkX, chunkY, chunkSize: 3, state: 'provisional', edges }
+  return { chunkX, chunkY, chunkSize: 3, state: 'provisional', edges, frontierInflows: [] }
 }
 
 describe('cross-chunk hydrology resolver', () => {
@@ -414,6 +415,91 @@ describe('cross-chunk hydrology resolver', () => {
       id: 'river:segment:-1,1>0,1',
       targetKind: 'frontier',
       accumulation: 6,
+    })
+  })
+
+  it('keeps incoming frontier river identity stable until its upstream chunk is retained', () => {
+    const targetSummary = {
+      ...summary(0, 0, 3),
+      frontierInflows: [
+        {
+          source: { x: -1, y: 1 },
+          target: { x: 0, y: 1 },
+          direction: 0,
+          sourceAccumulation: 6,
+        },
+      ],
+    }
+    const targetDirection = new Int8Array(9).fill(-1)
+    const targetAccumulation = new Uint32Array(9).fill(1)
+    const targetWatershed = new Uint32Array(9).fill(3)
+    targetDirection[3] = 0
+    targetAccumulation[3] = 7
+    targetAccumulation[4] = 8
+    const targetRaster = {
+      chunkX: 0,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: targetDirection,
+      flowAccumulation: targetAccumulation,
+      watershed: targetWatershed,
+      water: new Uint8Array(9),
+    }
+    const resolver = new CrossChunkHydrologyResolver()
+    resolver.add(targetSummary)
+    resolver.addRaster(targetRaster)
+
+    const frontierSegment = resolver
+      .retainedRiverGraph(4)
+      .segments.find((segment) => segment.id === 'river:segment:-1,1>0,1')
+    expect(frontierSegment).toMatchObject({
+      identityId: 'watershed:0,0:3',
+      sourceKind: 'frontier',
+      sourceNodeId: 'river:frontier:-1,1',
+      targetKind: 'channel',
+      targetNodeId: 'river:channel:0,1',
+    })
+
+    const sourceSummary = summary(-1, 0, 7)
+    const sourceDirection = new Int8Array(9).fill(-1)
+    const sourceAccumulation = new Uint32Array(9).fill(1)
+    const sourceWatershed = new Uint32Array(9).fill(7)
+    sourceDirection[5] = 0
+    sourceAccumulation[5] = 6
+    resolver.add(sourceSummary)
+    resolver.addRaster({
+      chunkX: -1,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: sourceDirection,
+      flowAccumulation: sourceAccumulation,
+      watershed: sourceWatershed,
+      water: new Uint8Array(9),
+    })
+    resolver.reconcile(sourceSummary, targetSummary, 'east')
+    const loadedSegment = resolver
+      .retainedRiverGraph(4)
+      .segments.find((segment) => segment.id === 'river:segment:-1,1>0,1')
+    expect(loadedSegment).toMatchObject({
+      sourceKind: 'channel',
+      sourceNodeId: 'river:channel:-1,1',
+      identityId: 'watershed:-1,0:7',
+    })
+
+    const savedAliases = resolver.exportSnapshot()
+    expect(resolver.release(-1, 0)).toEqual([])
+    const restored = new CrossChunkHydrologyResolver()
+    restored.rehydrate(savedAliases)
+    restored.add(targetSummary)
+    restored.addRaster(targetRaster)
+    expect(
+      restored
+        .retainedRiverGraph(4)
+        .segments.find((segment) => segment.id === 'river:segment:-1,1>0,1')
+    ).toMatchObject({
+      identityId: 'watershed:-1,0:7',
+      sourceKind: 'frontier',
+      sourceNodeId: 'river:frontier:-1,1',
     })
   })
 

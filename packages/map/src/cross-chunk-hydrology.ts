@@ -87,7 +87,7 @@ export interface CrossChunkRiverSegment {
   identityId: string
   sourceNodeId: string
   targetNodeId: string
-  sourceKind: 'source' | 'channel' | 'confluence'
+  sourceKind: 'source' | 'channel' | 'confluence' | 'frontier'
   targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth' | 'frontier'
   source: { x: number; y: number }
   target: { x: number; y: number }
@@ -927,6 +927,18 @@ export class CrossChunkHydrologyResolver {
       }
     }
 
+    for (const summary of this.summaries.values()) {
+      const targetCounts = upstreamCounts.get(`${summary.chunkX},${summary.chunkY}`)
+      if (!targetCounts) continue
+      for (const inflow of summary.frontierInflows ?? []) {
+        if (this.retainedCellAt(inflow.source.x, inflow.source.y)) continue
+        const target = this.retainedCellAt(inflow.target.x, inflow.target.y)
+        if (!target || target.key !== `${summary.chunkX},${summary.chunkY}`) continue
+        const count = targetCounts[target.index] ?? 0
+        if (count < 255) targetCounts[target.index] = count + 1
+      }
+    }
+
     const byId = new Map(this.segments().map((segment) => [segment.id, segment]))
     for (const [key, raster] of this.rasters) {
       const originX = raster.chunkX * raster.chunkSize
@@ -986,6 +998,47 @@ export class CrossChunkHydrologyResolver {
           offset: index,
           direction: GRAPH_DIRECTIONS[direction]!,
           accumulation: targetRaster?.flowAccumulation[targetIndex] ?? accumulation,
+        })
+      }
+    }
+
+    for (const summary of this.summaries.values()) {
+      const chunkKey = `${summary.chunkX},${summary.chunkY}`
+      const targetCounts = upstreamCounts.get(chunkKey)
+      if (!targetCounts) continue
+      for (const inflow of summary.frontierInflows ?? []) {
+        if (inflow.sourceAccumulation < minimumAccumulation) continue
+        if (this.retainedCellAt(inflow.source.x, inflow.source.y)) continue
+        const target = this.retainedCellAt(inflow.target.x, inflow.target.y)
+        if (!target || target.key !== chunkKey) continue
+        const { raster, index: targetIndex } = target
+        const targetKindValue = targetKind(
+          {
+            water: Boolean(raster.water[targetIndex]),
+            direction: raster.flowDirection[targetIndex]!,
+            upstreamCount: targetCounts[targetIndex]!,
+          },
+          true
+        )
+        const id = `river:segment:${inflow.source.x},${inflow.source.y}>${inflow.target.x},${inflow.target.y}`
+        byId.set(id, {
+          id,
+          identityId: this.resolveComponent(
+            summary.chunkX,
+            summary.chunkY,
+            raster.watershed[targetIndex]!
+          ),
+          sourceNodeId: riverNodeId('frontier', inflow.source),
+          targetNodeId: riverNodeId(targetKindValue, inflow.target),
+          sourceKind: 'frontier',
+          targetKind: targetKindValue,
+          source: { ...inflow.source },
+          target: { ...inflow.target },
+          chunkX: summary.chunkX,
+          chunkY: summary.chunkY,
+          offset: targetIndex,
+          direction: GRAPH_DIRECTIONS[inflow.direction]!,
+          accumulation: raster.flowAccumulation[targetIndex] ?? inflow.sourceAccumulation,
         })
       }
     }

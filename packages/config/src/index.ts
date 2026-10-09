@@ -1020,7 +1020,7 @@ export interface WorldRiverGraphSegment {
   readonly identityId: string
   readonly sourceNodeId: string
   readonly targetNodeId: string
-  readonly sourceKind: 'source' | 'channel' | 'confluence'
+  readonly sourceKind: 'source' | 'channel' | 'confluence' | 'frontier'
   readonly targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth' | 'frontier'
   readonly source: Readonly<WorldCellCoordinate>
   readonly target: Readonly<WorldCellCoordinate>
@@ -1040,7 +1040,7 @@ export interface WorldRiverGraphSegment {
 }
 
 export interface WorldRiverGraphSnapshot {
-  readonly schemaVersion: 1
+  readonly schemaVersion: 2
   /** The graph covers retained chunk rasters; unknown downstream frontiers stay explicit. */
   readonly completeness: 'retained-chunks'
   readonly truncated: boolean

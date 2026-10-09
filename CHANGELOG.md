@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add deterministic incoming halo-derived D8 frontier links to retained river graph snapshots.
+  Preserve coordinate IDs as upstream chunks load, restore provisional links after eviction,
+  refresh only frontier records inside changed seam patches, and version the public graph as
+  schema 2. The outer halo and unloaded retained horizon remain provisional.
+
 - Drive main-map river curves from the retained cross-chunk D8 graph, smooth only the
   presentation paths, and build river-blocking/road-bridge overlap masks from unsmoothed
   graph cells. Hydrology revisions now refresh affected chunks and their immediate neighbors,

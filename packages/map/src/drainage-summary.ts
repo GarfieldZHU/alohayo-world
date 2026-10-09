@@ -13,12 +13,21 @@ export interface DrainageEdgeSample {
   crossesFrontier: boolean
 }
 
+/** A provisional D8 link entering a chunk from its deterministic hydrology halo. */
+export interface DrainageFrontierInflow {
+  source: { x: number; y: number }
+  target: { x: number; y: number }
+  direction: number
+  sourceAccumulation: number
+}
+
 export interface ChunkDrainageSummary {
   chunkX: number
   chunkY: number
   chunkSize: number
   state: 'provisional' | 'reconciled'
   edges: Record<CardinalDirection, DrainageEdgeSample[]>
+  frontierInflows?: DrainageFrontierInflow[]
 }
 
 const EDGE_DIRECTIONS: Record<CardinalDirection, readonly [number, number]> = {
@@ -56,6 +65,95 @@ export function buildHydrologyUpstreamCounts(hydrology: HydrologyRaster): Uint8A
 }
 
 /**
+ * Records halo cells whose D8 edge enters the chunk interior. These links keep river
+ * identity continuous while an upstream chunk is outside the retained horizon.
+ */
+export function buildChunkDrainageFrontierInflows(args: {
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  windowOriginX: number
+  windowOriginY: number
+  hydrology: HydrologyRaster
+}): DrainageFrontierInflow[] {
+  const { chunkX, chunkY, chunkSize, windowOriginX, windowOriginY, hydrology } = args
+  if (
+    !Number.isInteger(hydrology.width) ||
+    !Number.isInteger(hydrology.height) ||
+    hydrology.width < 1 ||
+    hydrology.height < 1
+  ) {
+    throw new RangeError('drainage frontier inflow dimensions must be positive integers')
+  }
+  const windowCellCount = hydrology.width * hydrology.height
+  if (
+    !Number.isInteger(chunkSize) ||
+    chunkSize < 1 ||
+    hydrology.flowDirection.length !== windowCellCount ||
+    hydrology.flowAccumulation.length !== windowCellCount ||
+    hydrology.watershed.length !== windowCellCount ||
+    hydrology.water.length !== windowCellCount
+  ) {
+    throw new RangeError('drainage frontier inflow buffers must match their dimensions')
+  }
+  const chunkOriginX = chunkX * chunkSize
+  const chunkOriginY = chunkY * chunkSize
+  if (
+    windowOriginX > chunkOriginX ||
+    windowOriginY > chunkOriginY ||
+    windowOriginX + hydrology.width < chunkOriginX + chunkSize ||
+    windowOriginY + hydrology.height < chunkOriginY + chunkSize
+  ) {
+    throw new RangeError('drainage frontier inflow window must contain the chunk interior')
+  }
+  const inflows: DrainageFrontierInflow[] = []
+  for (let index = 0; index < windowCellCount; index += 1) {
+    if (hydrology.water[index]) continue
+    const sourceX = windowOriginX + (index % hydrology.width)
+    const sourceY = windowOriginY + Math.floor(index / hydrology.width)
+    if (
+      sourceX >= chunkOriginX &&
+      sourceX < chunkOriginX + chunkSize &&
+      sourceY >= chunkOriginY &&
+      sourceY < chunkOriginY + chunkSize
+    ) {
+      continue
+    }
+    const direction = hydrology.flowDirection[index]!
+    const vector = HYDROLOGY_DIRECTIONS[direction]
+    if (!vector) continue
+    const target = { x: sourceX + vector[0], y: sourceY + vector[1] }
+    const targetLocalX = target.x - chunkOriginX
+    const targetLocalY = target.y - chunkOriginY
+    if (
+      targetLocalX < 0 ||
+      targetLocalY < 0 ||
+      targetLocalX >= chunkSize ||
+      targetLocalY >= chunkSize
+    ) {
+      continue
+    }
+    inflows.push({
+      source: { x: sourceX, y: sourceY },
+      target,
+      direction,
+      sourceAccumulation: hydrology.flowAccumulation[index]!,
+    })
+  }
+  inflows.sort(
+    (left, right) =>
+      left.source.y - right.source.y ||
+      left.source.x - right.source.x ||
+      left.target.y - right.target.y ||
+      left.target.x - right.target.x
+  )
+  if (inflows.length > chunkSize * 4 + 4) {
+    throw new RangeError('drainage frontier inflow boundary budget exceeded')
+  }
+  return inflows
+}
+
+/**
  * Serializable seam data. Every boundary cell is retained so a downstream cell can be
  * paired with an upstream frontier flow. The local watershed label is deliberately marked
  * provisional until #38's pairwise reconciliation aliases it to a world identity.
@@ -65,6 +163,7 @@ export function buildChunkDrainageSummary(args: {
   chunkY: number
   hydrology: HydrologyRaster
   upstreamCounts?: Uint8Array
+  frontierInflows?: DrainageFrontierInflow[]
 }): ChunkDrainageSummary {
   const { chunkX, chunkY, hydrology } = args
   const { width: chunkSize, height } = hydrology
@@ -106,7 +205,18 @@ export function buildChunkDrainageSummary(args: {
     edges[direction] = samples
   }
 
-  return { chunkX, chunkY, chunkSize, state: 'provisional', edges }
+  return {
+    chunkX,
+    chunkY,
+    chunkSize,
+    state: 'provisional',
+    edges,
+    frontierInflows: (args.frontierInflows ?? []).map((inflow) => ({
+      ...inflow,
+      source: { ...inflow.source },
+      target: { ...inflow.target },
+    })),
+  }
 }
 
 const CARDINAL_HANDOFF_ORDER: readonly CardinalDirection[] = ['north', 'east', 'south', 'west']

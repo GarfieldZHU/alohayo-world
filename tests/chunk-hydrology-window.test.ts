@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyHydrologySeamPatch,
   BIOME,
+  CrossChunkHydrologyResolver,
   generateChunk,
   generateChunkWithAreas,
   reconcileChunkHydrologyPair,
@@ -24,6 +25,46 @@ describe('streamed chunk hydrology halo', () => {
       expect(first.watershed).toEqual(second.watershed)
       expect(first.drainageSummary).toEqual(second.drainageSummary)
     }
+  })
+
+  it('keeps deterministic provisional inflows from outside the retained chunk', () => {
+    const first = generateChunk('hydrology-frontier-inflows', -2, 3, 64)
+    const second = generateChunk('hydrology-frontier-inflows', -2, 3, 64)
+    const firstInflows = first.drainageSummary.frontierInflows ?? []
+    const secondInflows = second.drainageSummary.frontierInflows ?? []
+    const originX = first.chunkX * first.chunkSize
+    const originY = first.chunkY * first.chunkSize
+
+    expect(firstInflows.length).toBeGreaterThan(0)
+    expect(firstInflows).toEqual(secondInflows)
+    expect(firstInflows.some((inflow) => inflow.sourceAccumulation >= 4)).toBe(true)
+    for (const inflow of firstInflows) {
+      expect(
+        inflow.source.x < originX ||
+          inflow.source.x >= originX + first.chunkSize ||
+          inflow.source.y < originY ||
+          inflow.source.y >= originY + first.chunkSize
+      ).toBe(true)
+      expect(inflow.target.x).toBeGreaterThanOrEqual(originX)
+      expect(inflow.target.x).toBeLessThan(originX + first.chunkSize)
+      expect(inflow.target.y).toBeGreaterThanOrEqual(originY)
+      expect(inflow.target.y).toBeLessThan(originY + first.chunkSize)
+    }
+
+    const resolver = new CrossChunkHydrologyResolver()
+    resolver.add(first.drainageSummary)
+    resolver.addRaster({
+      chunkX: first.chunkX,
+      chunkY: first.chunkY,
+      chunkSize: first.chunkSize,
+      flowDirection: first.flowDirection,
+      flowAccumulation: first.flowAccumulation,
+      watershed: first.watershed,
+      water: new Uint8Array(first.biomes.length),
+    })
+    expect(
+      resolver.retainedRiverGraph(4).segments.some((segment) => segment.sourceKind === 'frontier')
+    ).toBe(true)
   })
 
   it('uses authored water overlays just beyond the chunk edge in drainage inputs', () => {
@@ -121,20 +162,38 @@ describe('streamed chunk hydrology halo', () => {
         direction: patch.direction,
         fields: patch.fields,
         edgeSamples: patch.edgeSamples,
+        frontierInflows: patch.frontierInflows,
       }))
     expect(normalizedWestwardPatches).toEqual(
-      eastward.patches.map(({ chunkX, chunkY, direction, fields, edgeSamples }) => ({
-        chunkX,
-        chunkY,
-        direction,
-        fields,
-        edgeSamples,
-      }))
+      eastward.patches.map(
+        ({ chunkX, chunkY, direction, fields, edgeSamples, frontierInflows }) => ({
+          chunkX,
+          chunkY,
+          direction,
+          fields,
+          edgeSamples,
+          frontierInflows,
+        })
+      )
     )
 
     const patchedWest = applyHydrologySeamPatch(west, eastward.patches[0]!)
     expect(patchedWest.slope.slice(56, 64)).toEqual(eastward.patches[0]!.fields.slope.slice(0, 8))
     expect(patchedWest.drainageSummary.edges.east).toEqual(eastward.patches[0]!.edgeSamples)
+    const patchInflows = eastward.patches[0]!.frontierInflows ?? []
+    expect(
+      patchedWest.drainageSummary.frontierInflows?.filter((inflow) =>
+        patchInflows.some(
+          (updated) => updated.target.x === inflow.target.x && updated.target.y === inflow.target.y
+        )
+      )
+    ).toEqual(
+      patchInflows.filter((inflow) => {
+        const localX = inflow.target.x - patchedWest.originX
+        const localY = inflow.target.y - patchedWest.originY
+        return localX >= 56 && localX < 64 && localY >= 0 && localY < 64
+      })
+    )
   })
 
   it('keeps actual pair seam direction and accumulation consistent on both sides', () => {

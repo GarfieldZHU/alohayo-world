@@ -81,8 +81,12 @@
       discovery-aware minimap river overlay are implemented. Browser tests also cover graph
       identity through streamed eviction/reload and revision-driven hydrology inspection with
       teardown cleanup. The main map now renders from the retained graph, while river blocking
-      and road/bridge overlap masks use unsmoothed D8 cells. Global frontier continuity,
-      settlement/weather consumers, and hosted CI/Pages verification remain open.
+      and road/bridge overlap masks use unsmoothed D8 cells. Schema-version-2 graph queries
+      include deterministic halo-derived incoming frontier links and unloaded downstream
+      frontiers; incoming links keep coordinate IDs through source-chunk load and eviction.
+      Weather-road flooding feeds aggregate traffic queries. Hydrology beyond the bounded halo
+      and retained horizon remains provisional; hosted CI/Pages and live verification remain
+      open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river
@@ -145,9 +149,10 @@
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
 settlements, economy, combat, vehicles, creatures, and water. Cross-chunk hydrology now has
-an active worker and save foundation; stable river graph queries, main-map presentation, and
-movement/bridge masks are implemented, with global frontier continuity and settlement/weather
-consumers still open. Gameplay plugins still wait on stable cross-chunk spatial queries and
+an active worker and save foundation; stable river graph queries, main-map presentation,
+incoming/outgoing frontier records, movement/bridge masks, and weather-road flooding are
+implemented. Hydrology beyond the bounded halo and retained horizon remains provisional;
+richer settlement-agent behavior is tracked separately. Gameplay plugins still wait on stable cross-chunk spatial queries and
 persistence. Dev-demo tooling should stay debug-only and must never weaken the public
 embed contract or lazy-load boundary.
 

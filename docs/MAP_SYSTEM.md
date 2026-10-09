@@ -138,10 +138,12 @@ terrain/water patches, reducing false chunk-edge outlets and undercounted inflow
 edge is still provisional. Retained cardinal neighbors now reconcile through a canonical
 two-chunk worker window and bounded patches; watershed aliases persist in saves. The map
 resolver emits stable retained-cell D8 links, offsets diagonal flows that cross one cardinal
-seam, and labels unloaded targets as frontiers. `GameHandle` exposes retained cell queries,
-bounded graph snapshots, and change notifications. Signed accumulation corrections propagate
-through loaded downstream paths; global frontier continuity and renderer integration remain
-in issue `#38`.
+seam, and labels unloaded sources and targets as provisional frontiers using schema version 2. Deterministic halo inflows switch to raster-derived links when their source chunk loads.
+`GameHandle` exposes retained cell queries, bounded graph snapshots, and change notifications.
+Signed accumulation corrections propagate through loaded downstream paths; hydrology beyond
+the bounded halo and retained horizon remains provisional. Main-map and minimap graph
+consumers, movement masks, and weather-road flooding are implemented under issue `#38`;
+hosted CI, Pages, and live verification remain before closure.
 
 Issue `#38` owns cross-chunk watershed identity and river graph continuity. Issue `#41`
 completed the halo-aware shoreline and GPU fog presentation baseline. Static erosion and

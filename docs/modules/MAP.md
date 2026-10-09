@@ -44,18 +44,21 @@ reconciliation, eight-cell seam patches with fixed-order corner composition, sta
 guards, eviction cleanup, and a persisted `watershed:` alias ledger. The halo and pair
 windows remain provisional at their outer frontiers. The resolver now exposes stable
 cardinal and target-matched diagonal seam segments through the public hydrology query surface.
-The graph now includes threshold-selected D8 links throughout retained chunks, explicit
-frontier targets for unloaded downstream cells, and a 16,384 segment response cap. Corrected
-seam accumulation deltas now propagate through loaded downstream D8 paths with saturating,
-idempotent updates. The minimap renders retained river graph segments across discovered loaded
+The schema-version-2 graph now includes threshold-selected D8 links throughout retained
+chunks, provisional halo-derived source links for unloaded upstream cells, explicit frontier
+targets for unloaded downstream cells, and a 16,384 segment response cap. Incoming links use
+stable coordinate IDs and are replaced by raster-derived links when their source chunk loads.
+Corrected seam accumulation deltas now propagate through loaded downstream D8 paths with
+saturating, idempotent updates. The minimap renders retained river graph segments across discovered loaded
 cells; the main map draws smoothed chains derived from those same graph segments. River
 blocking and road/bridge overlap masks sample the unsmoothed graph corridor. Hydrology
 revisions refresh changed chunks and their immediate neighbors, including chunks touched by
 downstream accumulation propagation. Render chains are clipped at chunk bounds and built
 from a local 3x3 graph neighborhood so PixiJS culling does not drop seam halves. Weather
-road conditions now consume floodplain classification and feed existing traffic queries;
-global frontier continuity, richer settlement-agent behavior, and long-term seasonal terrain
-feedback remain open. Developer inspection shows
+road conditions now consume floodplain classification and feed existing traffic queries.
+Hydrology beyond the bounded halo and retained horizon remains provisional; richer
+settlement-agent behavior and long-term seasonal terrain feedback remain open. Hosted CI,
+Pages, and live verification are still required before closing #38. Developer inspection shows
 flow accumulation, canonical watershed identity, and reconciliation state; it refreshes with
 hydrology revisions and releases its pointer context when the game is destroyed.
 

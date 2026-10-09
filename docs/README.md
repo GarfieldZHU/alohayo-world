@@ -19,6 +19,9 @@ blindly.
 - `ARCHITECTURE.md`: runtime ownership, data flow, workers, rendering, and persistence.
 - `MAP_SYSTEM.md`: authoritative map layers, generation passes, topology, chunks, LOD.
 - `CROSS_CHUNK_HYDROLOGY.md`: seam-safe watershed and river continuity delivery plan.
+- `adr/0006-retained-hydrology-query-surface.md` and
+  `adr/0007-incoming-hydrology-frontiers.md`: retained river graph query and provisional
+  halo-frontier contracts.
 - `DYNAMIC_GEOMORPHOLOGY.md`: persistent erosion/flood/delta authority, accounting, active
   corridor kernel, and staged promotion plan.
 - `PERFORMANCE_BUDGETS.md`: enforced runtime, benchmark, and bundle-size budgets.

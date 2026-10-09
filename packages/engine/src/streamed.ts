@@ -178,6 +178,11 @@ function cloneDrainageSummary(summary: ChunkDrainageSummary): ChunkDrainageSumma
       south: summary.edges.south.map((sample) => ({ ...sample })),
       west: summary.edges.west.map((sample) => ({ ...sample })),
     },
+    frontierInflows: (summary.frontierInflows ?? []).map((inflow) => ({
+      ...inflow,
+      source: { ...inflow.source },
+      target: { ...inflow.target },
+    })),
   }
 }
 
@@ -378,7 +383,7 @@ export async function createGame(
       })
     )
     hydrologyGraphCache = Object.freeze({
-      schemaVersion: 1,
+      schemaVersion: 2,
       completeness: 'retained-chunks',
       truncated,
       revision: hydrologyRevision,

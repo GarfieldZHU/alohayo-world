@@ -4,18 +4,22 @@
 **Status:** the provisional halo, worker pair reconciliation, retained seam patch lifecycle,
 bounded persisted alias ledger, public cell queries/change events, stable retained-chunk D8
 river links, signed accumulation-delta propagation through loaded downstream paths, and a
-discovery-aware minimap graph consumer are implemented. The main map now draws smoothed
-presentation paths from retained D8 links, clipped to chunk bounds and indexed lazily from a
-local 3x3 chunk neighborhood. Movement and road/bridge overlap masks query the unsmoothed
-graph. Hydrology revisions refresh affected chunks and their immediate neighbors, including
-downstream chunks changed by accumulation propagation. Unknown downstream cells remain
-explicit frontier nodes and the snapshot is capped at 16,384 segments. Developer cell
-inspection shows flow accumulation, canonical watershed identity, and reconciliation state;
-it refreshes against the current pointer after hydrology revisions and releases its cached
-pointer context on destroy. Weather-driven road conditions now consume floodplain
-classification, which feeds existing aggregate settlement traffic queries. Global frontier
-continuity, richer settlement-agent behavior, and long-term seasonal terrain feedback remain
-open.
+discovery-aware minimap graph consumer are implemented. Chunk summaries also retain
+deterministic halo-derived incoming D8 links. The graph emits a coordinate-stable provisional
+`frontier` source while the upstream raster is unloaded, replaces it with the retained raster
+link when that chunk loads, and restores it after eviction. The public graph contract is now
+schema version 2. The main map draws smoothed presentation paths from retained D8 links,
+clipped to chunk bounds and indexed lazily from a local 3x3 chunk neighborhood. Movement and
+road/bridge overlap masks query the unsmoothed graph. Hydrology revisions refresh affected
+chunks and their immediate neighbors, including downstream chunks changed by accumulation
+propagation. Unknown upstream and downstream cells remain explicit provisional frontiers;
+the snapshot is capped at 16,384 segments. Developer cell inspection shows flow
+accumulation, canonical watershed identity, and reconciliation state; it refreshes against
+the current pointer after hydrology revisions and releases its cached pointer context on
+destroy. Weather-driven road conditions consume floodplain classification, which feeds
+existing aggregate settlement traffic queries. Hydrology beyond the deterministic halo and
+retained horizon remains provisional; richer settlement-agent behavior and long-term
+seasonal terrain feedback remain open.
 
 ## Goal
 
@@ -72,7 +76,8 @@ X, and component number:
 - provisional watershed component: `watershed:<chunkX>,<chunkY>:<localComponent>`;
 
 Coordinate-derived segment and node IDs are emitted for retained D8 links, including source,
-confluence, outlet, mouth, and unloaded-frontier identities. The optional `GameHandle`
+confluence, outlet, mouth, and unloaded-frontier identities. A halo inflow uses the same
+coordinate-derived segment ID before and after its source raster loads. The optional `GameHandle`
 hydrology surface exposes retained cell fields, canonical watershed IDs, a bounded
 `retained-chunks` graph snapshot, and change events. The graph is complete for selected river
 links in loaded chunks; hydrology beyond the retained frontier is unknown. Split handling
@@ -103,7 +108,15 @@ interface ChunkDrainageSummary {
   chunkY: number
   chunkSize: number
   edges: Record<CardinalDirection, DrainageEdgeSample[]>
+  frontierInflows: DrainageFrontierInflow[]
   state: 'provisional' | 'reconciled'
+}
+
+interface DrainageFrontierInflow {
+  source: { x: number; y: number }
+  target: { x: number; y: number }
+  direction: number
+  sourceAccumulation: number
 }
 
 interface DrainageEdgeSample {
@@ -120,7 +133,10 @@ interface DrainageEdgeSample {
 
 Stable seam segments are derived from this contract. They use world-coordinate edge IDs and
 node IDs, and diagonal D8 handoffs resolve the exact target corner cell before aliasing.
-Diagonal matching does not yet recompute a four-chunk numeric window.
+`frontierInflows` records halo cells whose D8 edge enters the chunk interior. These records
+are sorted and bounded by the chunk perimeter; seam patches replace only records targeting
+their affected patch area. Diagonal matching does not yet recompute a four-chunk numeric
+window.
 
 ## Generation Strategy
 
@@ -183,14 +199,18 @@ A map-owned resolver consumes summaries and:
 - releases retained summaries and seam records on eviction while preserving required aliases;
 - exposes canonical watershed lookup and deterministic D8 river links for retained chunk
   cells, including cardinal and diagonal seams;
+- adds provisional incoming links from the deterministic halo when the upstream source raster
+  is not retained, and suppresses those virtual links while that source raster is retained;
 - exposes `GameHandle.queryHydrologyCell`, `getRiverGraph`, and `subscribeHydrology` for
   downstream systems. Unloaded cells return `null`; graph snapshots declare retained-chunk
-  coverage and cap output at 16,384 segments; listeners are cleared by `destroy`.
+  coverage, use schema version 2, and cap output at 16,384 segments; listeners are cleared by
+  `destroy`.
 
-Global frontier inflow/outflow records and split events are still pending. The main-map
+Incoming halo links and unloaded downstream frontier nodes make both ends explicit around the
+retained horizon. They remain provisional: the halo edge and hydrology beyond the retained
+chunks are not globally authoritative, and split events are still pending. The main-map
 renderer derives smoothed presentation chains from graph links, and unsmoothed D8 corridors
-drive river blocking and road/bridge overlap masks. This does not extend authority beyond
-retained chunks.
+drive river blocking and road/bridge overlap masks.
 
 The resolver may report `provisional` at the retained horizon. It must never call that
 frontier a mouth unless the target is a water cell or a known world outlet.
@@ -340,18 +360,20 @@ evidence.
 4. **Watershed resolver.** Canonical aliases, bounded persistence, lookup, and eviction
    cleanup are implemented, with revisioned events and downstream cell queries. Alias
    splits and consumer integration remain open.
-5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
-   identities, accumulation deltas, downstream consumer queries, a discovered-cell minimap
-   overlay, graph-driven main-map presentation, and unsmoothed movement/bridge masks. Global
-   frontier continuity and settlement/weather consumers remain open.
+5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, incoming halo
+   and outgoing unloaded-frontier identities, accumulation deltas, downstream consumer
+   queries, a discovered-cell minimap overlay, graph-driven main-map presentation, and
+   unsmoothed movement/bridge masks are implemented. Hydrology beyond the bounded halo and
+   retained horizon remains provisional; richer settlement-agent simulation remains tracked
+   separately.
 6. **Runtime/browser proof.** Streamed travel, identity through eviction/reload, the
    discovery-aware minimap graph refresh, revision-driven hydrology inspection, and inspection
    cleanup are tested. Hosted CI, Pages, and live verification remain. The first player-facing
    graph consumer has a desktop capture at
-   `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather consumers remain open.
+   `docs/evidence/issue-38-river-minimap-desktop.png`; weather-road flooding feeds existing
+   aggregate traffic queries. Hosted CI, Pages, and live verification remain required.
 
-Do not close issue `#38` yet. Closure still requires global frontier continuity, settlement
-and weather consumers, and hosted CI/Pages verification in addition to the implemented halo,
-seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas, minimap and main-map
-graph consumers, river/bridge traversal masks, live hydrology inspection, and streamed
-eviction/reload identity proof.
+Do not close issue `#38` yet. Local contract, unit, worker, browser, and performance checks
+must be reviewed together with hosted CI, Pages, and live verification before closure. The
+implemented halo and retained-horizon graph expose provisional links at both ends; this does
+not claim globally authoritative hydrology beyond the sampled halo and loaded chunks.

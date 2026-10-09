@@ -333,6 +333,7 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
       .segments.find(
         (candidate) =>
           candidate.targetKind !== 'frontier' &&
+          candidate.sourceKind !== 'frontier' &&
           (Math.floor(candidate.source.x / 64) !== Math.floor(candidate.target.x / 64) ||
             Math.floor(candidate.source.y / 64) !== Math.floor(candidate.target.y / 64))
       )
@@ -476,6 +477,7 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       graph?.segments.find(
         (segment) =>
           segment.targetKind !== 'frontier' &&
+          segment.sourceKind !== 'frontier' &&
           (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
             Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
       ) ?? null
@@ -508,6 +510,7 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       graph?.segments.filter(
         (segment) =>
           segment.targetKind !== 'frontier' &&
+          segment.sourceKind !== 'frontier' &&
           (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
             Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
       ) ?? []
@@ -588,7 +591,7 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
   expect(result.unknownCell).toBeNull()
   expect(result.fractionalCell).toBeNull()
   expect(result.graph).toMatchObject({
-    schemaVersion: 1,
+    schemaVersion: 2,
     completeness: 'retained-chunks',
     truncated: expect.any(Boolean),
     revision: expect.any(Number),
@@ -697,6 +700,7 @@ test('preserves watershed and river identity through streamed chunk eviction and
       .segments.find(
         (candidate) =>
           candidate.targetKind !== 'frontier' &&
+          candidate.sourceKind !== 'frontier' &&
           (Math.floor(candidate.source.x / 64) !== Math.floor(candidate.target.x / 64) ||
             Math.floor(candidate.source.y / 64) !== Math.floor(candidate.target.y / 64))
       )
