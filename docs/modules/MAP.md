@@ -48,10 +48,16 @@ The graph now includes threshold-selected D8 links throughout retained chunks, e
 frontier targets for unloaded downstream cells, and a 16,384 segment response cap. Corrected
 seam accumulation deltas now propagate through loaded downstream D8 paths with saturating,
 idempotent updates. The minimap renders retained river graph segments across discovered loaded
-cells and refreshes from hydrology revisions. Main-map graph rendering and road, bridge,
-settlement, and weather consumers remain open. Developer inspection shows flow accumulation,
-canonical watershed identity, and reconciliation state; it refreshes with hydrology revisions
-and releases its pointer context when the game is destroyed.
+cells; the main map draws smoothed chains derived from those same graph segments. River
+blocking and road/bridge overlap masks sample the unsmoothed graph corridor. Hydrology
+revisions refresh changed chunks and their immediate neighbors, including chunks touched by
+downstream accumulation propagation. Render chains are clipped at chunk bounds and built
+from a local 3x3 graph neighborhood so PixiJS culling does not drop seam halves. Weather
+road conditions now consume floodplain classification and feed existing traffic queries;
+global frontier continuity, richer settlement-agent behavior, and long-term seasonal terrain
+feedback remain open. Developer inspection shows
+flow accumulation, canonical watershed identity, and reconciliation state; it refreshes with
+hydrology revisions and releases its pointer context when the game is destroyed.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

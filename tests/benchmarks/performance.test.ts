@@ -1,3 +1,4 @@
+import type { WorldRiverGraphSegment } from '@alohayo/config'
 import { expect, it } from 'vitest'
 import {
   DEFAULT_DYNAMIC_GEOMORPHOLOGY_CONFIG,
@@ -13,6 +14,8 @@ import {
   updatePackedFogMask,
   visionDirtyBounds,
 } from '../../packages/engine/src/fog-mask'
+import { indexRiverGraphSegmentsByChunk } from '../../packages/engine/src/minimap-hydrology'
+import { indexRiverGraphRenderLines } from '../../packages/engine/src/water-render'
 
 it('meets representative desktop atlas and chunk latency budgets', () => {
   const world = generateWorld('desktop-budget', 256, 192)
@@ -182,4 +185,61 @@ it('propagates seam accumulation deltas within a retained downstream corridor bu
   expect(farAccumulation?.[32 * chunkSize + (chunkSize - 1)]).toBe(
     maxWorldX + chunkRadius * chunkSize + 1 + seamDelta
   )
+})
+
+it('indexes the capped retained river graph within the renderer budget', () => {
+  const segmentCount = 16_384
+  const chunkSize = 64
+  const segments: WorldRiverGraphSegment[] = Array.from({ length: segmentCount }, (_, index) => {
+    const row = Math.floor(index / 448)
+    const column = index % 448
+    const x = row % 2 === 0 ? column : 447 - column
+    const y = row
+    const target = column === 447 ? { x, y: y + 1 } : { x: x + (row % 2 === 0 ? 1 : -1), y }
+    return {
+      id: `river:segment:${x},${y}>${target.x},${target.y}`,
+      identityId: 'watershed:0,0:1',
+      sourceNodeId: `river:channel:${x},${y}`,
+      targetNodeId: `river:channel:${target.x},${target.y}`,
+      sourceKind: 'channel',
+      targetKind: 'channel',
+      source: { x, y },
+      target,
+      chunkX: Math.floor(x / chunkSize),
+      chunkY: Math.floor(y / chunkSize),
+      offset: index,
+      direction: column === 447 ? 'south' : row % 2 === 0 ? 'east' : 'west',
+      accumulation: 8,
+    }
+  })
+  const samples: number[] = []
+  let indexedLineCount = 0
+  for (let sample = 0; sample < 5; sample += 1) {
+    const started = performance.now()
+    const segmentsByChunk = indexRiverGraphSegmentsByChunk(segments)
+    const localSegments: WorldRiverGraphSegment[] = []
+    for (let chunkY = -1; chunkY <= 1; chunkY += 1) {
+      for (let chunkX = -1; chunkX <= 1; chunkX += 1) {
+        localSegments.push(...(segmentsByChunk.get(`${chunkX},${chunkY}`) ?? []))
+      }
+    }
+    const result = indexRiverGraphRenderLines(localSegments, chunkSize, 4, {
+      chunkX: 0,
+      chunkY: 0,
+    })
+    const elapsed = performance.now() - started
+    indexedLineCount = Array.from(result.values()).reduce((count, lines) => count + lines.length, 0)
+    if (sample > 0) samples.push(elapsed)
+  }
+  samples.sort((left, right) => left - right)
+  const p95 = samples[Math.ceil(samples.length * 0.95) - 1]!
+  console.info('retained river graph render-index benchmark', {
+    segments: segmentCount,
+    indexedLines: indexedLineCount,
+    p95Ms: p95,
+  })
+
+  expect(indexedLineCount).toBeGreaterThan(0)
+  expect(indexedLineCount).toBeLessThan(segmentCount * 4)
+  expect(p95).toBeLessThan(50)
 })

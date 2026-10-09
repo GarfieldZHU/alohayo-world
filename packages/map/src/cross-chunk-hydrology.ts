@@ -498,9 +498,14 @@ export class CrossChunkHydrologyResolver {
   }
 
   revertRetainedAccumulationDeltas() {
+    const changedChunkByKey = new Map<string, { chunkX: number; chunkY: number }>()
     for (const [token, amount] of this.propagatedAccumulationDeltas) {
       const separator = token.lastIndexOf(':')
       const key = token.slice(0, separator)
+      const [chunkX, chunkY] = key.split(',').map(Number)
+      if (Number.isFinite(chunkX) && Number.isFinite(chunkY)) {
+        changedChunkByKey.set(key, { chunkX: chunkX!, chunkY: chunkY! })
+      }
       const index = Number(token.slice(separator + 1))
       const raster = this.rasters.get(key)
       if (
@@ -517,10 +522,16 @@ export class CrossChunkHydrologyResolver {
       )
     }
     this.propagatedAccumulationDeltas.clear()
+    return Array.from(changedChunkByKey.values()).sort(
+      (left, right) => left.chunkY - right.chunkY || left.chunkX - right.chunkX
+    )
   }
 
   recomputeRetainedAccumulationDeltas() {
-    this.revertRetainedAccumulationDeltas()
+    const changedChunkByKey = new Map<string, { chunkX: number; chunkY: number }>()
+    for (const chunk of this.revertRetainedAccumulationDeltas()) {
+      changedChunkByKey.set(`${chunk.chunkX},${chunk.chunkY}`, chunk)
+    }
     const currentSeeds: AccumulationDeltaSeed[] = []
     const baselineSeeds: AccumulationDeltaSeed[] = []
     let correctedCells = 0
@@ -579,11 +590,21 @@ export class CrossChunkHydrologyResolver {
     for (const [token, amount] of this.propagatedAccumulationDeltas) {
       if (amount === 0) this.propagatedAccumulationDeltas.delete(token)
     }
+    for (const token of this.propagatedAccumulationDeltas.keys()) {
+      const key = token.slice(0, token.lastIndexOf(':'))
+      const [chunkX, chunkY] = key.split(',').map(Number)
+      if (!Number.isFinite(chunkX) || !Number.isFinite(chunkY)) continue
+      changedChunkByKey.set(key, { chunkX: chunkX!, chunkY: chunkY! })
+    }
+    const changedChunks = Array.from(changedChunkByKey.values()).sort(
+      (left, right) => left.chunkY - right.chunkY || left.chunkX - right.chunkX
+    )
     return {
       correctedCells,
       seedCount: currentSeeds.length + baselineSeeds.length,
       visitedCells: currentVisited + baselineVisited,
       changedCells: this.propagatedAccumulationDeltas.size,
+      changedChunks,
     }
   }
 
@@ -777,7 +798,7 @@ export class CrossChunkHydrologyResolver {
   }
 
   release(chunkX: number, chunkY: number) {
-    this.revertRetainedAccumulationDeltas()
+    const changedChunks = this.revertRetainedAccumulationDeltas()
     const key = `${chunkX},${chunkY}`
     this.summaries.delete(key)
     this.rasters.delete(key)
@@ -806,6 +827,7 @@ export class CrossChunkHydrologyResolver {
       if (parent !== token || token.split(':', 1)[0] !== key || referencedRoots.has(token)) continue
       this.parents.delete(token)
     }
+    return changedChunks
   }
 
   resolve(chunkX: number, chunkY: number, sample: DrainageEdgeSample) {

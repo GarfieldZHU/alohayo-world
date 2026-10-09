@@ -19,6 +19,7 @@ rendering, traversal, and future traffic consumers.
 - condition-tuned movement and traffic multipliers from `content/core/world.json`.
 - deterministic bridge, causeway, ferry, and switchback markers in streamed chunks;
 - one shared capability-aware traversal query for walking, mounts, vehicles, and AI;
+- river blocking and road/bridge overlap masks driven by the retained unsmoothed D8 graph;
 - transport IDs and stable structure fields included in chunk/world hashes and rendered as
   low-cost markers without making Pixi geometry authoritative.
 
@@ -49,4 +50,6 @@ The broad `#32` tracker is decomposed into two independently testable stages:
 
 `#47` is complete for the deterministic structure/traversal contract. Traffic must consume
 the same traversal query as player and NPC movement; it must not infer passability from
-rendered road color or PixiJS geometry. Fully simulated route agents remain in #60.
+rendered road color or PixiJS geometry. River passage masks use the retained D8 corridor, and
+bridge overlap is derived from the road and river masks. Fully simulated route agents remain
+in #60.

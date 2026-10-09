@@ -80,8 +80,9 @@
       retained-chunk D8 graph links, signed downstream accumulation deltas, and a
       discovery-aware minimap river overlay are implemented. Browser tests also cover graph
       identity through streamed eviction/reload and revision-driven hydrology inspection with
-      teardown cleanup. Global frontier continuity, main-map/road/bridge/settlement/weather
-      consumers, and hosted CI/Pages verification remain open.
+      teardown cleanup. The main map now renders from the retained graph, while river blocking
+      and road/bridge overlap masks use unsmoothed D8 cells. Global frontier continuity,
+      settlement/weather consumers, and hosted CI/Pages verification remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river
@@ -144,9 +145,10 @@
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
 settlements, economy, combat, vehicles, creatures, and water. Cross-chunk hydrology now has
-an active worker and save foundation; stable river graph queries and gameplay consumers
-remain the next map work. Gameplay plugins still wait on stable cross-chunk spatial queries
-and persistence. Dev-demo tooling should stay debug-only and must never weaken the public
+an active worker and save foundation; stable river graph queries, main-map presentation, and
+movement/bridge masks are implemented, with global frontier continuity and settlement/weather
+consumers still open. Gameplay plugins still wait on stable cross-chunk spatial queries and
+persistence. Dev-demo tooling should stay debug-only and must never weaken the public
 embed contract or lazy-load boundary.
 
 The next gameplay track is a standalone character-domain expansion: derived resources,

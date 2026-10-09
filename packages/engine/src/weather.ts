@@ -15,7 +15,7 @@ function noise(x: number, y: number, seed: number) {
 }
 
 /**
- * Produces reversible, local surface state from seed, clock phase, biome, and cell.
+ * Produces reversible, local surface state from seed, clock phase, biome, cell, and drainage.
  * Base terrain is never mutated: callers may discard and rebuild this sample at any time.
  */
 export function sampleWeatherSurface(args: {
@@ -25,6 +25,7 @@ export function sampleWeatherSurface(args: {
   cellX: number
   cellY: number
   seed: number
+  floodplain?: boolean
 }): WeatherSurfaceSample {
   const variation = 0.58 + noise(args.cellX, args.cellY, args.seed + 711) * 0.42
   const exposure = args.state.fade * variation
@@ -33,7 +34,8 @@ export function sampleWeatherSurface(args: {
   const snowCover = cold ? args.state.snowCover * exposure : 0
   const mudFriendly = ['plain', 'grassland', 'forest', 'wetland'].includes(args.biome.family)
   const mud = mudFriendly ? args.state.mud * exposure : 0
-  const floodProne = args.biome.family === 'wetland' || args.biome.family === 'coast'
+  const floodProne =
+    args.floodplain || args.biome.family === 'wetland' || args.biome.family === 'coast'
 
   let condition: WorldRoadConditionId = 'dry'
   if (floodProne && wetness > 0.56 && noise(args.cellX, args.cellY, args.seed + 911) > 0.7) {

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Drive main-map river curves from the retained cross-chunk D8 graph, smooth only the
+  presentation paths, and build river-blocking/road-bridge overlap masks from unsmoothed
+  graph cells. Hydrology revisions now refresh affected chunks and their immediate neighbors,
+  including downstream chunks whose prior accumulation correction is removed or reverted
+  during chunk eviction. Clip
+  presentation lines at chunk boundaries and build their index lazily from the local 3x3
+  chunk neighborhood. Feed the retained floodplain layer into reversible weather-road
+  conditions so heavy rain can slow lowland travel and aggregate road-quality queries.
+
 - Add localized developer hydrology inspection for flow accumulation, canonical watershed
   identity, and provisional/reconciled state. Refresh the hovered cell when hydrology
   revisions arrive, keep the readout aligned with the pointer after camera movement, and

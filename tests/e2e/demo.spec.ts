@@ -563,6 +563,13 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       accumulationCorrectedCells: canvas?.dataset.hydrologyAccumulationCorrectedCells ?? null,
       accumulationVisitedCells: canvas?.dataset.hydrologyAccumulationVisitedCells ?? null,
       accumulationChangedCells: canvas?.dataset.hydrologyAccumulationChangedCells ?? null,
+      riverGraphRenderer: canvas?.dataset.riverGraphRenderer ?? null,
+      riverGraphRenderRevision: canvas?.dataset.riverGraphRenderRevision ?? null,
+      riverGraphRenderSegments: canvas?.dataset.riverGraphRenderSegments ?? null,
+      riverMovementMaskSource: canvas?.dataset.riverMovementMaskSource ?? null,
+      riverMovementMaskRevision: canvas?.dataset.riverMovementMaskRevision ?? null,
+      riverBridgeMaskSource: canvas?.dataset.riverBridgeMaskSource ?? null,
+      riverBridgeMaskRevision: canvas?.dataset.riverBridgeMaskRevision ?? null,
       canSubscribe: typeof handle?.subscribeHydrology === 'function',
     }
   })
@@ -617,6 +624,13 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
   expect(Number(result.accumulationVisitedCells)).toBeGreaterThanOrEqual(0)
   expect(Number(result.accumulationVisitedCells)).toBeGreaterThan(0)
   expect(Number(result.accumulationChangedCells)).toBeGreaterThanOrEqual(0)
+  expect(result.riverGraphRenderer).toBe('retained-d8-graph')
+  expect(Number(result.riverGraphRenderRevision)).toBe(result.graph?.revision)
+  expect(Number(result.riverGraphRenderSegments)).toBeGreaterThan(0)
+  expect(result.riverMovementMaskSource).toBe('retained-d8-graph')
+  expect(Number(result.riverMovementMaskRevision)).toBe(result.graph?.revision)
+  expect(result.riverBridgeMaskSource).toBe('road-overlap-retained-d8-graph')
+  expect(Number(result.riverBridgeMaskRevision)).toBe(result.graph?.revision)
   expect(result.canSubscribe).toBe(true)
   await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(true))
   const canvasBounds = await canvas.boundingBox()

@@ -37,7 +37,9 @@ The current runtime uses deterministic weather phases and derived local surface 
 - intensity fades through the cycle instead of switching abruptly.
 
 The shared surface query now returns local `dry`, `wet`, `muddy`, `snowy`, `slushy`, or
-`flooded` condition from seed, clock phase, biome, and world cell. A separate
+`flooded` condition from seed, clock phase, biome, world cell, and the map's floodplain
+classification. Heavy rain can temporarily flood a lowland road in a drainage corridor;
+clear weather restores its dry condition without changing terrain. A separate
 `RegionalWeatherState` keeps fixed-step coarse cells (pressure, humidity, precipitation,
 temperature anomaly, wind, and front identity), bounded LRU-like retention, and a short
 changed-cell history. Its snapshot is optional in the version-one save contract, so older

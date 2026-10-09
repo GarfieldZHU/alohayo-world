@@ -58,4 +58,42 @@ describe('weather road conditions', () => {
     expect(snow.condition).toBe('snowy')
     expect(thaw.condition).toBe('slushy')
   })
+
+  it('lets heavy rain flood deterministic lowland roads without changing base terrain', () => {
+    const rain = { id: 'rain', wetness: 1, snowCover: 0, mud: 1, fade: 1 }
+    const drainageSamples = Array.from({ length: 64 }, (_, index) =>
+      sampleWeatherSurface({
+        state: rain,
+        biome: grassland,
+        cellX: index - 32,
+        cellY: -11,
+        seed: 24,
+        floodplain: true,
+      })
+    )
+    const clearSamples = Array.from({ length: 64 }, (_, index) =>
+      sampleWeatherSurface({
+        state: { id: 'clear', wetness: 0, snowCover: 0, mud: 0, fade: 0 },
+        biome: grassland,
+        cellX: index - 32,
+        cellY: -11,
+        seed: 24,
+        floodplain: true,
+      })
+    )
+    const inlandSamples = Array.from({ length: 64 }, (_, index) =>
+      sampleWeatherSurface({
+        state: rain,
+        biome: grassland,
+        cellX: index - 32,
+        cellY: -11,
+        seed: 24,
+        floodplain: false,
+      })
+    )
+
+    expect(drainageSamples.some((sample) => sample.condition === 'flooded')).toBe(true)
+    expect(clearSamples.every((sample) => sample.condition === 'dry')).toBe(true)
+    expect(inlandSamples.every((sample) => sample.condition !== 'flooded')).toBe(true)
+  })
 })

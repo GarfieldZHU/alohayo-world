@@ -4,12 +4,18 @@
 **Status:** the provisional halo, worker pair reconciliation, retained seam patch lifecycle,
 bounded persisted alias ledger, public cell queries/change events, stable retained-chunk D8
 river links, signed accumulation-delta propagation through loaded downstream paths, and a
-discovery-aware minimap graph consumer are implemented. Unknown downstream cells remain
+discovery-aware minimap graph consumer are implemented. The main map now draws smoothed
+presentation paths from retained D8 links, clipped to chunk bounds and indexed lazily from a
+local 3x3 chunk neighborhood. Movement and road/bridge overlap masks query the unsmoothed
+graph. Hydrology revisions refresh affected chunks and their immediate neighbors, including
+downstream chunks changed by accumulation propagation. Unknown downstream cells remain
 explicit frontier nodes and the snapshot is capped at 16,384 segments. Developer cell
 inspection shows flow accumulation, canonical watershed identity, and reconciliation state;
 it refreshes against the current pointer after hydrology revisions and releases its cached
-pointer context on destroy. Full frontier continuity and integration with roads, bridges,
-settlements, and weather remain open.
+pointer context on destroy. Weather-driven road conditions now consume floodplain
+classification, which feeds existing aggregate settlement traffic queries. Global frontier
+continuity, richer settlement-agent behavior, and long-term seasonal terrain feedback remain
+open.
 
 ## Goal
 
@@ -36,11 +42,9 @@ an already reconciled downstream graph. Consequences:
 - local watershed integers have no stable cross-chunk meaning;
 - independently generated river paths can disagree about the same seam.
 
-The existing feature margin lets a rendered river inspect cells outside one chunk, but it
-does not repair authoritative river graph identities or propagate changed discharge.
-The renderer's `GeneratedRiver` paths are still produced from per-chunk feature windows and
-are not yet rebuilt from the retained seam graph. Current seam segments therefore do not
-claim to replace the full river presentation network.
+Chunk generation still retains `GeneratedRiver` feature-window paths as data, but the main-map
+renderer and movement masks now consume the retained D8 graph instead. Graph identity and
+discharge remain bounded by the loaded horizon and its provisional outer halo.
 
 ## Non-Negotiable Invariants
 
@@ -183,8 +187,10 @@ A map-owned resolver consumes summaries and:
   downstream systems. Unloaded cells return `null`; graph snapshots declare retained-chunk
   coverage and cap output at 16,384 segments; listeners are cleared by `destroy`.
 
-Global frontier inflow/outflow records, split events, and graph-driven renderer integration
-are still pending.
+Global frontier inflow/outflow records and split events are still pending. The main-map
+renderer derives smoothed presentation chains from graph links, and unsmoothed D8 corridors
+drive river blocking and road/bridge overlap masks. This does not extend authority beyond
+retained chunks.
 
 The resolver may report `provisional` at the retained horizon. It must never call that
 frontier a mouth unless the target is a water cell or a known world outlet.
@@ -197,11 +203,16 @@ the prior propagated deltas, compares old and corrected outflow across the patch
 boundary, and routes signed deltas along the corresponding old and current D8 paths. Only
 reachable loaded cells are visited; a path stops at the retained frontier. Updates saturate
 to the `Uint32` range instead of wrapping, and recomputing after an unchanged patch is
-idempotent. New chunk arrival and eviction recompose the affected downstream paths.
+idempotent. Revision invalidation reports the union of chunks touched by the previous and
+new propagated deltas, so removing a correction also refreshes downstream consumers. Eviction
+returns the chunks touched by its rollback before dropping the source raster; batched eviction
+includes those coordinates in the resulting hydrology event.
 
 This does not make the unbounded world globally authoritative. Pair-window accumulation is
-still provisional at its outer halo, and downstream renderer/gameplay consumers do not yet
-use the corrected values.
+still provisional at its outer halo. The main-map renderer and movement/bridge masks now use
+corrected retained values. Road-weather flooding consumes the retained floodplain layer and
+remains reversible; richer settlement-agent behavior and long-term terrain feedback remain
+open.
 
 ### 5. Stable river graph (partial)
 
@@ -210,11 +221,16 @@ cells against reconciled flow, then derive presentation curves afterward. Segmen
 from source/confluence/mouth coordinates, not chunk IDs. A segment crossing a seam is split
 for storage but keeps one graph identity and explicit upstream/downstream links.
 
-The renderer can smooth segment points, but collision, bridge placement, flooding, and
-skills should query the unsmoothed graph corridor. The current public graph contains per-cell
-D8 links only for retained chunks and marks unloaded downstream cells as frontiers. Corrected
-discharge now propagates along loaded downstream paths, but source-to-mouth traversal and
-consumer integration remain open.
+The main-map renderer chains and smooths D8 segment points by chunk for presentation. River
+blocking and road/bridge overlap masks use the unsmoothed cell corridor, and refresh from
+hydrology revisions over changed chunks plus their immediate neighbors, including chunks
+whose prior accumulation delta was removed by a new reconciliation. Render lines are
+clipped to chunk bounds for PixiJS culling, and each rendered chunk indexes only its local 3x3
+graph neighborhood. The public graph
+contains per-cell D8 links only for retained chunks and marks unloaded downstream cells as
+frontiers. Corrected discharge propagates along loaded downstream paths; weather-driven road
+flooding consumes floodplain classification. Global source-to-mouth continuity, richer
+settlement-agent behavior, long-term flood evolution, and skills remain open.
 
 ## Worker Protocol
 
@@ -254,6 +270,8 @@ Initial gates on the reference desktop profile:
 - retained accumulation delta propagation: `<= 100 ms` p95 for a synthetic 49-chunk
   horizon, 1,024 corrected seam cells, and a 1,536-cell downstream corridor (broad CI CPU
   bound, not hardware evidence);
+- retained river render indexing: `<= 50 ms` p95 to select and smooth one visible chunk's 3x3
+  neighborhood from a 16,384-segment retained graph (broad CI CPU bound, not hardware evidence);
 - resolver work: proportional to changed edge samples and downstream retained segments;
 - no full retained-world regeneration or full minimap rebuild.
 
@@ -264,6 +282,9 @@ main-thread patch application measured 0.153 ms p95. The retained-delta benchmar
 measured 2.73 ms p95. Parallel verification runs were slower under CPU contention. These
 samples meet the initial budgets; hardware/browser-matrix variance and stream-travel timing
 remain open.
+The render-index benchmark for the 16,384-segment cap measured 7.01 ms p95 in the current
+local run. This covers one chunk's 3x3 neighborhood and does not replace browser frame-pacing
+evidence.
 
 ## Test Matrix
 
@@ -300,6 +321,8 @@ remain open.
 - the minimap reindexes and redraws discovered loaded river segments after hydrology revisions;
   the developer inspection readout refreshes its flow, watershed, and reconciliation values
   on each revision and drops its pointer context on destroy;
+- the main-map graph renderer and movement/bridge masks use the same retained D8 revision and
+  refresh only changed chunks with their immediate neighbors;
 - no visible chunk-wide repaint when one seam reconciles;
 - diagnostics expose implementation, changed seam, elapsed time, and resolver revision.
 
@@ -318,15 +341,17 @@ remain open.
    cleanup are implemented, with revisioned events and downstream cell queries. Alias
    splits and consumer integration remain open.
 5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
-   identities, accumulation deltas, downstream consumer queries, and a discovered-cell
-   minimap overlay. Main-map rendering and transport/weather consumers remain open.
+   identities, accumulation deltas, downstream consumer queries, a discovered-cell minimap
+   overlay, graph-driven main-map presentation, and unsmoothed movement/bridge masks. Global
+   frontier continuity and settlement/weather consumers remain open.
 6. **Runtime/browser proof.** Streamed travel, identity through eviction/reload, the
    discovery-aware minimap graph refresh, revision-driven hydrology inspection, and inspection
    cleanup are tested. Hosted CI, Pages, and live verification remain. The first player-facing
    graph consumer has a desktop capture at
    `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather consumers remain open.
 
-Do not close issue `#38` yet. Closure still requires global frontier continuity, main-map and
-road/bridge/settlement/weather consumers, and hosted CI/Pages verification in addition to the
-implemented halo, seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas,
-minimap graph consumer, live hydrology inspection, and streamed eviction/reload identity proof.
+Do not close issue `#38` yet. Closure still requires global frontier continuity, settlement
+and weather consumers, and hosted CI/Pages verification in addition to the implemented halo,
+seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas, minimap and main-map
+graph consumers, river/bridge traversal masks, live hydrology inspection, and streamed
+eviction/reload identity proof.

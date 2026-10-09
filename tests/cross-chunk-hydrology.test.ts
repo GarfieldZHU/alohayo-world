@@ -452,16 +452,33 @@ describe('cross-chunk hydrology resolver', () => {
     const correctedMask = new Uint8Array(9)
     correctedMask[5] = 1
     resolver.setCorrectedMask(-1, 0, correctedMask)
-    resolver.recomputeRetainedAccumulationDeltas()
+    const firstDiagnostics = resolver.recomputeRetainedAccumulationDeltas()
 
+    expect(firstDiagnostics.changedChunks).toEqual([
+      { chunkX: -1, chunkY: 0 },
+      { chunkX: 0, chunkY: 0 },
+    ])
     expect(leftAccumulation[2]).toBe(3)
     expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([15, 16, 17])
-    resolver.recomputeRetainedAccumulationDeltas()
+    const repeatedDiagnostics = resolver.recomputeRetainedAccumulationDeltas()
+    expect(repeatedDiagnostics.changedChunks).toEqual(firstDiagnostics.changedChunks)
     expect(leftAccumulation[2]).toBe(3)
     expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([15, 16, 17])
-    resolver.revertRetainedAccumulationDeltas()
+    resolver.setCorrectedMask(-1, 0, new Uint8Array(9))
+    const revertedDiagnostics = resolver.recomputeRetainedAccumulationDeltas()
+
+    expect(revertedDiagnostics.changedChunks).toEqual(firstDiagnostics.changedChunks)
+    expect(revertedDiagnostics.changedCells).toBe(0)
     expect(leftAccumulation[2]).toBe(5)
     expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([5, 6, 7])
+
+    resolver.setCorrectedMask(-1, 0, correctedMask)
+    resolver.recomputeRetainedAccumulationDeltas()
+    const releasedChunks = resolver.release(-1, 0)
+
+    expect(releasedChunks).toEqual(firstDiagnostics.changedChunks)
+    expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([5, 6, 7])
+    expect(resolver.recomputeRetainedAccumulationDeltas().changedChunks).toEqual([])
   })
 
   it('merges retained accumulation deltas at a downstream confluence exactly once', () => {

@@ -25,7 +25,9 @@ Water-specific shape logic and rendering language above the base terrain/topolog
 - render shoreline bands and foam/highlight passes from stable shape hints
 - distinguish known land/water samples from unknown streamed frontiers so unloaded chunks
   never become synthetic straight coastlines
-- render river curves with width, flow emphasis, and bank color
+- render retained D8 river graph chains with smoothing, width bands, and bank/highlight layers
+- keep movement and transport queries on the unsmoothed D8 corridor rather than presentation
+  geometry
 - expose streaming-safe refresh hooks for seam-adjacent water geometry
 - expose typed erosion potential, sediment load, deposition, and floodplain metadata over
   the authoritative drainage graph
@@ -71,6 +73,8 @@ drainage identities.
 
 The cross-chunk implementation contract lives in `../CROSS_CHUNK_HYDROLOGY.md`. Keep
 hydrology truth, river graph identity, and smoothed water presentation as separate layers.
+The main-map renderer uses the retained graph; local `GeneratedRiver` feature paths are not
+authoritative for river appearance, movement blocking, or bridge overlap.
 
 ## Tests
 

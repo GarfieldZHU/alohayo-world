@@ -1,4 +1,8 @@
-import type { BiomeDefinition, WorldRiverSystemDefinition } from '@alohayo/config'
+import type {
+  BiomeDefinition,
+  WorldRiverGraphSegment,
+  WorldRiverSystemDefinition,
+} from '@alohayo/config'
 import { extractMaskContours, type GeneratedRiver } from '@alohayo/map'
 import type { Graphics } from 'pixi.js'
 
@@ -332,5 +336,174 @@ export function drawRiver(
         width: highlightWidth,
         alpha: 0.24 + river.flow * 0.2 + progress * 0.08,
       })
+  }
+}
+
+export interface RiverGraphRenderLine {
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  accumulation: number
+}
+
+export type RiverGraphRenderIndex = ReadonlyMap<string, readonly RiverGraphRenderLine[]>
+
+const riverGraphPointKey = (point: { x: number; y: number }) => `${point.x},${point.y}`
+
+function riverGraphMajorThreshold(riverSystem: WorldRiverSystemDefinition) {
+  const minimumAccumulation = Math.max(4, Math.floor(riverSystem.generation.minLength * 0.75))
+  return Math.max(minimumAccumulation + 2, Math.floor(riverSystem.generation.minLength * 1.8))
+}
+
+/**
+ * Turns retained D8 links into smoothed presentation lines, clipped to their
+ * rendered chunk. The authoritative graph remains unsmoothed.
+ */
+export function indexRiverGraphRenderLines(
+  segments: readonly WorldRiverGraphSegment[],
+  chunkSize: number,
+  smoothingSamples: number,
+  targetChunk?: { chunkX: number; chunkY: number }
+): RiverGraphRenderIndex {
+  if (!Number.isInteger(chunkSize) || chunkSize < 1) {
+    throw new RangeError('river render chunk size must be a positive integer')
+  }
+  const orderedSegments = [...segments].sort((left, right) => left.id.localeCompare(right.id))
+  const outgoing = new Map<string, WorldRiverGraphSegment>()
+  const incomingCount = new Map<string, number>()
+  for (const segment of orderedSegments) {
+    const sourceKey = riverGraphPointKey(segment.source)
+    if (!outgoing.has(sourceKey)) outgoing.set(sourceKey, segment)
+    const targetKey = riverGraphPointKey(segment.target)
+    incomingCount.set(targetKey, (incomingCount.get(targetKey) ?? 0) + 1)
+  }
+
+  const visited = new Set<string>()
+  const mutableIndex = new Map<string, RiverGraphRenderLine[]>()
+  const sampleCount = Math.max(2, Math.min(8, Math.floor(smoothingSamples) || 2))
+  const targetChunkKey = targetChunk ? `${targetChunk.chunkX},${targetChunk.chunkY}` : null
+
+  const appendPath = (pathSegments: WorldRiverGraphSegment[]) => {
+    if (pathSegments.length === 0) return
+    const points = [pathSegments[0]!.source, ...pathSegments.map((segment) => segment.target)]
+    const smoothPoints = smoothPolyline(points, sampleCount)
+    for (let index = 1; index < smoothPoints.length; index += 1) {
+      const from = smoothPoints[index - 1]!
+      const to = smoothPoints[index]!
+      const edgeIndex = Math.min(pathSegments.length - 1, Math.floor((index - 1) / sampleCount))
+      const startX = from.x + 0.5
+      const startY = from.y + 0.5
+      const deltaX = to.x - from.x
+      const deltaY = to.y - from.y
+      const splitParameters = [0, 1]
+      const addBoundarySplits = (start: number, delta: number) => {
+        if (delta === 0) return
+        const end = start + delta
+        const minimum = Math.min(start, end)
+        const maximum = Math.max(start, end)
+        for (
+          let boundaryIndex = Math.floor(minimum / chunkSize) + 1;
+          boundaryIndex * chunkSize < maximum;
+          boundaryIndex += 1
+        ) {
+          const parameter = (boundaryIndex * chunkSize - start) / delta
+          if (parameter > 0 && parameter < 1) splitParameters.push(parameter)
+        }
+      }
+      addBoundarySplits(startX, deltaX)
+      addBoundarySplits(startY, deltaY)
+      splitParameters.sort((left, right) => left - right)
+      for (let splitIndex = 1; splitIndex < splitParameters.length; splitIndex += 1) {
+        const fromParameter = splitParameters[splitIndex - 1]!
+        const toParameter = splitParameters[splitIndex]!
+        if (toParameter - fromParameter <= Number.EPSILON) continue
+        const middleParameter = (fromParameter + toParameter) / 2
+        const midpointX = startX + deltaX * middleParameter
+        const midpointY = startY + deltaY * middleParameter
+        const key = `${Math.floor(midpointX / chunkSize)},${Math.floor(midpointY / chunkSize)}`
+        if (targetChunkKey && key !== targetChunkKey) continue
+        const lines = mutableIndex.get(key) ?? []
+        lines.push({
+          fromX: startX + deltaX * fromParameter - 0.5,
+          fromY: startY + deltaY * fromParameter - 0.5,
+          toX: startX + deltaX * toParameter - 0.5,
+          toY: startY + deltaY * toParameter - 0.5,
+          accumulation: pathSegments[edgeIndex]!.accumulation,
+        })
+        mutableIndex.set(key, lines)
+      }
+    }
+  }
+
+  const traceFrom = (first: WorldRiverGraphSegment) => {
+    const path: WorldRiverGraphSegment[] = []
+    let current: WorldRiverGraphSegment | undefined = first
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id)
+      path.push(current)
+      if (current.targetKind === 'frontier') break
+      const targetKey = riverGraphPointKey(current.target)
+      if (incomingCount.get(targetKey) !== 1) break
+      const next = outgoing.get(targetKey)
+      if (!next || visited.has(next.id)) break
+      current = next
+    }
+    appendPath(path)
+  }
+
+  for (const segment of orderedSegments) {
+    if ((incomingCount.get(riverGraphPointKey(segment.source)) ?? 0) !== 1) traceFrom(segment)
+  }
+  for (const segment of orderedSegments) {
+    if (!visited.has(segment.id)) traceFrom(segment)
+  }
+
+  return new Map(Array.from(mutableIndex, ([key, lines]) => [key, Object.freeze(lines)] as const))
+}
+
+/** Draws graph-derived river lines while keeping the graph itself as the authority. */
+export function drawRiverGraphLines(
+  graphics: Graphics,
+  lines: readonly RiverGraphRenderLine[],
+  originX: number,
+  originY: number,
+  cellSize: number,
+  riverSystem?: WorldRiverSystemDefinition
+) {
+  if (lines.length === 0 || !riverSystem) return
+  const majorThreshold = riverGraphMajorThreshold(riverSystem)
+  const groups = [
+    {
+      lines: lines.filter((line) => line.accumulation < majorThreshold),
+      width: riverSystem.renderWidth.minor,
+      highlightAlpha: 0.3,
+    },
+    {
+      lines: lines.filter((line) => line.accumulation >= majorThreshold),
+      width: riverSystem.renderWidth.major,
+      highlightAlpha: 0.42,
+    },
+  ]
+
+  for (const group of groups) {
+    if (group.lines.length === 0) continue
+    const appendLines = () => {
+      for (const line of group.lines) {
+        graphics
+          .moveTo((line.fromX - originX + 0.5) * cellSize, (line.fromY - originY + 0.5) * cellSize)
+          .lineTo((line.toX - originX + 0.5) * cellSize, (line.toY - originY + 0.5) * cellSize)
+      }
+    }
+    appendLines()
+    graphics.stroke({ color: 0x123f66, width: group.width + 0.42, alpha: 0.92 })
+    appendLines()
+    graphics.stroke({ color: 0x4da6d8, width: group.width, alpha: 0.95 })
+    appendLines()
+    graphics.stroke({
+      color: 0xb9e9ff,
+      width: Math.max(0.22, group.width * 0.28),
+      alpha: group.highlightAlpha,
+    })
   }
 }

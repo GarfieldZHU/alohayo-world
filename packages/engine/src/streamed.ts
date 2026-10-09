@@ -91,6 +91,17 @@ import {
   selectVisibleRiverGraphSegments,
 } from './minimap-hydrology'
 import { clipRoadToBounds, roadWeatherOverlayAlpha, type RoadRenderPoint } from './road-render'
+import {
+  drawBoundaryBlend,
+  classifyWaterMaterial,
+  drawRiverGraphLines,
+  drawWaterCloseDetail,
+  drawWaterContours,
+  drawWaterMaterialBand,
+  indexRiverGraphRenderLines,
+  isWaterBiome,
+  type RiverGraphRenderLine,
+} from './water-render'
 import { themePalette } from './theme'
 import type {
   ActiveDayNightState,
@@ -123,15 +134,6 @@ import {
   type FogMaskVision,
   type PackedFogMask,
 } from './fog-mask'
-import {
-  drawBoundaryBlend,
-  classifyWaterMaterial,
-  drawRiver,
-  drawWaterCloseDetail,
-  drawWaterContours,
-  drawWaterMaterialBand,
-  isWaterBiome,
-} from './water-render'
 import { createRuntimePerformanceTracker } from './performance'
 import { sampleWeatherSurface } from './weather'
 import { createGameUi, type GameUiController, type GameUiSnapshot } from './game-ui'
@@ -354,8 +356,12 @@ export async function createGame(
   let hydrologyGraphBuildCount = 0
   let minimapRiverGraphRevision = -1
   let minimapRiverSegmentsByChunk: ReturnType<typeof indexRiverGraphSegmentsByChunk> = new Map()
+  const riverRenderLinesByChunk = new Map<string, readonly RiverGraphRenderLine[]>()
   let refreshMinimapOnHydrologyChange = () => {}
   let refreshInspectionOnHydrologyChange = () => {}
+  let refreshHydrologyPresentation: (
+    changedChunks: WorldHydrologyChangeEvent['chunks']
+  ) => void = () => {}
   const getRetainedRiverGraph = (): WorldRiverGraphSnapshot => {
     if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
     const startedAt = performance.now()
@@ -388,6 +394,68 @@ export async function createGame(
     hydrologyCanvas.dataset.hydrologyGraphTruncated = String(truncated)
     return hydrologyGraphCache
   }
+  const getRetainedRiverSegmentsByChunk = () => {
+    const graph = getRetainedRiverGraph()
+    if (minimapRiverGraphRevision !== graph.revision) {
+      minimapRiverSegmentsByChunk = indexRiverGraphSegmentsByChunk(graph.segments)
+      minimapRiverGraphRevision = graph.revision
+    }
+    return minimapRiverSegmentsByChunk
+  }
+  const updateRiverRenderDiagnostics = (revision: number) => {
+    app.canvas.dataset.riverGraphRenderRevision = String(revision)
+    app.canvas.dataset.riverGraphRenderSegments = String(
+      Array.from(riverRenderLinesByChunk.values()).reduce((count, lines) => count + lines.length, 0)
+    )
+    app.canvas.dataset.riverGraphRenderChunks = String(riverRenderLinesByChunk.size)
+  }
+  const getRiverSegmentsTouchingChunk = (chunk: GeneratedChunk) => {
+    const sourceIndex = getRetainedRiverSegmentsByChunk()
+    const result: WorldRiverGraphSnapshot['segments'][number][] = []
+    const seen = new Set<string>()
+    for (let chunkY = chunk.chunkY - 1; chunkY <= chunk.chunkY + 1; chunkY += 1) {
+      for (let chunkX = chunk.chunkX - 1; chunkX <= chunk.chunkX + 1; chunkX += 1) {
+        for (const segment of sourceIndex.get(chunkKey(chunkX, chunkY)) ?? []) {
+          if (seen.has(segment.id)) continue
+          const sourceChunkX = Math.floor(segment.source.x / chunk.chunkSize)
+          const sourceChunkY = Math.floor(segment.source.y / chunk.chunkSize)
+          const targetChunkX = Math.floor(segment.target.x / chunk.chunkSize)
+          const targetChunkY = Math.floor(segment.target.y / chunk.chunkSize)
+          if (
+            (sourceChunkX === chunk.chunkX && sourceChunkY === chunk.chunkY) ||
+            (targetChunkX === chunk.chunkX && targetChunkY === chunk.chunkY)
+          ) {
+            result.push(segment)
+            seen.add(segment.id)
+          }
+        }
+      }
+    }
+    return result
+  }
+  const getRetainedRiverRenderLinesForChunk = (chunk: GeneratedChunk) => {
+    const graph = getRetainedRiverGraph()
+    const key = chunkKey(chunk.chunkX, chunk.chunkY)
+    const cached = riverRenderLinesByChunk.get(key)
+    if (cached) return cached
+    const riverSegmentsByChunk = getRetainedRiverSegmentsByChunk()
+    const localSegments: WorldRiverGraphSnapshot['segments'][number][] = []
+    for (let chunkY = chunk.chunkY - 1; chunkY <= chunk.chunkY + 1; chunkY += 1) {
+      for (let chunkX = chunk.chunkX - 1; chunkX <= chunk.chunkX + 1; chunkX += 1) {
+        localSegments.push(...(riverSegmentsByChunk.get(chunkKey(chunkX, chunkY)) ?? []))
+      }
+    }
+    const lines =
+      indexRiverGraphRenderLines(
+        localSegments,
+        chunk.chunkSize,
+        content.world.rivers?.generation.smoothingSamples ?? 2,
+        { chunkX: chunk.chunkX, chunkY: chunk.chunkY }
+      ).get(key) ?? Object.freeze([])
+    riverRenderLinesByChunk.set(key, lines)
+    updateRiverRenderDiagnostics(graph.revision)
+    return lines
+  }
   const recomputeRetainedHydrologyAccumulation = () => {
     const startedAt = performance.now()
     const diagnostics = hydrologyResolver.recomputeRetainedAccumulationDeltas()
@@ -398,6 +466,7 @@ export async function createGame(
     hydrologyCanvas.dataset.hydrologyAccumulationCorrectedCells = String(diagnostics.correctedCells)
     hydrologyCanvas.dataset.hydrologyAccumulationVisitedCells = String(diagnostics.visitedCells)
     hydrologyCanvas.dataset.hydrologyAccumulationChangedCells = String(diagnostics.changedCells)
+    return diagnostics
   }
   const emitHydrologyChange = (
     type: WorldHydrologyChangeEvent['type'],
@@ -415,6 +484,14 @@ export async function createGame(
     app.canvas.dataset.hydrologyRevision = String(hydrologyRevision)
     app.canvas.dataset.hydrologyEvent = type
     app.canvas.dataset.hydrologyGraphCoverage = 'retained-chunks'
+    if (!destroyed) {
+      try {
+        refreshHydrologyPresentation(chunks)
+      } catch (error) {
+        app.canvas.dataset.riverGraphRenderError =
+          error instanceof Error ? error.message : String(error)
+      }
+    }
     if (!destroyed) {
       try {
         refreshInspectionOnHydrologyChange()
@@ -1546,6 +1623,7 @@ export async function createGame(
       cellX: chunk.originX + localX,
       cellY: chunk.originY + localY,
       seed: hashSeed(worldSeed),
+      floodplain: chunk.floodplain[index]! > 0,
     })
     return {
       surface,
@@ -1556,26 +1634,41 @@ export async function createGame(
   const rebuildRiverMask = (chunk: GeneratedChunk) => {
     const riverMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
     const bridgeMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
-    for (const river of chunk.rivers) {
-      const radius = Math.max(0, Math.ceil(river.width))
-      for (let pointIndex = 1; pointIndex < river.points.length; pointIndex += 1) {
-        const from = river.points[pointIndex - 1]!
-        const to = river.points[pointIndex]!
-        const length = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) * 2))
-        for (let step = 0; step <= length; step += 1) {
-          const t = step / length
-          const x = from.x + (to.x - from.x) * t
-          const y = from.y + (to.y - from.y) * t
-          const localX = Math.round(x - chunk.originX)
-          const localY = Math.round(y - chunk.originY)
-          for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
-            for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
-              const nx = localX + offsetX
-              const ny = localY + offsetY
-              if (nx < 0 || ny < 0 || nx >= chunk.chunkSize || ny >= chunk.chunkSize) continue
-              const index = ny * chunk.chunkSize + nx
-              riverMask[index] = 1
-            }
+    const riverSystem = content.world.rivers
+    if (!riverSystem?.enabled) {
+      riverMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), riverMask)
+      bridgeMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), bridgeMask)
+      return
+    }
+    const minimumAccumulation = Math.max(4, Math.floor(riverSystem.generation.minLength * 0.75))
+    const majorAccumulation = Math.max(
+      minimumAccumulation + 2,
+      Math.floor(riverSystem.generation.minLength * 1.8)
+    )
+    for (const segment of getRiverSegmentsTouchingChunk(chunk)) {
+      const riverWidth =
+        segment.accumulation >= majorAccumulation
+          ? riverSystem.renderWidth.major
+          : riverSystem.renderWidth.minor
+      const radius = Math.max(0, Math.ceil(riverWidth))
+      const length = Math.max(
+        1,
+        Math.ceil(
+          Math.hypot(segment.target.x - segment.source.x, segment.target.y - segment.source.y) * 2
+        )
+      )
+      for (let step = 0; step <= length; step += 1) {
+        const t = step / length
+        const x = segment.source.x + (segment.target.x - segment.source.x) * t
+        const y = segment.source.y + (segment.target.y - segment.source.y) * t
+        const localX = Math.round(x - chunk.originX)
+        const localY = Math.round(y - chunk.originY)
+        for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+          for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+            const nx = localX + offsetX
+            const ny = localY + offsetY
+            if (nx < 0 || ny < 0 || nx >= chunk.chunkSize || ny >= chunk.chunkSize) continue
+            riverMask[ny * chunk.chunkSize + nx] = 1
           }
         }
       }
@@ -1589,6 +1682,10 @@ export async function createGame(
     }
     riverMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), riverMask)
     bridgeMasks.set(chunkKey(chunk.chunkX, chunk.chunkY), bridgeMask)
+    app.canvas.dataset.riverMovementMaskSource = 'retained-d8-graph'
+    app.canvas.dataset.riverMovementMaskRevision = String(hydrologyRevision)
+    app.canvas.dataset.riverBridgeMaskSource = 'road-overlap-retained-d8-graph'
+    app.canvas.dataset.riverBridgeMaskRevision = String(hydrologyRevision)
   }
 
   const riverBlocksAt = (chunk: GeneratedChunk, index: number) => {
@@ -1964,9 +2061,15 @@ export async function createGame(
     app.canvas.dataset.shorelineFrontier = 'known-neighbors-only'
     app.canvas.dataset.shorelineDistance = 'one-cell-loaded-halo'
 
-    for (const river of chunk.rivers) {
-      drawRiver(view.rivers, river, chunk.originX, chunk.originY, cellSize, content.world.rivers)
-    }
+    drawRiverGraphLines(
+      view.rivers,
+      getRetainedRiverRenderLinesForChunk(chunk),
+      chunk.originX,
+      chunk.originY,
+      cellSize,
+      content.world.rivers
+    )
+    app.canvas.dataset.riverGraphRenderer = 'retained-d8-graph'
 
     for (const road of chunk.roads) {
       const profile = roadProfile(road.kind)
@@ -2051,6 +2154,24 @@ export async function createGame(
     redrawChunkSurfaces(chunk, activeWeather())
     if (app.canvas.dataset.initialPresentation === 'complete') redrawChunkFog()
     redrawChunkGrid(chunk)
+  }
+
+  refreshHydrologyPresentation = (changedChunks) => {
+    const affectedKeys = new Set<string>()
+    for (const changed of changedChunks) {
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+          affectedKeys.add(chunkKey(changed.chunkX + offsetX, changed.chunkY + offsetY))
+        }
+      }
+    }
+    for (const key of affectedKeys) riverRenderLinesByChunk.delete(key)
+    for (const key of affectedKeys) {
+      const chunk = chunks.get(key)
+      if (chunk && chunkViews.has(key)) renderChunk(chunk)
+    }
+    updateRiverRenderDiagnostics(hydrologyRevision)
+    app.canvas.dataset.riverMovementMaskRevision = String(hydrologyRevision)
   }
 
   const chunkIntersectsViewport = (chunk: GeneratedChunk) => {
@@ -2166,12 +2287,8 @@ export async function createGame(
         applyHydrologyPatches(second)
         hydrologyResolver.reconcile(first.drainageSummary, second.drainageSummary, direction)
         reconcileRetainedHydrologyDiagonals([first, second])
-        recomputeRetainedHydrologyAccumulation()
-        for (const chunk of [first, second]) {
-          const key = chunkKey(chunk.chunkX, chunk.chunkY)
-          if (chunkViews.has(key)) renderChunk(chunk)
-        }
-        emitHydrologyChange('seam-reconciled', [first, second])
+        const accumulation = recomputeRetainedHydrologyAccumulation()
+        emitHydrologyChange('seam-reconciled', [first, second, ...accumulation.changedChunks])
         markSaveDirty()
       } catch (error) {
         if (destroyed) return
@@ -2239,9 +2356,9 @@ export async function createGame(
           watershed: chunk.watershed,
           water: Uint8Array.from(chunk.biomes, (biome) => Number(isWaterBiomeCode(biome))),
         })
-        recomputeRetainedHydrologyAccumulation()
+        const accumulation = recomputeRetainedHydrologyAccumulation()
         reconcileRetainedHydrologyDiagonals([chunk])
-        emitHydrologyChange('chunk-loaded', [chunk])
+        emitHydrologyChange('chunk-loaded', [chunk, ...accumulation.changedChunks])
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
         lastChunkGenerationMs = chunk.generationMs
@@ -2323,7 +2440,9 @@ export async function createGame(
         Math.abs(chunk.chunkY - centerChunkY)
       )
       if (distance <= retainChunkRadius) continue
-      if (!evicted) hydrologyResolver.revertRetainedAccumulationDeltas()
+      if (!evicted) {
+        changedHydrologyChunks.push(...hydrologyResolver.revertRetainedAccumulationDeltas())
+      }
       const adjacentRetained: Array<{
         chunk: GeneratedChunk | undefined
         direction: CardinalDirection
@@ -2342,7 +2461,6 @@ export async function createGame(
         reconcileRetainedHydrologyDiagonals([neighbor])
         reconcileRetainedHydrologyNeighbors(neighbor)
         changedHydrologyChunks.push(neighbor)
-        if (chunkViews.has(neighborKey)) renderChunk(neighbor)
       }
       const view = chunkViews.get(key)
       if (view) {
@@ -2356,7 +2474,7 @@ export async function createGame(
       authoredEntityLifecycle.releaseChunk(key)
       updateAuthoredEntityDiagnostics()
       topologyResolver.release(chunk.chunkX, chunk.chunkY)
-      hydrologyResolver.release(chunk.chunkX, chunk.chunkY)
+      changedHydrologyChunks.push(...hydrologyResolver.release(chunk.chunkX, chunk.chunkY))
       changedHydrologyChunks.push(chunk)
       roadMasks.delete(key)
       riverMasks.delete(key)
@@ -2365,8 +2483,11 @@ export async function createGame(
       evicted = true
     }
     if (evicted) {
-      recomputeRetainedHydrologyAccumulation()
-      emitHydrologyChange('chunk-evicted', changedHydrologyChunks)
+      const accumulation = recomputeRetainedHydrologyAccumulation()
+      emitHydrologyChange('chunk-evicted', [
+        ...changedHydrologyChunks,
+        ...accumulation.changedChunks,
+      ])
       redrawWorldFog()
     }
   }
@@ -2619,12 +2740,8 @@ export async function createGame(
     }
 
     const riverGraph = getRetainedRiverGraph()
-    if (minimapRiverGraphRevision !== riverGraph.revision) {
-      minimapRiverSegmentsByChunk = indexRiverGraphSegmentsByChunk(riverGraph.segments)
-      minimapRiverGraphRevision = riverGraph.revision
-    }
     const riverSegments = selectVisibleRiverGraphSegments({
-      index: minimapRiverSegmentsByChunk,
+      index: getRetainedRiverSegmentsByChunk(),
       chunkSize,
       viewport: {
         minX: centerCellX - activeRadius,
@@ -3850,6 +3967,7 @@ export async function createGame(
       hydrologyGraphCache = null
       minimapRiverSegmentsByChunk = new Map()
       minimapRiverGraphRevision = -1
+      riverRenderLinesByChunk.clear()
       lastInspectionPointer = null
       refreshInspectionOnHydrologyChange = () => {}
       refreshMinimapOnHydrologyChange = () => {}
