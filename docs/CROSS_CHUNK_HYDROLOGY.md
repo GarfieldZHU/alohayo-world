@@ -273,6 +273,7 @@ remain open.
 - no non-water interior river endpoint at a reconciled seam;
 - confluence and mouth IDs stable after alias merges;
 - transitive watershed aliases agree across three-chunk arrival orders;
+- every loaded cross-chunk graph link agrees with the source's D8 target and target accumulation;
 - eviction/reload and ledger round trip;
 - malformed, cyclic, oversized, and incompatible ledger recovery;
 - accumulation delta idempotence, saturation, and exactly-once merging at a downstream
@@ -290,10 +291,11 @@ remain open.
 - worker pair reconciliation uses Wasm in the browser and persists/restores the drainage
   alias ledger after restart;
 - travel across cardinal and diagonal seams while segment IDs remain stable (unit contract
-  covered; browser travel and full presentation continuity pending);
-- reload after discovery and retain watershed/river IDs (alias ledger covered; graph IDs
-  pending);
-- minimap and inspection update after merge events;
+  covered; streamed browser checks validate every loaded cross-chunk segment in the active
+  retained graph);
+- reload after discovery and retain watershed/river graph IDs through streamed eviction/reload;
+- the minimap reindexes and redraws discovered loaded river segments after hydrology revisions;
+  inspection refresh remains pending;
 - no visible chunk-wide repaint when one seam reconciles;
 - diagnostics expose implementation, changed seam, elapsed time, and resolver revision.
 
@@ -320,7 +322,7 @@ remain open.
    a desktop capture at `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather
    consumers remain open.
 
-Do not close issue `#38` yet. Closure still requires global frontier continuity, consumer
-integration, minimap/inspection refresh, context cleanup, and hosted CI/Pages verification in
-addition to the implemented halo, seam lifecycle, retained-chunk D8 graph, downstream
-accumulation deltas, and streamed eviction/reload identity proof.
+Do not close issue `#38` yet. Closure still requires global frontier continuity, inspection
+refresh, context cleanup, and hosted CI/Pages verification in addition to the implemented
+halo, seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas, minimap graph
+consumer, and streamed eviction/reload identity proof.

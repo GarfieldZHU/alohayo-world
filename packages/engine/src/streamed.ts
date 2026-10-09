@@ -349,6 +349,7 @@ export async function createGame(
   let hydrologyGraphBuildCount = 0
   let minimapRiverGraphRevision = -1
   let minimapRiverSegmentsByChunk: ReturnType<typeof indexRiverGraphSegmentsByChunk> = new Map()
+  let refreshMinimapOnHydrologyChange = () => {}
   const getRetainedRiverGraph = (): WorldRiverGraphSnapshot => {
     if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
     const startedAt = performance.now()
@@ -413,6 +414,14 @@ export async function createGame(
         listener(event)
       } catch {
         // A downstream observer must not interrupt deterministic world streaming.
+      }
+    }
+    if (!destroyed) {
+      try {
+        refreshMinimapOnHydrologyChange()
+      } catch (error) {
+        hydrologyCanvas.dataset.minimapRiverError =
+          error instanceof Error ? error.message : String(error)
       }
     }
   }
@@ -2597,6 +2606,7 @@ export async function createGame(
       .fill({ color: 0xf6f2d6 })
       .stroke({ color: palette().minimapExplorerStroke, width: 1 })
   }
+  refreshMinimapOnHydrologyChange = drawMinimap
 
   const updateStatus = () => {
     if (!explorerMotion) return

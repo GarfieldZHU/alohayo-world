@@ -504,6 +504,37 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
           target: seamSegment.target,
         }
       : null
+    const loadedCrossChunkSegments =
+      graph?.segments.filter(
+        (segment) =>
+          segment.targetKind !== 'frontier' &&
+          (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
+            Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
+      ) ?? []
+    const crossChunkLinkEvidence = loadedCrossChunkSegments.map((segment) => {
+      const source = handle?.queryHydrologyCell?.(segment.source.x, segment.source.y)
+      const target = handle?.queryHydrologyCell?.(segment.target.x, segment.target.y)
+      return {
+        exactDownstream:
+          source?.downstream?.x === segment.target.x &&
+          source?.downstream?.y === segment.target.y &&
+          source.downstreamLoaded === true,
+        accumulationMatches: target?.flowAccumulation === segment.accumulation,
+        targetReceivesAtLeastSource:
+          (target?.flowAccumulation ?? 0) >= (source?.flowAccumulation ?? 0),
+        watershedIdentityMatches:
+          source?.watershedId === target?.watershedId && source?.watershedId === segment.identityId,
+      }
+    })
+    const loadedBorderOutlets =
+      graph?.segments.filter((segment) => {
+        if (segment.targetKind !== 'outlet') return false
+        const chunkX = Math.floor(segment.target.x / 64)
+        const chunkY = Math.floor(segment.target.y / 64)
+        const localX = segment.target.x - chunkX * 64
+        const localY = segment.target.y - chunkY * 64
+        return localX === 0 || localX === 63 || localY === 0 || localY === 63
+      }) ?? []
     const graphBuildCount = canvas?.dataset.hydrologyGraphBuildCount ?? null
     const repeatedGraph = handle?.getRiverGraph?.() ?? null
     return {
@@ -511,13 +542,9 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       unknownCell: handle ? handle.queryHydrologyCell?.(100_000, 100_000) : 'missing-handle',
       fractionalCell: handle ? handle.queryHydrologyCell?.(0.5, 0.5) : 'missing-handle',
       graph,
-      loadedCrossChunkLinks:
-        graph?.segments.filter(
-          (segment) =>
-            segment.targetKind !== 'frontier' &&
-            (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
-              Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
-        ).length ?? 0,
+      loadedCrossChunkLinks: loadedCrossChunkSegments.length,
+      crossChunkLinkEvidence,
+      loadedBorderOutlets,
       seamEvidence,
       graphCacheStable: graph === repeatedGraph,
       graphBuildCountStable: graphBuildCount === canvas?.dataset.hydrologyGraphBuildCount,
@@ -562,6 +589,17 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
   })
   expect(result.graph?.segments.length).toBeGreaterThan(0)
   expect(result.loadedCrossChunkLinks).toBeGreaterThan(0)
+  expect(result.crossChunkLinkEvidence).toHaveLength(result.loadedCrossChunkLinks)
+  expect(
+    result.crossChunkLinkEvidence.every(
+      (evidence) =>
+        evidence.exactDownstream &&
+        evidence.accumulationMatches &&
+        evidence.targetReceivesAtLeastSource &&
+        evidence.watershedIdentityMatches
+    )
+  ).toBe(true)
+  expect(result.loadedBorderOutlets).toEqual([])
   expect(result.seamEvidence).toMatchObject({
     exactDownstream: true,
     accumulationMatches: true,
@@ -669,6 +707,22 @@ test('preserves watershed and river identity through streamed chunk eviction and
   await page.getByLabel('Fly').check()
 
   await teleport(1024, 1024)
+  const revisionAfterTeleport = Number(await canvas.getAttribute('data-hydrology-revision'))
+  await expect
+    .poll(async () => Number(await canvas.getAttribute('data-hydrology-revision')), {
+      timeout: 30_000,
+    })
+    .toBeGreaterThan(revisionAfterTeleport)
+  await expect
+    .poll(
+      async () => {
+        const hydrologyRevision = await canvas.getAttribute('data-hydrology-revision')
+        const minimapRevision = await canvas.getAttribute('data-minimap-river-revision')
+        return minimapRevision === hydrologyRevision
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true)
   await expect
     .poll(
       () =>
