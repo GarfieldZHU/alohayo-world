@@ -466,8 +466,7 @@ describe('cross-chunk hydrology resolver', () => {
     const sourceWatershed = new Uint32Array(9).fill(7)
     sourceDirection[5] = 0
     sourceAccumulation[5] = 6
-    resolver.add(sourceSummary)
-    resolver.addRaster({
+    const sourceRaster = {
       chunkX: -1,
       chunkY: 0,
       chunkSize: 3,
@@ -475,7 +474,9 @@ describe('cross-chunk hydrology resolver', () => {
       flowAccumulation: sourceAccumulation,
       watershed: sourceWatershed,
       water: new Uint8Array(9),
-    })
+    }
+    resolver.add(sourceSummary)
+    resolver.addRaster(sourceRaster)
     resolver.reconcile(sourceSummary, targetSummary, 'east')
     const loadedSegment = resolver
       .retainedRiverGraph(4)
@@ -485,6 +486,28 @@ describe('cross-chunk hydrology resolver', () => {
       sourceNodeId: 'river:channel:-1,1',
       identityId: 'watershed:-1,0:7',
     })
+
+    const sourceFirst = new CrossChunkHydrologyResolver()
+    sourceFirst.add(sourceSummary)
+    sourceFirst.addRaster({
+      ...sourceRaster,
+      flowDirection: sourceRaster.flowDirection.slice(),
+      flowAccumulation: sourceRaster.flowAccumulation.slice(),
+      watershed: sourceRaster.watershed.slice(),
+      water: sourceRaster.water.slice(),
+    })
+    sourceFirst.add(targetSummary)
+    sourceFirst.addRaster({
+      ...targetRaster,
+      flowDirection: targetRaster.flowDirection.slice(),
+      flowAccumulation: targetRaster.flowAccumulation.slice(),
+      watershed: targetRaster.watershed.slice(),
+      water: targetRaster.water.slice(),
+    })
+    sourceFirst.reconcile(sourceSummary, targetSummary, 'east')
+    expect(sourceFirst.retainedRiverGraph(4).segments).toEqual(
+      resolver.retainedRiverGraph(4).segments
+    )
 
     const savedAliases = resolver.exportSnapshot()
     expect(resolver.release(-1, 0)).toEqual([])
