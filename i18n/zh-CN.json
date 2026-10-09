@@ -86,6 +86,12 @@
     "fast": "快速",
     "surveyingFrontier": "正在勘测边疆 ({x}, {y})...",
     "tooltip": "{biome} / {region}{areaSuffix} ({x}, {y})  海拔 {elevation}  湿度 {moisture}  温度 {temperature}",
+    "hydrologyInspect": "流量 {flowAccumulation} · 流域 {watershedId} · {state}",
+    "hydrologyStates": {
+      "provisional": "暂定",
+      "reconciled": "已校正"
+    },
+    "hydrologyUnavailable": "不可用",
     "areaSuffix": " / {areaId}",
     "status": "{devPrefix}{explorerName}  {seedLabel} {seed}  {state}{fastSuffix}  {loadedCount} {loadedLabel}  {discoveredCount} {discoveredLabel}  {cellsCount} {cellsLabel}  {fps}fps  {chunkLabel} {chunkMs}ms  {zoomLabel} {zoomValue}x",
     "regions": {

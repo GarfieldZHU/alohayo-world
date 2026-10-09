@@ -79,8 +79,9 @@
       browser restart coverage, public retained-cell queries, change events, stable
       retained-chunk D8 graph links, signed downstream accumulation deltas, and a
       discovery-aware minimap river overlay are implemented. Browser tests also cover graph
-      identity through streamed eviction/reload. Global frontier continuity, main-map/road/
-      bridge/settlement/weather consumers, and hosted CI/Pages verification remain open.
+      identity through streamed eviction/reload and revision-driven hydrology inspection with
+      teardown cleanup. Global frontier continuity, main-map/road/bridge/settlement/weather
+      consumers, and hosted CI/Pages verification remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river

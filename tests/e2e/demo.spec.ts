@@ -618,15 +618,35 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
   expect(Number(result.accumulationVisitedCells)).toBeGreaterThan(0)
   expect(Number(result.accumulationChangedCells)).toBeGreaterThanOrEqual(0)
   expect(result.canSubscribe).toBe(true)
+  await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(true))
+  const canvasBounds = await canvas.boundingBox()
+  if (!canvasBounds) throw new Error('streamed world canvas is not visible')
+  await page.evaluate(
+    ({ clientX, clientY }) => {
+      document
+        .querySelector<HTMLCanvasElement>('canvas[aria-label="Alohayo World map"]')
+        ?.dispatchEvent(new PointerEvent('pointermove', { clientX, clientY, bubbles: true }))
+    },
+    {
+      clientX: canvasBounds.x + canvasBounds.width / 2,
+      clientY: canvasBounds.y + canvasBounds.height / 2,
+    }
+  )
+  await expect(canvas).toHaveAttribute('data-hydrology-inspection-cell', /^-?\d+,-?\d+$/)
   const finalHydrologyEvent = await page.evaluate(async () => {
     const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
     if (!handle?.subscribeHydrology) return null
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      'canvas[aria-label="Alohayo World map"]'
+    )
     const events: Array<{ revision: number; type: string; chunks: unknown[] }> = []
     const unsubscribe = handle.subscribeHydrology((event) => events.push(event))
     await handle.destroy()
     const destroyedGraph = handle.getRiverGraph?.() ?? null
+    const inspectionCleared =
+      !canvas?.dataset.hydrologyInspectionCell && !canvas?.dataset.hydrologyInspectionRevision
     unsubscribe()
-    return { event: events.at(-1) ?? null, destroyedGraph }
+    return { event: events.at(-1) ?? null, destroyedGraph, inspectionCleared }
   })
   expect(finalHydrologyEvent?.event).toMatchObject({
     revision: expect.any(Number),
@@ -637,6 +657,7 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
     completeness: 'retained-chunks',
     segments: [],
   })
+  expect(finalHydrologyEvent?.inspectionCleared).toBe(true)
 })
 
 test('preserves watershed and river identity through streamed chunk eviction and reload', async ({
@@ -683,6 +704,42 @@ test('preserves watershed and river identity through streamed chunk eviction and
 
   await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(true))
   await expect(canvas).toHaveAttribute('data-dev-mode', 'true')
+  const canvasBounds = await canvas.boundingBox()
+  if (!canvasBounds) throw new Error('streamed world canvas is not visible')
+  await page.mouse.move(
+    canvasBounds.x + canvasBounds.width / 2,
+    canvasBounds.y + canvasBounds.height / 2
+  )
+  await expect(canvas).toHaveAttribute('data-hydrology-inspection-cell', /^-?\d+,-?\d+$/)
+  const initialInspection = await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      'canvas[aria-label="Alohayo World map"]'
+    )
+    const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+    const [cellX, cellY] = (canvas?.dataset.hydrologyInspectionCell ?? '').split(',').map(Number)
+    const query = handle?.queryHydrologyCell?.(cellX!, cellY!)
+    return {
+      flow: canvas?.dataset.hydrologyInspectionFlow ?? null,
+      watershed: canvas?.dataset.hydrologyInspectionWatershed ?? null,
+      state: canvas?.dataset.hydrologyInspectionState ?? null,
+      revision: canvas?.dataset.hydrologyInspectionRevision ?? null,
+      query,
+    }
+  })
+  expect(initialInspection.flow).toBe(String(initialInspection.query?.flowAccumulation))
+  expect(initialInspection.watershed).toBe(initialInspection.query?.watershedId)
+  expect(initialInspection.state).toBe(initialInspection.query?.state)
+  expect(initialInspection.revision).toBe(await canvas.getAttribute('data-hydrology-revision'))
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      'canvas[aria-label="Alohayo World map"]'
+    )
+    window.__ALOHAYO_WORLD_E2E_HANDLE__?.subscribeHydrology?.((event) => {
+      if (!canvas) return
+      canvas.dataset.inspectionEventRevision = String(event.revision)
+      canvas.dataset.inspectionObservedRevision = canvas.dataset.hydrologyInspectionRevision ?? ''
+    })
+  })
   await page.getByLabel('Fly').check()
   const teleport = async (x: number, y: number) => {
     await page.locator('#game input[placeholder="x"]').fill(String(x))
@@ -707,6 +764,18 @@ test('preserves watershed and river identity through streamed chunk eviction and
   await page.getByLabel('Fly').check()
 
   await teleport(1024, 1024)
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>(
+          'canvas[aria-label="Alohayo World map"]'
+        )
+        const eventRevision = canvas?.dataset.inspectionEventRevision
+        const observedRevision = canvas?.dataset.inspectionObservedRevision
+        return eventRevision !== undefined && eventRevision === observedRevision
+      })
+    )
+    .toBe(true)
   const revisionAfterTeleport = Number(await canvas.getAttribute('data-hydrology-revision'))
   await expect
     .poll(async () => Number(await canvas.getAttribute('data-hydrology-revision')), {

@@ -31,6 +31,9 @@ export interface I18nCatalog {
     fast: string
     surveyingFrontier: string
     tooltip: string
+    hydrologyInspect: string
+    hydrologyStates: Record<string, string>
+    hydrologyUnavailable: string
     areaSuffix: string
     status: string
     regions: Record<string, string>

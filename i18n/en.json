@@ -86,6 +86,12 @@
     "fast": "fast",
     "surveyingFrontier": "Surveying frontier ({x}, {y})...",
     "tooltip": "{biome} / {region}{areaSuffix} ({x}, {y})  elevation {elevation}  moisture {moisture}  temperature {temperature}",
+    "hydrologyInspect": "flow {flowAccumulation} · watershed {watershedId} · {state}",
+    "hydrologyStates": {
+      "provisional": "provisional",
+      "reconciled": "reconciled"
+    },
+    "hydrologyUnavailable": "unavailable",
     "areaSuffix": " / {areaId}",
     "status": "{devPrefix}{explorerName}  {seedLabel} {seed}  {state}{fastSuffix}  {loadedCount} {loadedLabel}  {discoveredCount} {discoveredLabel}  {cellsCount} {cellsLabel}  {fps}fps  {chunkLabel} {chunkMs}ms  {zoomLabel} {zoomValue}x",
     "regions": {

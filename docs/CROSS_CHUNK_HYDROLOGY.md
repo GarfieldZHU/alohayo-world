@@ -5,8 +5,11 @@
 bounded persisted alias ledger, public cell queries/change events, stable retained-chunk D8
 river links, signed accumulation-delta propagation through loaded downstream paths, and a
 discovery-aware minimap graph consumer are implemented. Unknown downstream cells remain
-explicit frontier nodes and the snapshot is capped at 16,384 segments. Full frontier
-continuity and integration with roads, bridges, settlements, and weather remain open.
+explicit frontier nodes and the snapshot is capped at 16,384 segments. Developer cell
+inspection shows flow accumulation, canonical watershed identity, and reconciliation state;
+it refreshes against the current pointer after hydrology revisions and releases its cached
+pointer context on destroy. Full frontier continuity and integration with roads, bridges,
+settlements, and weather remain open.
 
 ## Goal
 
@@ -295,7 +298,8 @@ remain open.
   retained graph);
 - reload after discovery and retain watershed/river graph IDs through streamed eviction/reload;
 - the minimap reindexes and redraws discovered loaded river segments after hydrology revisions;
-  inspection refresh remains pending;
+  the developer inspection readout refreshes its flow, watershed, and reconciliation values
+  on each revision and drops its pointer context on destroy;
 - no visible chunk-wide repaint when one seam reconciles;
 - diagnostics expose implementation, changed seam, elapsed time, and resolver revision.
 
@@ -316,13 +320,13 @@ remain open.
 5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
    identities, accumulation deltas, downstream consumer queries, and a discovered-cell
    minimap overlay. Main-map rendering and transport/weather consumers remain open.
-6. **Runtime/browser proof.** Streamed travel, identity through eviction/reload, and the
-   discovery-aware minimap graph refresh are tested. Inspection refresh, context cleanup,
-   hosted CI, Pages, and live verification remain. The first player-facing graph consumer has
-   a desktop capture at `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather
-   consumers remain open.
+6. **Runtime/browser proof.** Streamed travel, identity through eviction/reload, the
+   discovery-aware minimap graph refresh, revision-driven hydrology inspection, and inspection
+   cleanup are tested. Hosted CI, Pages, and live verification remain. The first player-facing
+   graph consumer has a desktop capture at
+   `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather consumers remain open.
 
-Do not close issue `#38` yet. Closure still requires global frontier continuity, inspection
-refresh, context cleanup, and hosted CI/Pages verification in addition to the implemented
-halo, seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas, minimap graph
-consumer, and streamed eviction/reload identity proof.
+Do not close issue `#38` yet. Closure still requires global frontier continuity, main-map and
+road/bridge/settlement/weather consumers, and hosted CI/Pages verification in addition to the
+implemented halo, seam lifecycle, retained-chunk D8 graph, downstream accumulation deltas,
+minimap graph consumer, live hydrology inspection, and streamed eviction/reload identity proof.

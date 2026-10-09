@@ -26,6 +26,15 @@ describe('i18n catalogs', () => {
     expect(translateContentName('zh-CN', 'biomes', 'core:forest', 'Forest')).toBe('森林')
   })
 
+  it('provides localized hydrology inspection labels for both supported locales', () => {
+    const english = getI18nCatalog('en')
+    const chinese = getI18nCatalog('zh-CN')
+    expect(english.hud.hydrologyInspect).toContain('{flowAccumulation}')
+    expect(english.hud.hydrologyStates.provisional).toBe('provisional')
+    expect(chinese.hud.hydrologyInspect).toContain('{watershedId}')
+    expect(chinese.hud.hydrologyStates.reconciled).toBe('已校正')
+  })
+
   it('keeps the standalone fallback and locale release labels in sync', () => {
     const label = `Alohayo World / v${packageJson.version}`
     const html = readFileSync(new URL('../apps/game/index.html', import.meta.url), 'utf8')

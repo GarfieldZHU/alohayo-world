@@ -11,7 +11,9 @@
   for traversal and encounters (about 22 x 15 terrain cells at the desktop reference
   viewport; a bounded floor keeps narrow screens usable).
 - In dev mode, drag pans the camera and wheel/trackpad zooms toward the pointer.
-- Hover/click cells to inspect biome, elevation, moisture, temperature, and coordinates.
+- Hover/click cells to inspect biome, elevation, moisture, temperature, and coordinates. In
+  developer mode, the readout also shows flow accumulation, watershed identity, and whether
+  drainage at the inspected cell is provisional or reconciled.
 - Discover nearby cells as you travel; the minimap fills only from discovered chunk data and
   overlays retained river paths only across explored, loaded cells.
 - Regional weather and aggregate settlement traffic are deterministic developer

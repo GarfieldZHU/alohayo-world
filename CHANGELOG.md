@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add localized developer hydrology inspection for flow accumulation, canonical watershed
+  identity, and provisional/reconciled state. Refresh the hovered cell when hydrology
+  revisions arrive, keep the readout aligned with the pointer after camera movement, and
+  release inspection state during game teardown.
+
 - Expand the retained hydrology graph from seam links to threshold-selected per-cell D8
   segments for loaded chunks, with explicit unloaded-frontier endpoints and a 16,384 segment
   cap. Keep the public query surface read-only; river graph consumers remain tracked by #38.

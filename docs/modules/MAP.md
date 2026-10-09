@@ -49,7 +49,9 @@ frontier targets for unloaded downstream cells, and a 16,384 segment response ca
 seam accumulation deltas now propagate through loaded downstream D8 paths with saturating,
 idempotent updates. The minimap renders retained river graph segments across discovered loaded
 cells and refreshes from hydrology revisions. Main-map graph rendering and road, bridge,
-settlement, and weather consumers remain open.
+settlement, and weather consumers remain open. Developer inspection shows flow accumulation,
+canonical watershed identity, and reconciliation state; it refreshes with hydrology revisions
+and releases its pointer context when the game is destroyed.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

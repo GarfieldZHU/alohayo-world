@@ -319,7 +319,12 @@ export async function createGame(
     style: { fill: palette().statusFill, fontFamily: 'monospace', fontSize: 13 },
   })
   status.position.set(14, 12)
-  overlay.addChild(status)
+  const hydrologyInspectionText = new Text({
+    text: '',
+    style: { fill: palette().statusFill, fontFamily: 'monospace', fontSize: 12 },
+  })
+  hydrologyInspectionText.position.set(14, 29)
+  overlay.addChild(status, hydrologyInspectionText)
 
   let paused = false
   let destroyed = false
@@ -350,6 +355,7 @@ export async function createGame(
   let minimapRiverGraphRevision = -1
   let minimapRiverSegmentsByChunk: ReturnType<typeof indexRiverGraphSegmentsByChunk> = new Map()
   let refreshMinimapOnHydrologyChange = () => {}
+  let refreshInspectionOnHydrologyChange = () => {}
   const getRetainedRiverGraph = (): WorldRiverGraphSnapshot => {
     if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
     const startedAt = performance.now()
@@ -409,6 +415,14 @@ export async function createGame(
     app.canvas.dataset.hydrologyRevision = String(hydrologyRevision)
     app.canvas.dataset.hydrologyEvent = type
     app.canvas.dataset.hydrologyGraphCoverage = 'retained-chunks'
+    if (!destroyed) {
+      try {
+        refreshInspectionOnHydrologyChange()
+      } catch (error) {
+        hydrologyCanvas.dataset.hydrologyInspectionError =
+          error instanceof Error ? error.message : String(error)
+      }
+    }
     for (const listener of hydrologyChangeListeners) {
       try {
         listener(event)
@@ -441,6 +455,7 @@ export async function createGame(
   const discoveredChunks = new Set<string>()
   let explorer: GeneratedCharacter | null = null
   let explorerMotion: CharacterMotionState | null = null
+  let lastInspectionPointer: { clientX: number; clientY: number } | null = null
   let lastStreamCenterChunkX: number | null = null
   let lastStreamCenterChunkY: number | null = null
   let lastExplorerCellX: number | null = null
@@ -2424,6 +2439,53 @@ export async function createGame(
     }
   }
 
+  const renderInspectionAtPointer = () => {
+    if (!lastInspectionPointer) return null
+    const bounds = app.canvas.getBoundingClientRect()
+    const cellX = Math.floor(
+      (lastInspectionPointer.clientX - bounds.left - viewport.x) / scale / cellSize
+    )
+    const cellY = Math.floor(
+      (lastInspectionPointer.clientY - bounds.top - viewport.y) / scale / cellSize
+    )
+    app.canvas.dataset.hydrologyInspectionCell = `${cellX},${cellY}`
+    app.canvas.dataset.hydrologyInspectionRevision = String(hydrologyRevision)
+    const data = getCellData(cellX, cellY)
+    if (!data) {
+      delete app.canvas.dataset.hydrologyInspectionFlow
+      delete app.canvas.dataset.hydrologyInspectionWatershed
+      delete app.canvas.dataset.hydrologyInspectionState
+      hydrologyInspectionText.text = ''
+      status.text = formatI18n(catalog().hud.surveyingFrontier, { x: cellX, y: cellY })
+      return { cellX, cellY }
+    }
+    const hydrology = queryHydrologyCell(cellX, cellY)
+    if (hydrology) {
+      app.canvas.dataset.hydrologyInspectionFlow = String(hydrology.flowAccumulation)
+      app.canvas.dataset.hydrologyInspectionWatershed = hydrology.watershedId
+      app.canvas.dataset.hydrologyInspectionState = hydrology.state
+    }
+    status.text = formatI18n(catalog().hud.tooltip, {
+      biome: translateBiomeName(data.biome),
+      region: translatedRegion(data.region),
+      areaSuffix: data.areaId ? formatI18n(catalog().hud.areaSuffix, { areaId: data.areaId }) : '',
+      x: cellX,
+      y: cellY,
+      elevation: data.chunk.elevation[data.index]!,
+      moisture: data.chunk.moisture[data.index]!,
+      temperature: data.chunk.temperature[data.index]!,
+    })
+    hydrologyInspectionText.text = formatI18n(catalog().hud.hydrologyInspect, {
+      flowAccumulation: hydrology?.flowAccumulation ?? 0,
+      watershedId: hydrology?.watershedId ?? 'unknown',
+      state: hydrology
+        ? (catalog().hud.hydrologyStates[hydrology.state] ?? catalog().hud.hydrologyUnavailable)
+        : catalog().hud.hydrologyUnavailable,
+    })
+    return { cellX, cellY }
+  }
+  refreshInspectionOnHydrologyChange = renderInspectionAtPointer
+
   const canOccupy = (x: number, y: number) => {
     const radius = CHARACTER_CELL_FRACTION / 2
     for (const offsetX of [-radius, radius]) {
@@ -2615,6 +2677,10 @@ export async function createGame(
     gameUi?.setSnapshot(buildGameUiSnapshot())
     if (actionMessage && performance.now() < actionMessageUntil) {
       status.text = actionMessage
+      return
+    }
+    if (lastInspectionPointer) {
+      renderInspectionAtPointer()
       return
     }
     status.text = formatI18n(catalog().hud.status, {
@@ -2963,6 +3029,7 @@ export async function createGame(
     app.canvas.dataset.gameUiMinimap = String(minimapVisible)
     app.canvas.dataset.gameUiMenu = String(gameUiConfig.menu)
     status.visible = !gameUiConfig.enabled || devMode
+    hydrologyInspectionText.visible = status.visible
     if (minimapControls) {
       minimapControls.panel.style.display = minimapVisible ? 'block' : 'none'
     }
@@ -3329,24 +3396,8 @@ export async function createGame(
       lastY = event.clientY
     }
     if (actionMessage && performance.now() < actionMessageUntil) return
-    const bounds = app.canvas.getBoundingClientRect()
-    const cellX = Math.floor((event.clientX - bounds.left - viewport.x) / scale / cellSize)
-    const cellY = Math.floor((event.clientY - bounds.top - viewport.y) / scale / cellSize)
-    const data = getCellData(cellX, cellY)
-    if (!data) {
-      status.text = formatI18n(catalog().hud.surveyingFrontier, { x: cellX, y: cellY })
-      return
-    }
-    status.text = formatI18n(catalog().hud.tooltip, {
-      biome: translateBiomeName(data.biome),
-      region: translatedRegion(data.region),
-      areaSuffix: data.areaId ? formatI18n(catalog().hud.areaSuffix, { areaId: data.areaId }) : '',
-      x: cellX,
-      y: cellY,
-      elevation: data.chunk.elevation[data.index]!,
-      moisture: data.chunk.moisture[data.index]!,
-      temperature: data.chunk.temperature[data.index]!,
-    })
+    lastInspectionPointer = { clientX: event.clientX, clientY: event.clientY }
+    renderInspectionAtPointer()
   }
 
   const onPointerUp = () => {
@@ -3700,6 +3751,7 @@ export async function createGame(
     setTheme(nextTheme) {
       theme = normalizeTheme(nextTheme)
       status.style.fill = palette().statusFill
+      hydrologyInspectionText.style.fill = palette().statusFill
       applyThemeToContainer()
       drawMinimap()
       drawDayNightOverlay()
@@ -3798,6 +3850,14 @@ export async function createGame(
       hydrologyGraphCache = null
       minimapRiverSegmentsByChunk = new Map()
       minimapRiverGraphRevision = -1
+      lastInspectionPointer = null
+      refreshInspectionOnHydrologyChange = () => {}
+      refreshMinimapOnHydrologyChange = () => {}
+      delete app.canvas.dataset.hydrologyInspectionCell
+      delete app.canvas.dataset.hydrologyInspectionRevision
+      delete app.canvas.dataset.hydrologyInspectionFlow
+      delete app.canvas.dataset.hydrologyInspectionWatershed
+      delete app.canvas.dataset.hydrologyInspectionState
       emitLifecycle('destroyed')
       if (autosaveTimer !== null) {
         window.clearTimeout(autosaveTimer)
