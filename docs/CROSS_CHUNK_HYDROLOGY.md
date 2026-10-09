@@ -248,14 +248,18 @@ Initial gates on the reference desktop profile:
 - main-thread seam apply: `<= 2 ms` p95;
 - at most one seam worker request in flight and four pending per newly arrived chunk;
 - retained accumulation delta propagation: `<= 100 ms` p95 for a synthetic 49-chunk
-  horizon and a 1,536-cell downstream corridor (broad CI CPU bound, not hardware evidence);
+  horizon, 1,024 corrected seam cells, and a 1,536-cell downstream corridor (broad CI CPU
+  bound, not hardware evidence);
 - resolver work: proportional to changed edge samples and downstream retained segments;
 - no full retained-world regeneration or full minimap rebuild.
 
 A local 30-run pair-window sample measured TypeScript at 6.84 ms median / 7.27 ms p95 and
 Wasm at 5.19 ms median / 5.45 ms p95. The two-patch numeric transfer was 11,264 bytes and
-main-thread patch application measured 0.153 ms p95. This sample meets the initial pair
-budgets; hardware/browser-matrix variance and full stream-travel measurements remain open.
+main-thread patch application measured 0.153 ms p95. The retained-delta benchmark checks a
+1,024-cell seam correction through the full 1,536-cell corridor; an isolated local run
+measured 2.73 ms p95. Parallel verification runs were slower under CPU contention. These
+samples meet the initial budgets; hardware/browser-matrix variance and stream-travel timing
+remain open.
 
 ## Test Matrix
 
@@ -267,9 +271,11 @@ budgets; hardware/browser-matrix variance and full stream-travel measurements re
 - negative chunk coordinates;
 - no non-water interior river endpoint at a reconciled seam;
 - confluence and mouth IDs stable after alias merges;
+- transitive watershed aliases agree across three-chunk arrival orders;
 - eviction/reload and ledger round trip;
 - malformed, cyclic, oversized, and incompatible ledger recovery;
-- accumulation delta idempotence and saturation.
+- accumulation delta idempotence, saturation, and exactly-once merging at a downstream
+  confluence.
 
 ### Worker and Wasm
 

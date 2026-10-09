@@ -8,7 +8,12 @@
 
 - Propagate signed accumulation changes from corrected seam patches along only the affected
   retained D8 downstream paths, with saturating `Uint32` updates and idempotent recomposition.
+  Cover transitive aliases across three chunks and exactly-once delta merging at a confluence.
   The correction stops at unloaded frontiers; graph consumers remain tracked by #38.
+
+- Stress the retained accumulation benchmark with 1,024 corrected seam cells, a 1,536-cell
+  downstream corridor, and 49 retained chunks; verify the far endpoint receives the exact
+  propagated value.
 
 - Reconcile retained cardinal chunk hydrology in the worker over canonical pair windows,
   transfer bounded eight-cell seam patches, compose corner overlaps in fixed order, ignore

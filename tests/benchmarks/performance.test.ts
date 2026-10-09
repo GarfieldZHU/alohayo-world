@@ -104,26 +104,31 @@ it('steps a representative active geomorphology corridor within its broad CI bud
 it('propagates seam accumulation deltas within a retained downstream corridor budget', () => {
   const chunkSize = 64
   const chunkRadius = 24
-  const sourceIndex = 32 * chunkSize + (chunkSize - 1)
+  const seamDelta = 1024
   const resolver = new CrossChunkHydrologyResolver()
   let sourceRaster: {
     flowDirection: Int8Array
     flowAccumulation: Uint32Array
   } | null = null
+  let targetRaster: {
+    flowDirection: Int8Array
+    flowAccumulation: Uint32Array
+  } | null = null
   let farAccumulation: Uint32Array | null = null
+  const maxWorldX = chunkRadius * chunkSize + chunkSize - 1
   for (let chunkX = -chunkRadius; chunkX <= chunkRadius; chunkX += 1) {
     const flowDirection = new Int8Array(chunkSize * chunkSize).fill(-1)
     const flowAccumulation = new Uint32Array(chunkSize * chunkSize).fill(1)
-    const maxWorldX = chunkRadius * chunkSize + chunkSize - 1
     for (let localX = 0; localX < chunkSize; localX += 1) {
-      if (chunkX * chunkSize + localX < maxWorldX) {
-        flowDirection[32 * chunkSize + localX] = 0
-      }
+      const worldX = chunkX * chunkSize + localX
+      const index = 32 * chunkSize + localX
+      flowAccumulation[index] = worldX + chunkRadius * chunkSize + 1
+      if (worldX < maxWorldX) flowDirection[index] = 0
     }
     if (chunkX === 0) {
-      flowDirection[sourceIndex] = -1
       sourceRaster = { flowDirection, flowAccumulation }
     }
+    if (chunkX === 1) targetRaster = { flowDirection, flowAccumulation }
     if (chunkX === chunkRadius) farAccumulation = flowAccumulation
     resolver.addRaster({
       chunkX,
@@ -135,17 +140,30 @@ it('propagates seam accumulation deltas within a retained downstream corridor bu
       water: new Uint8Array(chunkSize * chunkSize),
     })
   }
-  if (!sourceRaster) throw new Error('accumulation benchmark source raster was not created')
-  sourceRaster.flowDirection[sourceIndex] = 0
-  sourceRaster.flowAccumulation[sourceIndex] = 1024
-  const correctedMask = new Uint8Array(chunkSize * chunkSize)
-  correctedMask[sourceIndex] = 1
-  resolver.setCorrectedMask(0, 0, correctedMask)
+  if (!sourceRaster || !targetRaster)
+    throw new Error('accumulation benchmark seam rasters were not created')
+  const sourceCorrectedMask = new Uint8Array(chunkSize * chunkSize)
+  const targetCorrectedMask = new Uint8Array(chunkSize * chunkSize)
+  for (let row = 0; row < chunkSize; row += 1) {
+    sourceCorrectedMask.fill(1, row * chunkSize + chunkSize - 8, (row + 1) * chunkSize)
+    targetCorrectedMask.fill(1, row * chunkSize, row * chunkSize + 8)
+  }
+  for (let localX = chunkSize - 8; localX < chunkSize; localX += 1) {
+    const index = 32 * chunkSize + localX
+    sourceRaster.flowAccumulation[index] = sourceRaster.flowAccumulation[index]! + seamDelta
+  }
+  for (let localX = 0; localX < 8; localX += 1) {
+    const index = 32 * chunkSize + localX
+    targetRaster.flowAccumulation[index] = targetRaster.flowAccumulation[index]! + seamDelta
+  }
+  resolver.setCorrectedMask(0, 0, sourceCorrectedMask)
+  resolver.setCorrectedMask(1, 0, targetCorrectedMask)
 
   const samples: number[] = []
+  let diagnostics = { correctedCells: 0, visitedCells: 0, changedCells: 0 }
   for (let sample = 0; sample < 12; sample += 1) {
     const started = performance.now()
-    resolver.recomputeRetainedAccumulationDeltas()
+    diagnostics = resolver.recomputeRetainedAccumulationDeltas()
     const elapsed = performance.now() - started
     if (sample >= 2) samples.push(elapsed)
   }
@@ -153,10 +171,15 @@ it('propagates seam accumulation deltas within a retained downstream corridor bu
   const p95 = samples[Math.ceil(samples.length * 0.95) - 1]!
   console.info('retained accumulation delta benchmark', {
     retainedChunks: chunkRadius * 2 + 1,
+    correctedCells: diagnostics.correctedCells,
     downstreamCells: chunkRadius * chunkSize,
+    visitedCells: diagnostics.visitedCells,
     p95Ms: p95,
   })
 
+  expect(diagnostics.correctedCells).toBe(chunkSize * 16)
   expect(p95).toBeLessThan(100)
-  expect(farAccumulation?.[32 * chunkSize + (chunkSize - 1)]).toBe(1025)
+  expect(farAccumulation?.[32 * chunkSize + (chunkSize - 1)]).toBe(
+    maxWorldX + chunkRadius * chunkSize + 1 + seamDelta
+  )
 })

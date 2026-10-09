@@ -209,6 +209,27 @@ describe('cross-chunk hydrology resolver', () => {
     expect(first.segments()[0]?.targetNodeId).toBe('river:channel:-3,13')
   })
 
+  it('keeps transitive watershed aliases stable across three-chunk seam arrival orders', () => {
+    const west = summary(-3, 4, 9)
+    const center = summary(-2, 4, 7)
+    const east = summary(-1, 4, 3)
+    const first = new CrossChunkHydrologyResolver()
+    first.reconcile(west, center, 'east')
+    first.reconcile(center, east, 'east')
+    const second = new CrossChunkHydrologyResolver()
+    second.reconcile(east, center, 'west')
+    second.reconcile(center, west, 'west')
+
+    expect(second.exportSnapshot()).toEqual(first.exportSnapshot())
+    expect(second.segments()).toEqual(first.segments())
+    expect(first.segments()).toHaveLength(2)
+    expect(
+      [west, center, east].map((chunk) =>
+        first.resolveComponent(chunk.chunkX, chunk.chunkY, chunk.edges.east[0]!.watershedComponent)
+      )
+    ).toEqual(['watershed:-3,4:9', 'watershed:-3,4:9', 'watershed:-3,4:9'])
+  })
+
   it('rehydrates aliases after the neighboring chunks are evicted', () => {
     const left = summary(-2, -3, 11)
     const right = summary(-1, -3, 5)
@@ -441,5 +462,49 @@ describe('cross-chunk hydrology resolver', () => {
     resolver.revertRetainedAccumulationDeltas()
     expect(leftAccumulation[2]).toBe(5)
     expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([5, 6, 7])
+  })
+
+  it('merges retained accumulation deltas at a downstream confluence exactly once', () => {
+    const chunkSize = 5
+    const flowDirection = new Int8Array(chunkSize * chunkSize).fill(-1)
+    const flowAccumulation = new Uint32Array(chunkSize * chunkSize).fill(1)
+    const sourceNorth = 2 * chunkSize
+    const sourceSouth = 2 * chunkSize + 2
+    const targetNorth = 3 * chunkSize
+    const targetSouth = 3 * chunkSize + 2
+    const confluence = 4 * chunkSize + 1
+    const downstream = 4 * chunkSize + 2
+    flowDirection[targetNorth] = 4
+    flowDirection[targetSouth] = 6
+    flowDirection[confluence] = 0
+
+    const resolver = new CrossChunkHydrologyResolver()
+    resolver.addRaster({
+      chunkX: 0,
+      chunkY: 0,
+      chunkSize,
+      flowDirection,
+      flowAccumulation,
+      watershed: new Uint32Array(chunkSize * chunkSize),
+      water: new Uint8Array(chunkSize * chunkSize),
+    })
+    flowDirection[sourceNorth] = 2
+    flowDirection[sourceSouth] = 2
+    flowAccumulation[sourceNorth] = 5
+    flowAccumulation[sourceSouth] = 7
+    const correctedMask = new Uint8Array(chunkSize * chunkSize)
+    correctedMask[sourceNorth] = 1
+    correctedMask[sourceSouth] = 1
+    resolver.setCorrectedMask(0, 0, correctedMask)
+
+    resolver.recomputeRetainedAccumulationDeltas()
+
+    expect(flowAccumulation[targetNorth]).toBe(6)
+    expect(flowAccumulation[targetSouth]).toBe(8)
+    expect(flowAccumulation[confluence]).toBe(13)
+    expect(flowAccumulation[downstream]).toBe(13)
+    resolver.recomputeRetainedAccumulationDeltas()
+    expect(flowAccumulation[confluence]).toBe(13)
+    expect(flowAccumulation[downstream]).toBe(13)
   })
 })
