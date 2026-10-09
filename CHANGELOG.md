@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Generate streamed chunk hydrology over a deterministic 16-cell world-coordinate halo,
+  including authored terrain and water overlays beyond the chunk edge, then crop all
+  numeric fields back to the stored chunk. Verify deterministic positive/negative chunks,
+  authored seam inputs, and 96x96 TypeScript/Wasm parity. Pairwise seam reconciliation and
+  canonical drainage identity remain tracked by #38.
+
 - Add the first closeable follow-up contracts for issues #57, #60, #61, #62, #63, and
   #64: seasonal geomorphology forcing/proposals with bounded save validation, deterministic
   settlement agents, a versioned contour-geometry worker batch with fallback diagnostics,

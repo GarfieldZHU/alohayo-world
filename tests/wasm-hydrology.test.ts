@@ -58,8 +58,13 @@ describe('Wasm hydrology raster parity', () => {
     startupMs = performance.now() - started
   })
 
-  parity('matches every TypeScript core buffer for 16/64/128 fixtures', () => {
-    for (const input of [fixture(16, 16, -3), fixture(64, 64, 7), fixture(128, 128, 19)]) {
+  parity('matches every TypeScript core buffer for 16/64/96/128 fixtures', () => {
+    for (const input of [
+      fixture(16, 16, -3),
+      fixture(64, 64, 7),
+      fixture(96, 96, -11),
+      fixture(128, 128, 19),
+    ]) {
       const expected = buildHydrologyCoreRaster(input)
       const actual = normalize(
         wasm.build_hydrology_raster(input.rawElevation, input.water, input.width, input.height),
@@ -102,7 +107,7 @@ describe('Wasm hydrology raster parity', () => {
   })
 
   parity('beats the hydrology promotion benchmark gates', () => {
-    const inputs = [fixture(64, 64, 7), fixture(128, 128, 19)]
+    const inputs = [fixture(64, 64, 7), fixture(96, 96, -11), fixture(128, 128, 19)]
     const percentile = (values: number[], ratio: number) =>
       [...values].sort((left, right) => left - right)[Math.ceil(values.length * ratio) - 1]!
     for (const input of inputs) {
@@ -111,25 +116,47 @@ describe('Wasm hydrology raster parity', () => {
     }
     const typescriptMs: number[] = []
     const wasmMs: number[] = []
-    for (let run = 0; run < 10; run += 1) {
+    const typescriptBySize = new Map<number, number[]>()
+    const wasmBySize = new Map<number, number[]>()
+    for (let run = 0; run < 30; run += 1) {
       for (const input of inputs) {
         let started = performance.now()
         buildHydrologyCoreRaster(input)
-        typescriptMs.push(performance.now() - started)
+        const referenceElapsedMs = performance.now() - started
+        typescriptMs.push(referenceElapsedMs)
+        const referenceSamples = typescriptBySize.get(input.width) ?? []
+        referenceSamples.push(referenceElapsedMs)
+        typescriptBySize.set(input.width, referenceSamples)
         started = performance.now()
         wasm.build_hydrology_raster(input.rawElevation, input.water, input.width, input.height)
-        wasmMs.push(performance.now() - started)
+        const wasmElapsedMs = performance.now() - started
+        wasmMs.push(wasmElapsedMs)
+        const wasmSamples = wasmBySize.get(input.width) ?? []
+        wasmSamples.push(wasmElapsedMs)
+        wasmBySize.set(input.width, wasmSamples)
       }
     }
+    const typescript64MedianMs = percentile(typescriptBySize.get(64)!, 0.5)
+    const typescript96MedianMs = percentile(typescriptBySize.get(96)!, 0.5)
+    const wasm64MedianMs = percentile(wasmBySize.get(64)!, 0.5)
+    const wasm96MedianMs = percentile(wasmBySize.get(96)!, 0.5)
     const report = {
       startupMs,
       typescriptMedianMs: percentile(typescriptMs, 0.5),
       typescriptP95Ms: percentile(typescriptMs, 0.95),
       wasmMedianMs: percentile(wasmMs, 0.5),
       wasmP95Ms: percentile(wasmMs, 0.95),
+      typescript64MedianMs,
+      typescript96MedianMs,
+      typescriptHalo96Vs64MedianRatio: typescript96MedianMs / typescript64MedianMs,
+      wasm64MedianMs,
+      wasm96MedianMs,
+      wasmHalo96Vs64MedianRatio: wasm96MedianMs / wasm64MedianMs,
       transferGrowthPercent: 0,
     }
     console.info('hydrology raster promotion benchmark', report)
+    expect(report.typescriptHalo96Vs64MedianRatio).toBeLessThanOrEqual(2.5)
+    expect(report.wasmHalo96Vs64MedianRatio).toBeLessThanOrEqual(2.5)
     expect(report.wasmMedianMs).toBeLessThan(report.typescriptMedianMs * 0.85)
     expect(report.transferGrowthPercent).toBeLessThanOrEqual(5)
     expect(report.startupMs).toBeLessThan(50)

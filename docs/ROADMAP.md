@@ -74,9 +74,10 @@
       for the first natural-water foundation slice.
 - [x] Deterministic hydrology pass with slope, depression handling, flow direction,
       accumulation, watersheds, and flow-following river source selection.
-- [ ] Cross-chunk watershed aliases, seam-safe drainage outlets, and continuous river
-      graph segments in issue `#38`; the new pairwise alias resolver is still a stage-1
-      handoff and does not yet repair authoritative raster accumulation.
+- [ ] Issue `#38` cross-chunk drainage: deterministic 16-cell halo generation now includes
+      neighboring authored terrain/water and crops the `96 x 96` raster to the `64 x 64`
+      chunk. Pairwise raster reconciliation, authoritative accumulation, canonical aliases,
+      river graph segments, persistence, and browser/performance proof remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river

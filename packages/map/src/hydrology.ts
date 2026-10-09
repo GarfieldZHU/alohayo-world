@@ -167,6 +167,19 @@ export function hydrologyNeighborIndex(
   return nextY * width + nextX
 }
 
+function hydrologyCellOrder(filledElevation: Float32Array, rawElevation: Float32Array) {
+  const order = new Uint32Array(filledElevation.length)
+  for (let index = 0; index < order.length; index += 1) order[index] = index
+  order.sort((left, right) => {
+    const filledDelta = filledElevation[right]! - filledElevation[left]!
+    if (filledDelta !== 0) return filledDelta
+    const rawDelta = rawElevation[right]! - rawElevation[left]!
+    if (rawDelta !== 0) return rawDelta
+    return right - left
+  })
+  return order
+}
+
 export const buildHydrologyCoreRaster: HydrologyCoreBuilder = ({
   width,
   height,
@@ -245,14 +258,7 @@ export const buildHydrologyCoreRaster: HydrologyCoreBuilder = ({
     )
   }
 
-  const order = Array.from({ length: size }, (_, index) => index)
-  order.sort((left, right) => {
-    const filledDelta = filledElevation[right]! - filledElevation[left]!
-    if (filledDelta !== 0) return filledDelta
-    const rawDelta = rawElevation[right]! - rawElevation[left]!
-    if (rawDelta !== 0) return rawDelta
-    return right - left
-  })
+  const order = hydrologyCellOrder(filledElevation, rawElevation)
 
   for (let index = 0; index < size; index += 1) {
     flowAccumulation[index] = water[index] ? 0 : 1
@@ -340,14 +346,7 @@ export function buildHydrologyRaster(args: {
   const core = coreBuilder({ width, height, rawElevation, water })
   const { filledElevation, slope, flowDirection, flowAccumulation, watershed, depression } = core
 
-  const order = Array.from({ length: size }, (_, index) => index)
-  order.sort((left, right) => {
-    const filledDelta = filledElevation[right]! - filledElevation[left]!
-    if (filledDelta !== 0) return filledDelta
-    const rawDelta = rawElevation[right]! - rawElevation[left]!
-    if (rawDelta !== 0) return rawDelta
-    return right - left
-  })
+  const order = hydrologyCellOrder(filledElevation, rawElevation)
 
   const accumulationDenominator = Math.log2(Math.max(2, size + 1))
   const sedimentMass = new Float32Array(size)

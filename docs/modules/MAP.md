@@ -37,8 +37,10 @@ Cross-chunk drainage and rivers, minimap LOD, benchmark budgets, shared shape hi
 module, and a resolved content-pack overlay stream with dependency-safe provenance.
 
 Issue `#38` follows the staged contract in `../CROSS_CHUNK_HYDROLOGY.md`. A fixed halo is
-only provisional; exact seam behavior comes from deterministic pairwise reconciliation and
-a map-owned watershed/river resolver.
+now generated over 16 cells of world-coordinate terrain and authored overlays, then cropped
+to the chunk interior. It reduces immediate frontier artifacts but remains provisional;
+exact seam behavior still requires deterministic pairwise reconciliation and a map-owned
+watershed/river resolver.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

@@ -1229,6 +1229,213 @@ function buildHydrologyFromElevationAndWater(
   })
 }
 
+const CROSS_CHUNK_HYDROLOGY_HALO_CELLS = 16
+
+interface ChunkHydrologyWindow {
+  raster: HydrologyRaster
+  chunkRaster: HydrologyRaster
+  halo: number
+}
+
+type HydrologyTypedArray = Float32Array | Uint8Array | Uint32Array | Int8Array
+
+function cropHydrologyLayer<T extends HydrologyTypedArray>(
+  source: T,
+  sourceWidth: number,
+  sourceX: number,
+  sourceY: number,
+  width: number,
+  height: number
+): T {
+  const TypedArray = source.constructor as { new (length: number): T }
+  const cropped = new TypedArray(width * height)
+  for (let y = 0; y < height; y += 1) {
+    const sourceStart = (sourceY + y) * sourceWidth + sourceX
+    cropped.set(source.subarray(sourceStart, sourceStart + width), y * width)
+  }
+  return cropped
+}
+
+function cropHydrologyRaster(
+  raster: HydrologyRaster,
+  sourceX: number,
+  sourceY: number,
+  width: number,
+  height: number
+): HydrologyRaster {
+  const crop = <T extends HydrologyTypedArray>(layer: T) =>
+    cropHydrologyLayer(layer, raster.width, sourceX, sourceY, width, height)
+  return {
+    width,
+    height,
+    rawElevation: crop(raster.rawElevation),
+    filledElevation: crop(raster.filledElevation),
+    water: crop(raster.water),
+    slope: crop(raster.slope),
+    flowDirection: crop(raster.flowDirection),
+    flowAccumulation: crop(raster.flowAccumulation),
+    watershed: crop(raster.watershed),
+    depression: crop(raster.depression),
+    erosionPotential: crop(raster.erosionPotential),
+    sedimentLoad: crop(raster.sedimentLoad),
+    deposition: crop(raster.deposition),
+    floodplain: crop(raster.floodplain),
+  }
+}
+
+function buildChunkHydrologyWindow(args: {
+  seedText: string
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  surveyWidth: number
+  surveyHeight: number
+  baseLayers?: ChunkBaseLayers
+  areas?: MapAreaDefinition[]
+  terrainCodes?: Record<string, number>
+  geomorphology?: WorldGeomorphologyDefinition
+  coreBuilder?: HydrologyCoreBuilder
+}): ChunkHydrologyWindow {
+  const {
+    seedText,
+    chunkX,
+    chunkY,
+    chunkSize,
+    surveyWidth,
+    surveyHeight,
+    baseLayers,
+    areas = [],
+    terrainCodes = {},
+    geomorphology,
+    coreBuilder,
+  } = args
+  const halo = CROSS_CHUNK_HYDROLOGY_HALO_CELLS
+  const windowSize = chunkSize + halo * 2
+  const chunkOriginX = chunkX * chunkSize
+  const chunkOriginY = chunkY * chunkSize
+  const windowOriginX = chunkOriginX - halo
+  const windowOriginY = chunkOriginY - halo
+  const seed = hashSeed(seedText)
+  const seaLevel = seaLevelForSeed(seed)
+  const elevation = new Uint8Array(windowSize * windowSize)
+  const water = new Uint8Array(windowSize * windowSize)
+
+  for (let y = 0; y < windowSize; y += 1) {
+    for (let x = 0; x < windowSize; x += 1) {
+      const worldX = windowOriginX + x
+      const worldY = windowOriginY + y
+      const chunkLocalX = worldX - chunkOriginX
+      const chunkLocalY = worldY - chunkOriginY
+      const insideChunk =
+        chunkLocalX >= 0 && chunkLocalY >= 0 && chunkLocalX < chunkSize && chunkLocalY < chunkSize
+      const chunkIndex = chunkLocalY * chunkSize + chunkLocalX
+      const windowIndex = y * windowSize + x
+      const baseElevation =
+        insideChunk && baseLayers?.elevation[chunkIndex] !== undefined
+          ? baseLayers.elevation[chunkIndex]!
+          : Math.round(streamElevationValue(worldX, worldY, seed) * 255)
+      elevation[windowIndex] = baseElevation
+      water[windowIndex] = baseElevation / 255 < seaLevel ? 1 : 0
+    }
+  }
+
+  if (areas.length) {
+    const windowBounds = {
+      minX: windowOriginX,
+      minY: windowOriginY,
+      maxX: windowOriginX + windowSize - 1,
+      maxY: windowOriginY + windowSize - 1,
+    }
+    const overlays = resolveAuthoredOverlays({
+      areas,
+      surveyWidth,
+      surveyHeight,
+      centered: true,
+      bounds: windowBounds,
+    })
+    areas.forEach((area, areaOrder) => {
+      if (!area.enabled) return
+      const origin = resolveAreaOrigin(area, surveyWidth, surveyHeight, true)
+      const areaBounds = {
+        minX: origin.x,
+        minY: origin.y,
+        maxX: origin.x + area.width - 1,
+        maxY: origin.y + area.height - 1,
+      }
+      if (
+        areaBounds.maxX < windowBounds.minX ||
+        areaBounds.maxY < windowBounds.minY ||
+        areaBounds.minX > windowBounds.maxX ||
+        areaBounds.minY > windowBounds.maxY
+      ) {
+        return
+      }
+
+      const applyCell = (
+        worldX: number,
+        worldY: number,
+        overlayKind: 'terrainPatches' | 'cells',
+        terrainId: string,
+        elevationValue?: number
+      ) => {
+        if (
+          worldX < windowBounds.minX ||
+          worldY < windowBounds.minY ||
+          worldX > windowBounds.maxX ||
+          worldY > windowBounds.maxY ||
+          overlayBlockedAt(overlays.protectedRegions, overlayKind, worldX, worldY, areaOrder)
+        ) {
+          return
+        }
+        const terrainCode = terrainCodes[terrainId]
+        if (terrainCode === undefined) throw new Error(`unknown terrain id ${terrainId}`)
+        const index = (worldY - windowOriginY) * windowSize + (worldX - windowOriginX)
+        if (elevationValue !== undefined) elevation[index] = elevationValue
+        water[index] = isWaterBiome(terrainCode) ? 1 : 0
+      }
+
+      for (const patch of area.terrainPatches) {
+        const patchOriginX = origin.x + patch.x
+        const patchOriginY = origin.y + patch.y
+        const startX = Math.max(0, windowBounds.minX - patchOriginX)
+        const startY = Math.max(0, windowBounds.minY - patchOriginY)
+        const endX = Math.min(patch.width, windowBounds.maxX - patchOriginX + 1)
+        const endY = Math.min(patch.height, windowBounds.maxY - patchOriginY + 1)
+        for (let y = startY; y < endY; y += 1) {
+          for (let x = startX; x < endX; x += 1) {
+            if (!patchContains(patch.shape, x, y, patch.width, patch.height)) continue
+            applyCell(
+              patchOriginX + x,
+              patchOriginY + y,
+              'terrainPatches',
+              patch.terrainId,
+              patch.elevation
+            )
+          }
+        }
+      }
+
+      for (const cell of area.cells ?? []) {
+        applyCell(origin.x + cell.x, origin.y + cell.y, 'cells', cell.terrainId, cell.elevation)
+      }
+    })
+  }
+
+  const raster = buildHydrologyFromElevationAndWater(
+    elevation,
+    windowSize,
+    windowSize,
+    (index) => Boolean(water[index]),
+    geomorphology,
+    coreBuilder
+  )
+  return {
+    raster,
+    chunkRaster: cropHydrologyRaster(raster, halo, halo, chunkSize, chunkSize),
+    halo,
+  }
+}
+
 function hydrologyCellValues(
   hydrology: HydrologyRaster,
   x: number,
@@ -2419,11 +2626,10 @@ function applyAreasToChunk(
   terrainCodes: Record<string, number>,
   surveyWidth: number,
   surveyHeight: number,
+  hydrology: HydrologyRaster,
   biomeDefinitions?: BiomeDefinition[],
   riverSystem?: WorldRiverSystemDefinition,
   roadSystem?: WorldRoadSystemDefinition,
-  geomorphology?: WorldGeomorphologyDefinition,
-  hydrologyCoreBuilder?: HydrologyCoreBuilder,
   transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const areaIds = ['']
@@ -2571,14 +2777,6 @@ function applyAreasToChunk(
     originX: chunk.originX,
     originY: chunk.originY,
   })
-  const hydrology = buildHydrologyFromElevationAndWater(
-    chunk.elevation,
-    chunk.chunkSize,
-    chunk.chunkSize,
-    (index) => isWaterBiome(chunk.biomes[index]!),
-    geomorphology,
-    hydrologyCoreBuilder
-  )
   assignHydrologyToChunk(chunk, hydrology)
   chunk.drainageSummary = buildChunkDrainageSummary({
     chunkX: chunk.chunkX,
@@ -2793,6 +2991,49 @@ export function generateChunk(
   transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
   const started = globalThis.performance?.now?.() ?? Date.now()
+  const hydrologyWindow = buildChunkHydrologyWindow({
+    seedText,
+    chunkX,
+    chunkY,
+    chunkSize,
+    surveyWidth: chunkSize,
+    surveyHeight: chunkSize,
+    baseLayers,
+    geomorphology,
+    coreBuilder: hydrologyCoreBuilder,
+  })
+  return generateChunkWithHydrologyWindow(
+    seedText,
+    chunkX,
+    chunkY,
+    chunkSize,
+    biomeDefinitions,
+    riverSystem,
+    roadSystem,
+    geomorphology,
+    baseLayers,
+    hydrologyCoreBuilder,
+    transportSystem,
+    hydrologyWindow,
+    started
+  )
+}
+
+function generateChunkWithHydrologyWindow(
+  seedText: string,
+  chunkX: number,
+  chunkY: number,
+  chunkSize: number,
+  biomeDefinitions: BiomeDefinition[] | undefined,
+  riverSystem: WorldRiverSystemDefinition | undefined,
+  roadSystem: WorldRoadSystemDefinition | undefined,
+  geomorphology: WorldGeomorphologyDefinition | undefined,
+  baseLayers: ChunkBaseLayers | undefined,
+  hydrologyCoreBuilder: HydrologyCoreBuilder | undefined,
+  transportSystem: WorldTransportSystemDefinition | undefined,
+  hydrologyWindow: ChunkHydrologyWindow,
+  started: number
+): GeneratedChunk {
   const seed = hashSeed(seedText)
   const seaLevel = seaLevelForSeed(seed)
   const size = chunkSize * chunkSize
@@ -2802,18 +3043,12 @@ export function generateChunk(
     baseLayers ?? generateChunkBaseLayers(seedText, chunkX, chunkY, chunkSize)
   const { elevation, moisture, temperature } = generatedBaseLayers
   const biomes = new Uint8Array(size)
+  const hydrology = hydrologyWindow.raster
+  const chunkHydrology = hydrologyWindow.chunkRaster
 
   let chunkHash = 2166136261
 
   const topology = classifyTopology(elevation, chunkSize, chunkSize, seaLevel)
-  const hydrology = buildHydrologyFromElevationAndWater(
-    elevation,
-    chunkSize,
-    chunkSize,
-    (index) => Boolean(topology.waterbody[index]),
-    geomorphology,
-    hydrologyCoreBuilder
-  )
   for (let localY = 0; localY < chunkSize; localY += 1) {
     for (let localX = 0; localX < chunkSize; localX += 1) {
       const globalX = originX + localX
@@ -2822,7 +3057,11 @@ export function generateChunk(
       const elevationValue = elevation[index]! / 255
       const moistureValue = moisture[index]! / 255
       const temperatureValue = temperature[index]! / 255
-      const hydrologyValues = hydrologyCellValues(hydrology, localX, localY)
+      const hydrologyValues = hydrologyCellValues(
+        hydrology,
+        localX + hydrologyWindow.halo,
+        localY + hydrologyWindow.halo
+      )
       const biome = classifyTerrain({
         elevationValue,
         seaLevel,
@@ -2848,10 +3087,10 @@ export function generateChunk(
         elevation[index]! +
         moisture[index]! +
         temperature[index]! +
-        hydrology.erosionPotential[index]! +
-        hydrology.sedimentLoad[index]! +
-        hydrology.deposition[index]! +
-        hydrology.floodplain[index]!
+        chunkHydrology.erosionPotential[index]! +
+        chunkHydrology.sedimentLoad[index]! +
+        chunkHydrology.deposition[index]! +
+        chunkHydrology.floodplain[index]!
       chunkHash = Math.imul(chunkHash, 16777619)
     }
   }
@@ -2869,16 +3108,20 @@ export function generateChunk(
     moisture,
     temperature,
     biomes,
-    slope: hydrology.slope,
-    flowDirection: hydrology.flowDirection,
-    flowAccumulation: hydrology.flowAccumulation,
-    watershed: hydrology.watershed,
-    depression: hydrology.depression,
-    erosionPotential: hydrology.erosionPotential,
-    sedimentLoad: hydrology.sedimentLoad,
-    deposition: hydrology.deposition,
-    floodplain: hydrology.floodplain,
-    drainageSummary: buildChunkDrainageSummary({ chunkX, chunkY, hydrology }),
+    slope: chunkHydrology.slope,
+    flowDirection: chunkHydrology.flowDirection,
+    flowAccumulation: chunkHydrology.flowAccumulation,
+    watershed: chunkHydrology.watershed,
+    depression: chunkHydrology.depression,
+    erosionPotential: chunkHydrology.erosionPotential,
+    sedimentLoad: chunkHydrology.sedimentLoad,
+    deposition: chunkHydrology.deposition,
+    floodplain: chunkHydrology.floodplain,
+    drainageSummary: buildChunkDrainageSummary({
+      chunkX,
+      chunkY,
+      hydrology: chunkHydrology,
+    }),
     renderHints: generateChunkRenderHints({
       biomes,
       elevation,
@@ -2940,7 +3183,21 @@ export function generateChunkWithAreas(
   hydrologyCoreBuilder?: HydrologyCoreBuilder,
   transportSystem?: WorldTransportSystemDefinition
 ): GeneratedChunk {
-  const chunk = generateChunk(
+  const started = globalThis.performance?.now?.() ?? Date.now()
+  const hydrologyWindow = buildChunkHydrologyWindow({
+    seedText,
+    chunkX,
+    chunkY,
+    chunkSize,
+    surveyWidth,
+    surveyHeight,
+    baseLayers,
+    areas,
+    terrainCodes,
+    geomorphology,
+    coreBuilder: hydrologyCoreBuilder,
+  })
+  const chunk = generateChunkWithHydrologyWindow(
     seedText,
     chunkX,
     chunkY,
@@ -2951,7 +3208,9 @@ export function generateChunkWithAreas(
     geomorphology,
     baseLayers,
     hydrologyCoreBuilder,
-    transportSystem
+    transportSystem,
+    hydrologyWindow,
+    started
   )
   return applyAreasToChunk(
     chunk,
@@ -2959,11 +3218,10 @@ export function generateChunkWithAreas(
     terrainCodes,
     surveyWidth,
     surveyHeight,
+    hydrologyWindow.chunkRaster,
     biomeDefinitions,
     riverSystem,
     roadSystem,
-    geomorphology,
-    hydrologyCoreBuilder,
     transportSystem
   )
 }

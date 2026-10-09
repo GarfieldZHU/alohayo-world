@@ -174,7 +174,7 @@ visual browser evidence, and a worthwhile CPU/transfer result are recorded.
   watershed IDs, and depression depth for one complete raster batch.
 - TypeScript owns water-mask construction, geomorphology derivation, terrain
   classification, rivers, roads, overlays, and rendering.
-- Issue #34 passed byte parity for 16/64/128 fixtures, chunk-hash parity, explicit
+- Issue #34 passed byte parity for 16/64/96/128 fixtures, chunk-hash parity, explicit
   fallback, and browser startup gates. A 20-sample benchmark measured 1.444 ms TypeScript
   median versus 0.554 ms Wasm median (61.7% lower), 6.088/2.394 ms p95, 0% transfer
   growth, and 0.570 ms cold startup.

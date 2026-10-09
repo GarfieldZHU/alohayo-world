@@ -126,6 +126,12 @@ The terrain pipeline now runs a deterministic hydrology pass after elevation/top
 6. classify basin, wetland, marsh, and river candidates from slope, accumulation, and
    depression evidence instead of moisture alone.
 
+Streamed chunks run this raster over a 16-cell world-coordinate halo and keep only the
+64-cell interior arrays. The halo includes deterministic neighboring elevation and authored
+terrain/water patches, reducing false chunk-edge outlets and undercounted inflow. Its outer
+edge is still provisional; pairwise seam reconciliation and canonical watershed/river
+identities remain in issue `#38`.
+
 Issue `#38` owns cross-chunk watershed identity and river graph continuity. Issue `#41`
 completed the halo-aware shoreline and GPU fog presentation baseline. Static erosion and
 floodplain metadata comes from `#29`; time-evolving geomorphology remains in `#44`.
