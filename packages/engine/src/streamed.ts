@@ -86,6 +86,10 @@ import {
   MINIMAP_PANEL_TOP,
   renderMinimapLocale,
 } from './minimap-controls'
+import {
+  indexRiverGraphSegmentsByChunk,
+  selectVisibleRiverGraphSegments,
+} from './minimap-hydrology'
 import { clipRoadToBounds, roadWeatherOverlayAlpha, type RoadRenderPoint } from './road-render'
 import { themePalette } from './theme'
 import type {
@@ -343,6 +347,40 @@ export async function createGame(
   let hydrologyRevision = 0
   let hydrologyGraphCache: WorldRiverGraphSnapshot | null = null
   let hydrologyGraphBuildCount = 0
+  let minimapRiverGraphRevision = -1
+  let minimapRiverSegmentsByChunk: ReturnType<typeof indexRiverGraphSegmentsByChunk> = new Map()
+  const getRetainedRiverGraph = (): WorldRiverGraphSnapshot => {
+    if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
+    const startedAt = performance.now()
+    const { segments, truncated } = destroyed
+      ? { segments: [], truncated: false }
+      : hydrologyResolver.retainedRiverGraph(
+          Math.max(4, Math.floor((content.world.rivers?.generation.minLength ?? 6) * 0.75))
+        )
+    const immutableSegments = segments.map((segment) =>
+      Object.freeze({
+        ...segment,
+        source: Object.freeze({ ...segment.source }),
+        target: Object.freeze({ ...segment.target }),
+      })
+    )
+    hydrologyGraphCache = Object.freeze({
+      schemaVersion: 1,
+      completeness: 'retained-chunks',
+      truncated,
+      revision: hydrologyRevision,
+      segments: Object.freeze(immutableSegments),
+    })
+    hydrologyGraphBuildCount += 1
+    hydrologyCanvas.dataset.hydrologyGraphBuildCount = String(hydrologyGraphBuildCount)
+    hydrologyCanvas.dataset.hydrologyGraphBuildMs = Math.max(
+      0,
+      performance.now() - startedAt
+    ).toFixed(2)
+    hydrologyCanvas.dataset.hydrologyGraphSegmentCount = String(immutableSegments.length)
+    hydrologyCanvas.dataset.hydrologyGraphTruncated = String(truncated)
+    return hydrologyGraphCache
+  }
   const recomputeRetainedHydrologyAccumulation = () => {
     const startedAt = performance.now()
     const diagnostics = hydrologyResolver.recomputeRetainedAccumulationDeltas()
@@ -364,6 +402,8 @@ export async function createGame(
     if (chunks.length === 0) return
     hydrologyRevision += 1
     hydrologyGraphCache = null
+    minimapRiverGraphRevision = -1
+    minimapRiverSegmentsByChunk = new Map()
     const event: WorldHydrologyChangeEvent = { revision: hydrologyRevision, type, chunks }
     app.canvas.dataset.hydrologyRevision = String(hydrologyRevision)
     app.canvas.dataset.hydrologyEvent = type
@@ -2444,8 +2484,16 @@ export async function createGame(
 
   const drawMinimap = () => {
     minimapLayer.clear()
-    if (options.container.dataset.gameUiMinimap === 'false') return
-    if (!explorerMotion || !minimapEnabled() || minimapCollapsed) return
+    if (
+      (!devMode && options.container.dataset.gameUiMinimap === 'false') ||
+      !explorerMotion ||
+      !minimapEnabled() ||
+      minimapCollapsed
+    ) {
+      hydrologyCanvas.dataset.minimapRiverSegments = '0'
+      hydrologyCanvas.dataset.minimapRiverRevision = String(hydrologyRevision)
+      return
+    }
     const bounds = discoveredCellBounds()
     const frameX = app.screen.width - MINIMAP_FRAME_SIZE - 18
     const frameY = MINIMAP_PANEL_TOP + MINIMAP_FRAME_OFFSET_TOP + topRightClearancePx()
@@ -2498,6 +2546,47 @@ export async function createGame(
           })
       }
     }
+
+    const riverGraph = getRetainedRiverGraph()
+    if (minimapRiverGraphRevision !== riverGraph.revision) {
+      minimapRiverSegmentsByChunk = indexRiverGraphSegmentsByChunk(riverGraph.segments)
+      minimapRiverGraphRevision = riverGraph.revision
+    }
+    const riverSegments = selectVisibleRiverGraphSegments({
+      index: minimapRiverSegmentsByChunk,
+      chunkSize,
+      viewport: {
+        minX: centerCellX - activeRadius,
+        maxX: centerCellX + activeRadius,
+        minY: centerCellY - activeRadius,
+        maxY: centerCellY + activeRadius,
+      },
+      isDiscovered: isDiscoveredCell,
+    })
+    for (const segment of riverSegments) {
+      minimapLayer
+        .moveTo(
+          contentX +
+            ((segment.source.x + 0.5 - centerCellX + activeRadius) / span) * MINIMAP_CONTENT_SIZE,
+          contentY +
+            ((segment.source.y + 0.5 - centerCellY + activeRadius) / span) * MINIMAP_CONTENT_SIZE
+        )
+        .lineTo(
+          contentX +
+            ((segment.target.x + 0.5 - centerCellX + activeRadius) / span) * MINIMAP_CONTENT_SIZE,
+          contentY +
+            ((segment.target.y + 0.5 - centerCellY + activeRadius) / span) * MINIMAP_CONTENT_SIZE
+        )
+    }
+    if (riverSegments.length > 0) {
+      minimapLayer.stroke({
+        color: palette().minimapRiver,
+        alpha: 0.96,
+        width: Math.max(1, tile * 0.28),
+      })
+    }
+    hydrologyCanvas.dataset.minimapRiverSegments = String(riverSegments.length)
+    hydrologyCanvas.dataset.minimapRiverRevision = String(riverGraph.revision)
 
     const explorerOffsetX = ((explorerMotion.x - centerCellX) / span) * MINIMAP_CONTENT_SIZE
     const explorerOffsetY = ((explorerMotion.y - centerCellY) / span) * MINIMAP_CONTENT_SIZE
@@ -3621,36 +3710,7 @@ export async function createGame(
     },
     queryHydrologyCell,
     getRiverGraph(): WorldRiverGraphSnapshot {
-      if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
-      const startedAt = performance.now()
-      const { segments, truncated } = destroyed
-        ? { segments: [], truncated: false }
-        : hydrologyResolver.retainedRiverGraph(
-            Math.max(4, Math.floor((content.world.rivers?.generation.minLength ?? 6) * 0.75))
-          )
-      const immutableSegments = segments.map((segment) =>
-        Object.freeze({
-          ...segment,
-          source: Object.freeze({ ...segment.source }),
-          target: Object.freeze({ ...segment.target }),
-        })
-      )
-      hydrologyGraphCache = Object.freeze({
-        schemaVersion: 1,
-        completeness: 'retained-chunks',
-        truncated,
-        revision: hydrologyRevision,
-        segments: Object.freeze(immutableSegments),
-      })
-      hydrologyGraphBuildCount += 1
-      hydrologyCanvas.dataset.hydrologyGraphBuildCount = String(hydrologyGraphBuildCount)
-      hydrologyCanvas.dataset.hydrologyGraphBuildMs = Math.max(
-        0,
-        performance.now() - startedAt
-      ).toFixed(2)
-      hydrologyCanvas.dataset.hydrologyGraphSegmentCount = String(immutableSegments.length)
-      hydrologyCanvas.dataset.hydrologyGraphTruncated = String(truncated)
-      return hydrologyGraphCache
+      return getRetainedRiverGraph()
     },
     subscribeHydrology(listener) {
       if (destroyed) return () => {}
@@ -3725,6 +3785,9 @@ export async function createGame(
         Array.from(chunks.values(), ({ chunkX, chunkY }) => ({ chunkX, chunkY }))
       )
       hydrologyChangeListeners.clear()
+      hydrologyGraphCache = null
+      minimapRiverSegmentsByChunk = new Map()
+      minimapRiverGraphRevision = -1
       emitLifecycle('destroyed')
       if (autosaveTimer !== null) {
         window.clearTimeout(autosaveTimer)

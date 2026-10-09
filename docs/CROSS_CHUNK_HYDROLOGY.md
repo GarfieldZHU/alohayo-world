@@ -3,9 +3,10 @@
 **Tracking issue:** `#38`  
 **Status:** the provisional halo, worker pair reconciliation, retained seam patch lifecycle,
 bounded persisted alias ledger, public cell queries/change events, stable retained-chunk D8
-river links, and signed accumulation-delta propagation through loaded downstream paths are
-implemented. Unknown downstream cells remain explicit frontier nodes and the snapshot is
-capped at 16,384 segments. Full frontier continuity and consumer integration remain open.
+river links, signed accumulation-delta propagation through loaded downstream paths, and a
+discovery-aware minimap graph consumer are implemented. Unknown downstream cells remain
+explicit frontier nodes and the snapshot is capped at 16,384 segments. Full frontier
+continuity and integration with roads, bridges, settlements, and weather remain open.
 
 ## Goal
 
@@ -311,9 +312,13 @@ remain open.
    cleanup are implemented, with revisioned events and downstream cell queries. Alias
    splits and consumer integration remain open.
 5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
-   identities, accumulation deltas, and downstream consumer queries.
-6. **Runtime/browser proof.** Streamed travel and identity through eviction/reload are tested.
-   Minimap/inspection refresh, context cleanup, hosted CI, Pages, and live verification remain.
+   identities, accumulation deltas, downstream consumer queries, and a discovered-cell
+   minimap overlay. Main-map rendering and transport/weather consumers remain open.
+6. **Runtime/browser proof.** Streamed travel, identity through eviction/reload, and the
+   discovery-aware minimap graph refresh are tested. Inspection refresh, context cleanup,
+   hosted CI, Pages, and live verification remain. The first player-facing graph consumer has
+   a desktop capture at `docs/evidence/issue-38-river-minimap-desktop.png`; transport/weather
+   consumers remain open.
 
 Do not close issue `#38` yet. Closure still requires global frontier continuity, consumer
 integration, minimap/inspection refresh, context cleanup, and hosted CI/Pages verification in

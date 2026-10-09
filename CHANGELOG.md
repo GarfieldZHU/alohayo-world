@@ -15,6 +15,11 @@
   downstream corridor, and 49 retained chunks; verify the far endpoint receives the exact
   propagated value.
 
+- Render retained cross-chunk river graph segments on the minimap only when both endpoints
+  are discovered and loaded. Preserve the developer minimap when the game HUD is disabled,
+  index segments by chunk, and invalidate the index with hydrology revisions so refresh stays
+  bounded to visible chunks.
+
 - Reconcile retained cardinal chunk hydrology in the worker over canonical pair windows,
   transfer bounded eight-cell seam patches, compose corner overlaps in fixed order, ignore
   stale results after eviction, and restore neighboring provisional patches on release.

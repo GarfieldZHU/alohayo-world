@@ -12,7 +12,8 @@
   viewport; a bounded floor keeps narrow screens usable).
 - In dev mode, drag pans the camera and wheel/trackpad zooms toward the pointer.
 - Hover/click cells to inspect biome, elevation, moisture, temperature, and coordinates.
-- Discover nearby cells as you travel; the minimap fills only from discovered chunk data.
+- Discover nearby cells as you travel; the minimap fills only from discovered chunk data and
+  overlays retained river paths only across explored, loaded cells.
 - Regional weather and aggregate settlement traffic are deterministic developer
   diagnostics; they do not add chrome to the normal game HUD.
 - Regenerate or enlarge without reloading. The last seed is remembered locally.

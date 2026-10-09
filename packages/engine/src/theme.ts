@@ -4,6 +4,7 @@ export interface ThemePalette {
   containerBackground: string
   statusFill: string
   minimapFill: number
+  minimapRiver: number
   minimapStroke: number
   minimapExplorerStroke: number
   minimapPanelBorder: string
@@ -29,6 +30,7 @@ export function themePalette(theme: UiTheme): ThemePalette {
         containerBackground: '#e7eef8',
         statusFill: '#143247',
         minimapFill: 0xf6fbff,
+        minimapRiver: 0x1e6076,
         minimapStroke: 0x3b82f6,
         minimapExplorerStroke: 0xe7eef8,
         minimapPanelBorder: 'rgba(59,130,246,0.18)',
@@ -51,6 +53,7 @@ export function themePalette(theme: UiTheme): ThemePalette {
         containerBackground: '#07111f',
         statusFill: '#d8f3ff',
         minimapFill: 0x091725,
+        minimapRiver: 0x78d8e4,
         minimapStroke: 0x72d7c8,
         minimapExplorerStroke: 0x10222f,
         minimapPanelBorder: 'rgba(114,215,200,0.24)',

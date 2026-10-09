@@ -605,12 +605,18 @@ test('preserves watershed and river identity through streamed chunk eviction and
   page,
 }) => {
   test.setTimeout(120_000)
+  await page.addInitScript(() => {
+    window.__ALOHAYO_WORLD_E2E_UI_OPTIONS__ = true
+    window.localStorage.setItem('alohayo-world:dev-minimap', 'true')
+    window.localStorage.setItem('alohayo-world:minimap-collapsed', 'false')
+  })
   await page.goto('/')
   await page.getByRole('button', { name: 'Enter the world' }).click()
   const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
     timeout: 45_000,
   })
+  await page.getByRole('button', { name: /Begin journey|Continue journey/ }).click()
   const seamIdentity = await page.evaluate(() => {
     const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
     const segment = handle
@@ -648,6 +654,19 @@ test('preserves watershed and river identity through streamed chunk eviction and
       timeout: 45_000,
     })
   }
+
+  await teleport(seamIdentity.source.x, seamIdentity.source.y)
+  await expect
+    .poll(async () => Number(await canvas.getAttribute('data-minimap-river-segments')))
+    .toBeGreaterThan(0)
+  await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(false))
+  await expect(canvas).toHaveAttribute('data-game-ui-minimap', 'true')
+  await expect
+    .poll(async () => Number(await canvas.getAttribute('data-minimap-river-segments')))
+    .toBeGreaterThan(0)
+  await page.screenshot({ path: 'docs/evidence/issue-38-river-minimap-desktop.png' })
+  await page.evaluate(() => window.__ALOHAYO_WORLD_E2E_HANDLE__?.setDevMode?.(true))
+  await page.getByLabel('Fly').check()
 
   await teleport(1024, 1024)
   await expect

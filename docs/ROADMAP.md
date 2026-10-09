@@ -77,9 +77,10 @@
 - [ ] Issue `#38` cross-chunk drainage: deterministic 16-cell halo generation, worker pair
       reconciliation, eight-cell seam patches, retained resolver aliases, save migration,
       browser restart coverage, public retained-cell queries, change events, stable
-      retained-chunk D8 graph links, and signed downstream accumulation deltas are implemented.
-      Browser tests also cover graph identity through streamed eviction/reload. Global frontier
-      continuity, gameplay consumers, and hosted CI/Pages verification remain open.
+      retained-chunk D8 graph links, signed downstream accumulation deltas, and a
+      discovery-aware minimap river overlay are implemented. Browser tests also cover graph
+      identity through streamed eviction/reload. Global frontier continuity, main-map/road/
+      bridge/settlement/weather consumers, and hosted CI/Pages verification remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river

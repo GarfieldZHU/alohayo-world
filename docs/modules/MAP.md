@@ -33,8 +33,9 @@ authority, palette, motif drawing, LOD, and Pixi lifecycle. See
 
 ## Next Slice
 
-Cross-chunk river consumers, minimap LOD, benchmark budgets, shared shape hints consumed by the
-water module, and a resolved content-pack overlay stream with dependency-safe provenance.
+Additional cross-chunk river consumers, minimap LOD, benchmark budgets, shared shape hints
+consumed by the water module, and a resolved content-pack overlay stream with dependency-safe
+provenance.
 
 Issue `#38` follows the staged contract in `../CROSS_CHUNK_HYDROLOGY.md`. A fixed halo is
 generated over 16 cells of world-coordinate terrain and authored overlays, then cropped to
@@ -46,7 +47,9 @@ cardinal and target-matched diagonal seam segments through the public hydrology 
 The graph now includes threshold-selected D8 links throughout retained chunks, explicit
 frontier targets for unloaded downstream cells, and a 16,384 segment response cap. Corrected
 seam accumulation deltas now propagate through loaded downstream D8 paths with saturating,
-idempotent updates. Graph-driven rendering and other gameplay consumers remain open.
+idempotent updates. The minimap renders retained river graph segments across discovered loaded
+cells and refreshes from hydrology revisions. Main-map graph rendering and road, bridge,
+settlement, and weather consumers remain open.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 
