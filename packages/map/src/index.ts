@@ -16,7 +16,13 @@ import {
   type HydrologyCoreBuilder,
   type HydrologyRaster,
 } from './hydrology'
-import { buildChunkDrainageSummary, type ChunkDrainageSummary } from './drainage-summary'
+import {
+  buildHydrologyUpstreamCounts,
+  buildChunkDrainageSummary,
+  type CardinalDirection,
+  type ChunkDrainageSummary,
+  type DrainageEdgeSample,
+} from './drainage-summary'
 import {
   modifierStrengthAt,
   overlayBlockedAt,
@@ -140,18 +146,26 @@ export {
   type AuthoredEntityLifecycleSnapshot,
   type RuntimeAuthoredEntity,
 } from './authored-entities'
+export { HYDROLOGY_DIRECTIONS, hydrologyNeighborIndex, type HydrologyRaster } from './hydrology'
 export {
+  buildHydrologyUpstreamCounts,
   buildChunkDrainageSummary,
   type CardinalDirection,
   type ChunkDrainageSummary,
   type DrainageEdgeSample,
 } from './drainage-summary'
 export {
+  CROSS_CHUNK_HYDROLOGY_MAX_BYTES,
   CROSS_CHUNK_HYDROLOGY_MAX_ALIASES,
   CROSS_CHUNK_HYDROLOGY_MAX_SEAMS,
+  CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION,
   CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION,
+  CrossChunkHydrologyLedgerError,
   CrossChunkHydrologyResolver,
+  crossChunkHydrologySnapshotBytes,
+  emptyCrossChunkHydrologySnapshot,
   reconcileDrainageSeam,
+  validateCrossChunkHydrologySnapshot,
   type CrossChunkHydrologyAlias,
   type CrossChunkHydrologySnapshot,
   type CrossChunkRiverSegment,
@@ -326,6 +340,62 @@ export interface GeneratedChunk {
   workerDiagnostics?: WorldWorkerDiagnostics
 }
 
+export type HydrologySeamPatchFields = Pick<
+  HydrologyRaster,
+  | 'slope'
+  | 'flowDirection'
+  | 'flowAccumulation'
+  | 'depression'
+  | 'erosionPotential'
+  | 'sedimentLoad'
+  | 'deposition'
+  | 'floodplain'
+>
+
+export interface ChunkHydrologySeamPatch {
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  direction: CardinalDirection
+  x: number
+  y: number
+  width: number
+  height: number
+  fields: HydrologySeamPatchFields
+  edgeSamples: DrainageEdgeSample[]
+}
+
+export interface ReconciledHydrologyPair {
+  schemaVersion: 1
+  state: 'reconciled'
+  direction: CardinalDirection
+  firstChunk: { chunkX: number; chunkY: number }
+  secondChunk: { chunkX: number; chunkY: number }
+  windowWidth: number
+  windowHeight: number
+  halo: number
+  seamDepth: number
+  patches: [ChunkHydrologySeamPatch, ChunkHydrologySeamPatch]
+}
+
+export interface ReconcileChunkHydrologyPairArgs {
+  seedText: string
+  firstChunkX: number
+  firstChunkY: number
+  secondChunkX: number
+  secondChunkY: number
+  direction: CardinalDirection
+  chunkSize: number
+  surveyWidth: number
+  surveyHeight: number
+  firstWatershed: Uint32Array
+  secondWatershed: Uint32Array
+  areas?: MapAreaDefinition[]
+  terrainCodes?: Record<string, number>
+  geomorphology?: WorldGeomorphologyDefinition
+  coreBuilder?: HydrologyCoreBuilder
+}
+
 /**
  * The deterministic climate fields sampled before chunk-local topology and
  * gameplay features are derived. This is the coarse Rust/Wasm worker boundary.
@@ -434,6 +504,27 @@ export interface GenerateChunkRequest {
   capabilities?: WorldWorkerCapabilities
 }
 
+export interface ReconcileHydrologyPairRequest {
+  type: 'reconcile-hydrology-pair'
+  id: string
+  seed: string
+  firstChunkX: number
+  firstChunkY: number
+  secondChunkX: number
+  secondChunkY: number
+  direction: CardinalDirection
+  chunkSize: number
+  surveyWidth: number
+  surveyHeight: number
+  firstWatershed: Uint32Array
+  secondWatershed: Uint32Array
+  mapAreas?: MapAreaDefinition[]
+  terrainCodes?: Record<string, number>
+  geomorphology?: WorldGeomorphologyDefinition
+  wasmBaseUrl?: string
+  capabilities?: WorldWorkerCapabilities
+}
+
 export const DEFAULT_WORLD_WORKER_CAPABILITIES: WorldWorkerCapabilities = {
   protocolVersion: 1,
   wasm: {
@@ -459,6 +550,15 @@ export interface WorldWorkerDiagnostics {
   transferBytes: number
 }
 
+export interface HydrologyPairWorkerDiagnostics {
+  protocolVersion: 1
+  implementation: 'typescript' | 'wasm'
+  fallbackReason?: string
+  elapsedMs: number
+  transferBytes: number
+  wasmStartupMs: number
+}
+
 export interface GenerateWorldResponse {
   type: 'generated'
   id: string
@@ -472,6 +572,13 @@ export interface GenerateChunkResponse {
   diagnostics: WorldWorkerDiagnostics
 }
 
+export interface ReconciledHydrologyPairResponse {
+  type: 'reconciled-hydrology-pair'
+  id: string
+  result: ReconciledHydrologyPair
+  diagnostics: HydrologyPairWorkerDiagnostics
+}
+
 export interface WorldWorkerErrorResponse {
   type: 'worker-error'
   id: string
@@ -482,10 +589,14 @@ export interface WorldWorkerErrorResponse {
   }
 }
 
-export type WorldWorkerRequest = GenerateWorldRequest | GenerateChunkRequest
+export type WorldWorkerRequest =
+  | GenerateWorldRequest
+  | GenerateChunkRequest
+  | ReconcileHydrologyPairRequest
 export type WorldWorkerResponse =
   | GenerateWorldResponse
   | GenerateChunkResponse
+  | ReconciledHydrologyPairResponse
   | WorldWorkerErrorResponse
 
 const DEFAULT_SEA_LEVEL = 0.43
@@ -818,7 +929,7 @@ function resolveAreaOrigin(
   }
 }
 
-function isWaterBiome(biome: number): boolean {
+export function isWaterBiome(biome: number): boolean {
   return (
     biome === BIOME.deepOcean ||
     biome === BIOME.ocean ||
@@ -1234,6 +1345,7 @@ const CROSS_CHUNK_HYDROLOGY_HALO_CELLS = 16
 interface ChunkHydrologyWindow {
   raster: HydrologyRaster
   chunkRaster: HydrologyRaster
+  chunkUpstreamCounts: Uint8Array
   halo: number
 }
 
@@ -1283,11 +1395,15 @@ function cropHydrologyRaster(
   }
 }
 
-function buildChunkHydrologyWindow(args: {
+function buildHydrologyWorldWindow(args: {
   seedText: string
-  chunkX: number
-  chunkY: number
-  chunkSize: number
+  windowOriginX: number
+  windowOriginY: number
+  windowWidth: number
+  windowHeight: number
+  baseChunkX?: number
+  baseChunkY?: number
+  baseChunkSize?: number
   surveyWidth: number
   surveyHeight: number
   baseLayers?: ChunkBaseLayers
@@ -1295,12 +1411,16 @@ function buildChunkHydrologyWindow(args: {
   terrainCodes?: Record<string, number>
   geomorphology?: WorldGeomorphologyDefinition
   coreBuilder?: HydrologyCoreBuilder
-}): ChunkHydrologyWindow {
+}): HydrologyRaster {
   const {
     seedText,
-    chunkX,
-    chunkY,
-    chunkSize,
+    windowOriginX,
+    windowOriginY,
+    windowWidth,
+    windowHeight,
+    baseChunkX,
+    baseChunkY,
+    baseChunkSize,
     surveyWidth,
     surveyHeight,
     baseLayers,
@@ -1309,27 +1429,31 @@ function buildChunkHydrologyWindow(args: {
     geomorphology,
     coreBuilder,
   } = args
-  const halo = CROSS_CHUNK_HYDROLOGY_HALO_CELLS
-  const windowSize = chunkSize + halo * 2
-  const chunkOriginX = chunkX * chunkSize
-  const chunkOriginY = chunkY * chunkSize
-  const windowOriginX = chunkOriginX - halo
-  const windowOriginY = chunkOriginY - halo
+  if (windowWidth < 1 || windowHeight < 1) {
+    throw new RangeError('hydrology world window dimensions must be positive')
+  }
   const seed = hashSeed(seedText)
   const seaLevel = seaLevelForSeed(seed)
-  const elevation = new Uint8Array(windowSize * windowSize)
-  const water = new Uint8Array(windowSize * windowSize)
+  const baseChunkOriginX = (baseChunkX ?? 0) * (baseChunkSize ?? 0)
+  const baseChunkOriginY = (baseChunkY ?? 0) * (baseChunkSize ?? 0)
+  const elevation = new Uint8Array(windowWidth * windowHeight)
+  const water = new Uint8Array(windowWidth * windowHeight)
 
-  for (let y = 0; y < windowSize; y += 1) {
-    for (let x = 0; x < windowSize; x += 1) {
+  for (let y = 0; y < windowHeight; y += 1) {
+    for (let x = 0; x < windowWidth; x += 1) {
       const worldX = windowOriginX + x
       const worldY = windowOriginY + y
-      const chunkLocalX = worldX - chunkOriginX
-      const chunkLocalY = worldY - chunkOriginY
+      const chunkLocalX = worldX - baseChunkOriginX
+      const chunkLocalY = worldY - baseChunkOriginY
       const insideChunk =
-        chunkLocalX >= 0 && chunkLocalY >= 0 && chunkLocalX < chunkSize && chunkLocalY < chunkSize
-      const chunkIndex = chunkLocalY * chunkSize + chunkLocalX
-      const windowIndex = y * windowSize + x
+        baseLayers !== undefined &&
+        baseChunkSize !== undefined &&
+        chunkLocalX >= 0 &&
+        chunkLocalY >= 0 &&
+        chunkLocalX < baseChunkSize &&
+        chunkLocalY < baseChunkSize
+      const chunkIndex = chunkLocalY * (baseChunkSize ?? 0) + chunkLocalX
+      const windowIndex = y * windowWidth + x
       const baseElevation =
         insideChunk && baseLayers?.elevation[chunkIndex] !== undefined
           ? baseLayers.elevation[chunkIndex]!
@@ -1343,8 +1467,8 @@ function buildChunkHydrologyWindow(args: {
     const windowBounds = {
       minX: windowOriginX,
       minY: windowOriginY,
-      maxX: windowOriginX + windowSize - 1,
-      maxY: windowOriginY + windowSize - 1,
+      maxX: windowOriginX + windowWidth - 1,
+      maxY: windowOriginY + windowHeight - 1,
     }
     const overlays = resolveAuthoredOverlays({
       areas,
@@ -1389,7 +1513,7 @@ function buildChunkHydrologyWindow(args: {
         }
         const terrainCode = terrainCodes[terrainId]
         if (terrainCode === undefined) throw new Error(`unknown terrain id ${terrainId}`)
-        const index = (worldY - windowOriginY) * windowSize + (worldX - windowOriginX)
+        const index = (worldY - windowOriginY) * windowWidth + (worldX - windowOriginX)
         if (elevationValue !== undefined) elevation[index] = elevationValue
         water[index] = isWaterBiome(terrainCode) ? 1 : 0
       }
@@ -1423,17 +1547,403 @@ function buildChunkHydrologyWindow(args: {
 
   const raster = buildHydrologyFromElevationAndWater(
     elevation,
-    windowSize,
-    windowSize,
+    windowWidth,
+    windowHeight,
     (index) => Boolean(water[index]),
     geomorphology,
     coreBuilder
   )
+  return raster
+}
+
+function buildChunkHydrologyWindow(args: {
+  seedText: string
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  surveyWidth: number
+  surveyHeight: number
+  baseLayers?: ChunkBaseLayers
+  areas?: MapAreaDefinition[]
+  terrainCodes?: Record<string, number>
+  geomorphology?: WorldGeomorphologyDefinition
+  coreBuilder?: HydrologyCoreBuilder
+}): ChunkHydrologyWindow {
+  const { seedText, chunkX, chunkY, chunkSize, surveyWidth, surveyHeight, ...options } = args
+  const halo = CROSS_CHUNK_HYDROLOGY_HALO_CELLS
+  const windowSize = chunkSize + halo * 2
+  const chunkOriginX = chunkX * chunkSize
+  const chunkOriginY = chunkY * chunkSize
+  const raster = buildHydrologyWorldWindow({
+    ...options,
+    seedText,
+    windowOriginX: chunkOriginX - halo,
+    windowOriginY: chunkOriginY - halo,
+    windowWidth: windowSize,
+    windowHeight: windowSize,
+    baseChunkX: chunkX,
+    baseChunkY: chunkY,
+    baseChunkSize: chunkSize,
+    surveyWidth,
+    surveyHeight,
+  })
+  const upstreamCounts = buildHydrologyUpstreamCounts(raster)
   return {
     raster,
     chunkRaster: cropHydrologyRaster(raster, halo, halo, chunkSize, chunkSize),
+    chunkUpstreamCounts: cropHydrologyLayer(
+      upstreamCounts,
+      raster.width,
+      halo,
+      halo,
+      chunkSize,
+      chunkSize
+    ),
     halo,
   }
+}
+
+const HYDROLOGY_CARDINAL_OFFSET: Record<CardinalDirection, readonly [number, number]> = {
+  north: [0, -1],
+  east: [1, 0],
+  south: [0, 1],
+  west: [-1, 0],
+}
+
+function hydrologySeamPatch(args: {
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  direction: CardinalDirection
+  watershed: Uint32Array
+  raster: HydrologyRaster
+  chunkSourceX: number
+  chunkSourceY: number
+  patchSourceX: number
+  patchSourceY: number
+  upstreamCounts: Uint8Array
+  x: number
+  y: number
+  width: number
+  height: number
+}): ChunkHydrologySeamPatch {
+  const {
+    chunkX,
+    chunkY,
+    chunkSize,
+    direction,
+    watershed,
+    raster,
+    chunkSourceX,
+    chunkSourceY,
+    patchSourceX,
+    patchSourceY,
+    upstreamCounts,
+    x,
+    y,
+    width,
+    height,
+  } = args
+  const chunkRaster = cropHydrologyRaster(raster, chunkSourceX, chunkSourceY, chunkSize, chunkSize)
+  chunkRaster.watershed = watershed
+  const chunkUpstreamCounts = cropHydrologyLayer(
+    upstreamCounts,
+    raster.width,
+    chunkSourceX,
+    chunkSourceY,
+    chunkSize,
+    chunkSize
+  )
+  const edgeSamples = buildChunkDrainageSummary({
+    chunkX,
+    chunkY,
+    hydrology: chunkRaster,
+    upstreamCounts: chunkUpstreamCounts,
+  }).edges[direction]
+  const patchRaster = cropHydrologyRaster(raster, patchSourceX, patchSourceY, width, height)
+  return {
+    chunkX,
+    chunkY,
+    chunkSize,
+    direction,
+    x,
+    y,
+    width,
+    height,
+    fields: {
+      slope: patchRaster.slope,
+      flowDirection: patchRaster.flowDirection,
+      flowAccumulation: patchRaster.flowAccumulation,
+      depression: patchRaster.depression,
+      erosionPotential: patchRaster.erosionPotential,
+      sedimentLoad: patchRaster.sedimentLoad,
+      deposition: patchRaster.deposition,
+      floodplain: patchRaster.floodplain,
+    },
+    edgeSamples,
+  }
+}
+
+/**
+ * Builds one canonical union window for an adjacent chunk pair and returns only the seam
+ * bands that need to replace provisional per-chunk hydrology. Numeric authority stays in
+ * the worker; chunk-local watershed labels remain stable inputs to the retained resolver.
+ */
+export function reconcileChunkHydrologyPair(
+  args: ReconcileChunkHydrologyPairArgs
+): ReconciledHydrologyPair {
+  const {
+    seedText,
+    firstChunkX,
+    firstChunkY,
+    secondChunkX,
+    secondChunkY,
+    direction,
+    chunkSize,
+    surveyWidth,
+    surveyHeight,
+    firstWatershed,
+    secondWatershed,
+    areas = [],
+    terrainCodes = {},
+    geomorphology,
+    coreBuilder,
+  } = args
+  const [dx, dy] = HYDROLOGY_CARDINAL_OFFSET[direction]
+  if (secondChunkX !== firstChunkX + dx || secondChunkY !== firstChunkY + dy) {
+    throw new RangeError('hydrology pair chunks are not cardinal neighbors')
+  }
+  if (!Number.isInteger(chunkSize) || chunkSize < 1) {
+    throw new RangeError('hydrology pair chunk size must be a positive integer')
+  }
+  const chunkArea = chunkSize * chunkSize
+  if (firstWatershed.length !== chunkArea || secondWatershed.length !== chunkArea) {
+    throw new RangeError('hydrology pair watershed buffers must match the chunk dimensions')
+  }
+
+  const halo = CROSS_CHUNK_HYDROLOGY_HALO_CELLS
+  const seamDepth = Math.min(chunkSize, Math.max(1, Math.floor(halo / 2)))
+  const horizontal = direction === 'east' || direction === 'west'
+  const firstIsLeading = direction === 'east' || direction === 'south'
+  const leading = firstIsLeading
+    ? { chunkX: firstChunkX, chunkY: firstChunkY, watershed: firstWatershed }
+    : { chunkX: secondChunkX, chunkY: secondChunkY, watershed: secondWatershed }
+  const trailing = firstIsLeading
+    ? { chunkX: secondChunkX, chunkY: secondChunkY, watershed: secondWatershed }
+    : { chunkX: firstChunkX, chunkY: firstChunkY, watershed: firstWatershed }
+  const windowOriginX = leading.chunkX * chunkSize - halo
+  const windowOriginY = leading.chunkY * chunkSize - halo
+  const windowWidth = (horizontal ? chunkSize * 2 : chunkSize) + halo * 2
+  const windowHeight = (horizontal ? chunkSize : chunkSize * 2) + halo * 2
+  const raster = buildHydrologyWorldWindow({
+    seedText,
+    windowOriginX,
+    windowOriginY,
+    windowWidth,
+    windowHeight,
+    surveyWidth,
+    surveyHeight,
+    areas,
+    terrainCodes,
+    geomorphology,
+    coreBuilder,
+  })
+  const upstreamCounts = buildHydrologyUpstreamCounts(raster)
+
+  const leadingChunkSourceX = halo
+  const leadingChunkSourceY = halo
+  const trailingChunkSourceX = horizontal ? halo + chunkSize : halo
+  const trailingChunkSourceY = horizontal ? halo : halo + chunkSize
+  const leadingPatch = horizontal
+    ? {
+        x: chunkSize - seamDepth,
+        y: 0,
+        width: seamDepth,
+        height: chunkSize,
+        sourceX: leadingChunkSourceX + chunkSize - seamDepth,
+        sourceY: leadingChunkSourceY,
+        direction: 'east' as const,
+      }
+    : {
+        x: 0,
+        y: chunkSize - seamDepth,
+        width: chunkSize,
+        height: seamDepth,
+        sourceX: leadingChunkSourceX,
+        sourceY: leadingChunkSourceY + chunkSize - seamDepth,
+        direction: 'south' as const,
+      }
+  const trailingPatch = horizontal
+    ? {
+        x: 0,
+        y: 0,
+        width: seamDepth,
+        height: chunkSize,
+        sourceX: trailingChunkSourceX,
+        sourceY: trailingChunkSourceY,
+        direction: 'west' as const,
+      }
+    : {
+        x: 0,
+        y: 0,
+        width: chunkSize,
+        height: seamDepth,
+        sourceX: trailingChunkSourceX,
+        sourceY: trailingChunkSourceY,
+        direction: 'north' as const,
+      }
+  const leadingResult = hydrologySeamPatch({
+    ...leadingPatch,
+    chunkX: leading.chunkX,
+    chunkY: leading.chunkY,
+    chunkSize,
+    watershed: leading.watershed,
+    raster,
+    chunkSourceX: leadingChunkSourceX,
+    chunkSourceY: leadingChunkSourceY,
+    patchSourceX: leadingPatch.sourceX,
+    patchSourceY: leadingPatch.sourceY,
+    upstreamCounts,
+  })
+  const trailingResult = hydrologySeamPatch({
+    ...trailingPatch,
+    chunkX: trailing.chunkX,
+    chunkY: trailing.chunkY,
+    chunkSize,
+    watershed: trailing.watershed,
+    raster,
+    chunkSourceX: trailingChunkSourceX,
+    chunkSourceY: trailingChunkSourceY,
+    patchSourceX: trailingPatch.sourceX,
+    patchSourceY: trailingPatch.sourceY,
+    upstreamCounts,
+  })
+  return {
+    schemaVersion: 1,
+    state: 'reconciled',
+    direction,
+    firstChunk: { chunkX: firstChunkX, chunkY: firstChunkY },
+    secondChunk: { chunkX: secondChunkX, chunkY: secondChunkY },
+    windowWidth,
+    windowHeight,
+    halo,
+    seamDepth,
+    patches: firstIsLeading ? [leadingResult, trailingResult] : [trailingResult, leadingResult],
+  }
+}
+
+function copyHydrologyPatchLayer<T extends Uint8Array | Int8Array | Uint32Array>(
+  target: T,
+  source: T,
+  targetX: number,
+  targetY: number,
+  chunkSize: number,
+  patchWidth: number,
+  patchHeight: number
+) {
+  for (let row = 0; row < patchHeight; row += 1) {
+    const sourceStart = row * patchWidth
+    const targetStart = (targetY + row) * chunkSize + targetX
+    target.set(source.subarray(sourceStart, sourceStart + patchWidth), targetStart)
+  }
+}
+
+/** Applies one seam patch atomically to a generated chunk and refreshes its edge summary. */
+export function applyHydrologySeamPatch(
+  chunk: GeneratedChunk,
+  patch: ChunkHydrologySeamPatch
+): GeneratedChunk {
+  if (
+    patch.chunkX !== chunk.chunkX ||
+    patch.chunkY !== chunk.chunkY ||
+    patch.chunkSize !== chunk.chunkSize ||
+    patch.width < 1 ||
+    patch.height < 1 ||
+    patch.x < 0 ||
+    patch.y < 0 ||
+    patch.x + patch.width > chunk.chunkSize ||
+    patch.y + patch.height > chunk.chunkSize
+  ) {
+    throw new RangeError('hydrology seam patch does not match its target chunk')
+  }
+  const expectedLength = patch.width * patch.height
+  if (Object.values(patch.fields).some((field) => field.length !== expectedLength)) {
+    throw new RangeError('hydrology seam patch buffers must match its dimensions')
+  }
+  copyHydrologyPatchLayer(
+    chunk.slope,
+    patch.fields.slope,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.flowDirection,
+    patch.fields.flowDirection,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.flowAccumulation,
+    patch.fields.flowAccumulation,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.depression,
+    patch.fields.depression,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.erosionPotential,
+    patch.fields.erosionPotential,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.sedimentLoad,
+    patch.fields.sedimentLoad,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.deposition,
+    patch.fields.deposition,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  copyHydrologyPatchLayer(
+    chunk.floodplain,
+    patch.fields.floodplain,
+    patch.x,
+    patch.y,
+    chunk.chunkSize,
+    patch.width,
+    patch.height
+  )
+  chunk.drainageSummary.edges[patch.direction] = patch.edgeSamples.map((sample) => ({ ...sample }))
+  return chunk
 }
 
 function hydrologyCellValues(
@@ -3121,6 +3631,7 @@ function generateChunkWithHydrologyWindow(
       chunkX,
       chunkY,
       hydrology: chunkHydrology,
+      upstreamCounts: hydrologyWindow.chunkUpstreamCounts,
     }),
     renderHints: generateChunkRenderHints({
       biomes,

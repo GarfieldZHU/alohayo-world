@@ -3,21 +3,26 @@ import type {
   DrainageEdgeSample,
   CardinalDirection,
 } from './drainage-summary'
+import { HYDROLOGY_DIRECTIONS } from './hydrology'
 
 export const CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION = 1 as const
+export const CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION = '1' as const
 export const CROSS_CHUNK_HYDROLOGY_MAX_ALIASES = 20_000
 export const CROSS_CHUNK_HYDROLOGY_MAX_SEAMS = 8_192
+export const CROSS_CHUNK_HYDROLOGY_MAX_BYTES = 2 * 1024 * 1024
 
 export interface HydrologySeamPair {
   offset: number
   left: DrainageEdgeSample
   right: DrainageEdgeSample
+  flow: 'left-to-right' | 'right-to-left' | null
   consistent: boolean
 }
 
 export interface HydrologySeamResult {
   leftChunk: { chunkX: number; chunkY: number }
   rightChunk: { chunkX: number; chunkY: number }
+  chunkSize: number
   direction: CardinalDirection
   state: 'reconciled'
   pairs: HydrologySeamPair[]
@@ -30,16 +35,33 @@ export interface CrossChunkHydrologyAlias {
 
 export interface CrossChunkHydrologySnapshot {
   schemaVersion: typeof CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION
+  resolverVersion: typeof CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION
   aliases: CrossChunkHydrologyAlias[]
+}
+
+export class CrossChunkHydrologyLedgerError extends Error {
+  constructor(
+    readonly code: 'corrupt' | 'incompatible-version' | 'budget-exceeded',
+    message: string
+  ) {
+    super(message)
+    this.name = 'CrossChunkHydrologyLedgerError'
+  }
 }
 
 export interface CrossChunkRiverSegment {
   id: string
   identityId: string
+  sourceNodeId: string
+  targetNodeId: string
+  sourceKind: 'source' | 'channel' | 'confluence'
+  targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth'
+  source: { x: number; y: number }
+  target: { x: number; y: number }
   chunkX: number
   chunkY: number
   offset: number
-  direction: CardinalDirection
+  direction: CardinalDirection | 'north-east' | 'south-east' | 'south-west' | 'north-west'
   accumulation: number
 }
 
@@ -57,12 +79,121 @@ const ADJACENT: Record<CardinalDirection, readonly [number, number]> = {
   west: [-1, 0],
 }
 
+const FLOW_DIRECTION: Record<CardinalDirection, number> = {
+  east: 0,
+  west: 1,
+  south: 2,
+  north: 3,
+}
+
+const DIAGONAL_DIRECTIONS: Record<number, CrossChunkRiverSegment['direction']> = {
+  4: 'south-east',
+  5: 'north-east',
+  6: 'south-west',
+  7: 'north-west',
+}
+
+const EDGE_ORDER: readonly CardinalDirection[] = ['north', 'east', 'south', 'west']
+
 function sampleKey(chunkX: number, chunkY: number, sample: DrainageEdgeSample) {
   return `${chunkX},${chunkY}:${sample.watershedComponent}`
 }
 
 function identityId(token: string) {
-  return `topology:${token}`
+  return `watershed:${token}`
+}
+
+function isWatershedToken(value: string) {
+  return /^-?\d+,-?\d+:\d+$/.test(value)
+}
+
+export function emptyCrossChunkHydrologySnapshot(): CrossChunkHydrologySnapshot {
+  return {
+    schemaVersion: CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION,
+    resolverVersion: CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION,
+    aliases: [],
+  }
+}
+
+export function crossChunkHydrologySnapshotBytes(snapshot: CrossChunkHydrologySnapshot) {
+  return new TextEncoder().encode(JSON.stringify(snapshot)).byteLength
+}
+
+export function validateCrossChunkHydrologySnapshot(
+  snapshot: unknown
+): asserts snapshot is CrossChunkHydrologySnapshot {
+  if (!snapshot || typeof snapshot !== 'object') {
+    throw new CrossChunkHydrologyLedgerError('corrupt', 'drainage ledger must be an object')
+  }
+  const candidate = snapshot as Partial<CrossChunkHydrologySnapshot>
+  if (candidate.schemaVersion !== CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION) {
+    throw new CrossChunkHydrologyLedgerError(
+      'incompatible-version',
+      `drainage ledger schema ${String(candidate.schemaVersion)} is not supported`
+    )
+  }
+  if (candidate.resolverVersion !== CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION) {
+    throw new CrossChunkHydrologyLedgerError(
+      'incompatible-version',
+      `drainage resolver ${String(candidate.resolverVersion)} is not supported`
+    )
+  }
+  if (!Array.isArray(candidate.aliases)) {
+    throw new CrossChunkHydrologyLedgerError('corrupt', 'drainage ledger aliases must be an array')
+  }
+  if (candidate.aliases.length > CROSS_CHUNK_HYDROLOGY_MAX_ALIASES) {
+    throw new CrossChunkHydrologyLedgerError('budget-exceeded', 'drainage alias budget exceeded')
+  }
+  if (
+    crossChunkHydrologySnapshotBytes(candidate as CrossChunkHydrologySnapshot) >
+    CROSS_CHUNK_HYDROLOGY_MAX_BYTES
+  ) {
+    throw new CrossChunkHydrologyLedgerError(
+      'budget-exceeded',
+      'drainage ledger byte budget exceeded'
+    )
+  }
+  const aliases = new Map<string, string>()
+  for (const record of candidate.aliases) {
+    const alias = record?.aliasId?.replace(/^watershed:/, '') ?? ''
+    const canonical = record?.canonicalId?.replace(/^watershed:/, '') ?? ''
+    if (
+      !record ||
+      typeof record.aliasId !== 'string' ||
+      typeof record.canonicalId !== 'string' ||
+      !record.aliasId.startsWith('watershed:') ||
+      !record.canonicalId.startsWith('watershed:') ||
+      !isWatershedToken(alias) ||
+      !isWatershedToken(canonical) ||
+      alias === canonical
+    ) {
+      throw new CrossChunkHydrologyLedgerError(
+        'corrupt',
+        'drainage ledger contains an invalid alias'
+      )
+    }
+    if (aliases.has(alias)) {
+      throw new CrossChunkHydrologyLedgerError(
+        'corrupt',
+        'drainage ledger contains a duplicate alias'
+      )
+    }
+    aliases.set(alias, canonical)
+  }
+  for (const alias of aliases.keys()) {
+    const visited = new Set<string>()
+    let current: string | undefined = alias
+    while (current && aliases.has(current)) {
+      if (visited.has(current)) {
+        throw new CrossChunkHydrologyLedgerError(
+          'corrupt',
+          'drainage ledger contains an alias cycle'
+        )
+      }
+      visited.add(current)
+      current = aliases.get(current)
+    }
+  }
 }
 
 function compareTokens(left: string, right: string) {
@@ -80,10 +211,52 @@ function samplesByOffset(samples: readonly DrainageEdgeSample[]) {
   return new Map(samples.map((sample) => [sample.localOffset, sample]))
 }
 
+function edgeCellWorld(
+  chunk: { chunkX: number; chunkY: number },
+  direction: CardinalDirection,
+  offset: number,
+  chunkSize: number
+) {
+  const originX = chunk.chunkX * chunkSize
+  const originY = chunk.chunkY * chunkSize
+  if (direction === 'north') return { x: originX + offset, y: originY }
+  if (direction === 'east') return { x: originX + chunkSize - 1, y: originY + offset }
+  if (direction === 'south') return { x: originX + offset, y: originY + chunkSize - 1 }
+  return { x: originX, y: originY + offset }
+}
+
+function sampleAtBoundaryCell(
+  summary: ChunkDrainageSummary,
+  localX: number,
+  localY: number
+): DrainageEdgeSample | null {
+  const last = summary.chunkSize - 1
+  if (localY === 0) return summary.edges.north[localX] ?? null
+  if (localX === last) return summary.edges.east[localY] ?? null
+  if (localY === last) return summary.edges.south[localX] ?? null
+  if (localX === 0) return summary.edges.west[localY] ?? null
+  return null
+}
+
+function riverNodeId(kind: string, point: { x: number; y: number }) {
+  return `river:${kind}:${point.x},${point.y}`
+}
+
+function sourceKind(sample: DrainageEdgeSample): CrossChunkRiverSegment['sourceKind'] {
+  if (sample.upstreamCount === 0 && sample.accumulation <= 1) return 'source'
+  return sample.upstreamCount >= 2 ? 'confluence' : 'channel'
+}
+
+function targetKind(sample: DrainageEdgeSample): CrossChunkRiverSegment['targetKind'] {
+  if (sample.water) return 'mouth'
+  if (sample.direction < 0) return 'outlet'
+  return sample.upstreamCount >= 2 ? 'confluence' : 'channel'
+}
+
 /**
- * Reconciles one cardinal seam without looking beyond the two edge summaries. A sample
- * must be a provisional frontier on both sides and have compatible filled elevation;
- * otherwise it remains retryable instead of being promoted to a false river identity.
+ * Reconciles one cardinal seam without looking beyond the two edge summaries. Every edge
+ * cell is paired by offset; a valid handoff is one-way (an upstream sample crosses while
+ * its downstream neighbor receives), never a pair of opposing frontier flows.
  */
 export function reconcileDrainageSeam(args: {
   left: ChunkDrainageSummary
@@ -99,27 +272,44 @@ export function reconcileDrainageSeam(args: {
   if (left.chunkSize !== right.chunkSize) {
     throw new RangeError('hydrology seam chunk sizes do not match')
   }
-  const tolerance = Math.max(0, args.elevationTolerance ?? 1)
+  const tolerance = Math.max(0, args.elevationTolerance ?? 1 / 255)
   const opposite = OPPOSITE[direction]
   const rightByOffset = samplesByOffset(right.edges[opposite])
   const pairs: HydrologySeamPair[] = []
   for (const leftSample of left.edges[direction]) {
     const rightSample = rightByOffset.get(leftSample.localOffset)
-    if (!rightSample || !leftSample.crossesFrontier || !rightSample.crossesFrontier) continue
+    if (!rightSample) continue
+    const leftFlowsAcross =
+      leftSample.crossesFrontier && leftSample.direction === FLOW_DIRECTION[direction]
+    const rightFlowsAcross =
+      rightSample.crossesFrontier && rightSample.direction === FLOW_DIRECTION[opposite]
+    const flow =
+      leftFlowsAcross === rightFlowsAcross
+        ? null
+        : leftFlowsAcross
+          ? 'left-to-right'
+          : 'right-to-left'
+    const source = flow === 'left-to-right' ? leftSample : rightSample
+    const target = flow === 'left-to-right' ? rightSample : leftSample
     pairs.push({
       offset: leftSample.localOffset,
       left: leftSample,
       right: rightSample,
-      consistent:
-        Math.abs(leftSample.filledElevation - rightSample.filledElevation) <= tolerance &&
-        leftSample.accumulation > 0 &&
-        rightSample.accumulation > 0,
+      flow,
+      consistent: Boolean(
+        flow &&
+        !source.water &&
+        source.accumulation > 0 &&
+        (target.water || source.accumulation <= target.accumulation) &&
+        source.filledElevation + tolerance >= target.filledElevation
+      ),
     })
   }
   pairs.sort((a, b) => a.offset - b.offset)
   return {
     leftChunk: { chunkX: left.chunkX, chunkY: left.chunkY },
     rightChunk: { chunkX: right.chunkX, chunkY: right.chunkY },
+    chunkSize: left.chunkSize,
     direction,
     state: 'reconciled',
     pairs,
@@ -134,6 +324,13 @@ export class CrossChunkHydrologyResolver {
   private readonly parents = new Map<string, string>()
   private readonly summaries = new Map<string, ChunkDrainageSummary>()
   private readonly seams = new Map<string, HydrologySeamResult>()
+  private readonly diagonalSegments = new Map<
+    string,
+    {
+      chunks: [{ chunkX: number; chunkY: number }, { chunkX: number; chunkY: number }]
+      segments: CrossChunkRiverSegment[]
+    }
+  >()
 
   add(summary: ChunkDrainageSummary) {
     const key = `${summary.chunkX},${summary.chunkY}`
@@ -154,12 +351,131 @@ export class CrossChunkHydrologyResolver {
     }
     for (const pair of result.pairs) {
       if (!pair.consistent) continue
+      const leftFlows = pair.flow === 'left-to-right'
       this.union(
-        sampleKey(left.chunkX, left.chunkY, pair.left),
-        sampleKey(right.chunkX, right.chunkY, pair.right)
+        sampleKey(
+          leftFlows ? left.chunkX : right.chunkX,
+          leftFlows ? left.chunkY : right.chunkY,
+          leftFlows ? pair.left : pair.right
+        ),
+        sampleKey(
+          leftFlows ? right.chunkX : left.chunkX,
+          leftFlows ? right.chunkY : left.chunkY,
+          leftFlows ? pair.right : pair.left
+        )
       )
     }
     return result
+  }
+
+  /** Links D8 corner flows only when the target sample belongs to the diagonal chunk. */
+  reconcileDiagonal(first: ChunkDrainageSummary, second: ChunkDrainageSummary) {
+    if (
+      Math.abs(first.chunkX - second.chunkX) !== 1 ||
+      Math.abs(first.chunkY - second.chunkY) !== 1
+    ) {
+      throw new RangeError('diagonal hydrology chunks must touch at one corner')
+    }
+    if (first.chunkSize !== second.chunkSize) {
+      throw new RangeError('diagonal hydrology chunk sizes do not match')
+    }
+    this.add(first)
+    this.add(second)
+
+    const pairChunks = [first, second]
+      .map(({ chunkX, chunkY }) => ({ chunkX, chunkY }))
+      .sort((a, b) => a.chunkY - b.chunkY || a.chunkX - b.chunkX) as [
+      { chunkX: number; chunkY: number },
+      { chunkX: number; chunkY: number },
+    ]
+    const pairKey = `${pairChunks[0].chunkX},${pairChunks[0].chunkY}|${pairChunks[1].chunkX},${pairChunks[1].chunkY}`
+    const segments: CrossChunkRiverSegment[] = []
+    for (const [sourceChunk, targetChunk] of [
+      [first, second],
+      [second, first],
+    ] as const) {
+      const targetDeltaX = targetChunk.chunkX - sourceChunk.chunkX
+      const targetDeltaY = targetChunk.chunkY - sourceChunk.chunkY
+      const targetOriginX = targetChunk.chunkX * targetChunk.chunkSize
+      const targetOriginY = targetChunk.chunkY * targetChunk.chunkSize
+      for (const edge of EDGE_ORDER) {
+        for (const sample of sourceChunk.edges[edge]) {
+          if (!sample.crossesFrontier) continue
+          const [dx, dy] = HYDROLOGY_DIRECTIONS[sample.direction] ?? [0, 0]
+          if (Math.abs(dx) !== 1 || Math.abs(dy) !== 1) continue
+          if (dx !== targetDeltaX || dy !== targetDeltaY || sample.water) continue
+          const source = edgeCellWorld(sourceChunk, edge, sample.localOffset, sourceChunk.chunkSize)
+          const target = { x: source.x + dx, y: source.y + dy }
+          const localTargetX = target.x - targetOriginX
+          const localTargetY = target.y - targetOriginY
+          const targetSample = sampleAtBoundaryCell(targetChunk, localTargetX, localTargetY)
+          if (
+            !targetSample ||
+            !(targetSample.water || sample.accumulation <= targetSample.accumulation)
+          ) {
+            continue
+          }
+          if (sample.filledElevation + 1 / 255 < targetSample.filledElevation) continue
+
+          const sourceIdentity = sampleKey(sourceChunk.chunkX, sourceChunk.chunkY, sample)
+          const targetIdentity = sampleKey(targetChunk.chunkX, targetChunk.chunkY, targetSample)
+          this.union(sourceIdentity, targetIdentity)
+          const identity = identityId(this.find(sourceIdentity))
+          const fromKind = sourceKind(sample)
+          const toKind = targetKind(targetSample)
+          segments.push({
+            id: `river:segment:${source.x},${source.y}>${target.x},${target.y}`,
+            identityId: identity,
+            sourceNodeId: riverNodeId(fromKind, source),
+            targetNodeId: riverNodeId(toKind, target),
+            sourceKind: fromKind,
+            targetKind: toKind,
+            source,
+            target,
+            chunkX: sourceChunk.chunkX,
+            chunkY: sourceChunk.chunkY,
+            offset: sample.localOffset,
+            direction: DIAGONAL_DIRECTIONS[sample.direction]!,
+            accumulation: targetSample.accumulation,
+          })
+        }
+      }
+    }
+    this.diagonalSegments.set(pairKey, {
+      chunks: pairChunks,
+      segments: segments.sort((a, b) => a.id.localeCompare(b.id)),
+    })
+    if (this.diagonalSegments.size + this.seams.size > CROSS_CHUNK_HYDROLOGY_MAX_SEAMS) {
+      this.diagonalSegments.delete(pairKey)
+      throw new RangeError('cross-chunk hydrology seam budget exceeded')
+    }
+    return this.diagonalSegments.get(pairKey)!.segments
+  }
+
+  release(chunkX: number, chunkY: number) {
+    const key = `${chunkX},${chunkY}`
+    this.summaries.delete(key)
+    for (const [seamKey, seam] of this.seams) {
+      if (
+        (seam.leftChunk.chunkX === chunkX && seam.leftChunk.chunkY === chunkY) ||
+        (seam.rightChunk.chunkX === chunkX && seam.rightChunk.chunkY === chunkY)
+      ) {
+        this.seams.delete(seamKey)
+      }
+    }
+    for (const [pairKey, pair] of this.diagonalSegments) {
+      if (pair.chunks.some((chunk) => chunk.chunkX === chunkX && chunk.chunkY === chunkY)) {
+        this.diagonalSegments.delete(pairKey)
+      }
+    }
+    const referencedRoots = new Set<string>()
+    for (const [alias, parent] of this.parents) {
+      if (alias !== parent) referencedRoots.add(this.find(parent))
+    }
+    for (const [token, parent] of this.parents) {
+      if (parent !== token || token.split(':', 1)[0] !== key || referencedRoots.has(token)) continue
+      this.parents.delete(token)
+    }
   }
 
   resolve(chunkX: number, chunkY: number, sample: DrainageEdgeSample) {
@@ -168,31 +484,49 @@ export class CrossChunkHydrologyResolver {
     return identityId(this.find(token))
   }
 
+  resolveComponent(chunkX: number, chunkY: number, watershedComponent: number) {
+    const token = `${chunkX},${chunkY}:${watershedComponent}`
+    return identityId(this.parents.has(token) ? this.find(token) : token)
+  }
+
   segments(): CrossChunkRiverSegment[] {
     const segments: CrossChunkRiverSegment[] = []
     for (const seam of this.seams.values()) {
       for (const pair of seam.pairs) {
         if (!pair.consistent) continue
-        const leftFirst =
-          seam.leftChunk.chunkY < seam.rightChunk.chunkY ||
-          (seam.leftChunk.chunkY === seam.rightChunk.chunkY &&
-            seam.leftChunk.chunkX <= seam.rightChunk.chunkX)
-        const segmentChunk = leftFirst ? seam.leftChunk : seam.rightChunk
-        const segmentSample = leftFirst ? pair.left : pair.right
-        const segmentDirection = leftFirst ? seam.direction : OPPOSITE[seam.direction]
-        const identity = this.resolve(segmentChunk.chunkX, segmentChunk.chunkY, segmentSample)
+        const leftFlows = pair.flow === 'left-to-right'
+        const sourceChunk = leftFlows ? seam.leftChunk : seam.rightChunk
+        const targetChunk = leftFlows ? seam.rightChunk : seam.leftChunk
+        const sourceSample = leftFlows ? pair.left : pair.right
+        const targetSample = leftFlows ? pair.right : pair.left
+        const sourceDirection = leftFlows ? seam.direction : OPPOSITE[seam.direction]
+        const targetDirection = OPPOSITE[sourceDirection]
+        const source = edgeCellWorld(sourceChunk, sourceDirection, pair.offset, seam.chunkSize)
+        const target = edgeCellWorld(targetChunk, targetDirection, pair.offset, seam.chunkSize)
+        const identity = this.resolve(sourceChunk.chunkX, sourceChunk.chunkY, sourceSample)
         if (!identity) continue
+        const fromKind = sourceKind(sourceSample)
+        const toKind = targetKind(targetSample)
+        const sourceNodeId = riverNodeId(fromKind, source)
+        const targetNodeId = riverNodeId(toKind, target)
         segments.push({
-          id: `river:${identity.slice('topology:'.length)}:${segmentChunk.chunkX},${segmentChunk.chunkY}:${segmentDirection}:${pair.offset}`,
+          id: `river:segment:${source.x},${source.y}>${target.x},${target.y}`,
           identityId: identity,
-          chunkX: segmentChunk.chunkX,
-          chunkY: segmentChunk.chunkY,
+          sourceNodeId,
+          targetNodeId,
+          sourceKind: fromKind,
+          targetKind: toKind,
+          source,
+          target,
+          chunkX: sourceChunk.chunkX,
+          chunkY: sourceChunk.chunkY,
           offset: pair.offset,
-          direction: segmentDirection,
-          accumulation: Math.max(pair.left.accumulation, pair.right.accumulation),
+          direction: sourceDirection,
+          accumulation: targetSample.accumulation,
         })
       }
     }
+    segments.push(...Array.from(this.diagonalSegments.values()).flatMap((pair) => pair.segments))
     return segments.sort((a, b) => a.id.localeCompare(b.id))
   }
 
@@ -205,17 +539,21 @@ export class CrossChunkHydrologyResolver {
           ? []
           : [{ aliasId: identityId(token), canonicalId: identityId(canonical) }]
       })
-    return { schemaVersion: CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION, aliases }
+    const snapshot = {
+      schemaVersion: CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION,
+      resolverVersion: CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION,
+      aliases,
+    } satisfies CrossChunkHydrologySnapshot
+    validateCrossChunkHydrologySnapshot(snapshot)
+    return snapshot
   }
 
   rehydrate(snapshot: CrossChunkHydrologySnapshot) {
-    if (snapshot.schemaVersion !== CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION) {
-      throw new RangeError('cross-chunk hydrology snapshot version is not supported')
-    }
+    validateCrossChunkHydrologySnapshot(snapshot)
     this.parents.clear()
     for (const alias of snapshot.aliases) {
-      const left = alias.aliasId.replace(/^topology:/, '')
-      const right = alias.canonicalId.replace(/^topology:/, '')
+      const left = alias.aliasId.replace(/^watershed:/, '')
+      const right = alias.canonicalId.replace(/^watershed:/, '')
       this.ensure(left)
       this.ensure(right)
       this.parents.set(left, right)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CROSS_CHUNK_HYDROLOGY_MAX_ALIASES } from '@alohayo/map'
 import {
   assertCompatibleContentPackState,
   createWorldSaveStore,
@@ -190,6 +191,11 @@ const sampleSnapshot: WorldSaveSnapshot = {
       },
     ],
   },
+  drainage: {
+    schemaVersion: 1,
+    resolverVersion: '1',
+    aliases: [],
+  },
   authoredEntities: {
     schemaVersion: 1,
     despawnedRuntimeIds: ['test:area:test:guide:-64:9'],
@@ -243,14 +249,16 @@ describe('world save store', () => {
     expect(imported).toEqual(sampleSnapshot)
   })
 
-  it('migrates legacy schema-one saves without topology or entity lifecycle ledgers', async () => {
+  it('migrates legacy schema-one saves without identity or entity lifecycle ledgers', async () => {
     const store = createWorldSaveStore(undefined)
     const legacy = { ...sampleSnapshot } as Partial<WorldSaveSnapshot>
     delete legacy.topology
+    delete legacy.drainage
     delete legacy.authoredEntities
 
     await expect(store.importSnapshot(JSON.stringify(legacy))).resolves.toMatchObject({
       topology: { schemaVersion: 1, resolverVersion: '1', aliases: [] },
+      drainage: { schemaVersion: 1, resolverVersion: '1', aliases: [] },
       authoredEntities: { schemaVersion: 1, despawnedRuntimeIds: [] },
     })
   })
@@ -273,6 +281,67 @@ describe('world save store', () => {
         })
       )
     ).rejects.toMatchObject({ code: 'unsupported-version' })
+  })
+
+  it('maps corrupt and incompatible drainage ledgers to typed recovery errors', async () => {
+    const store = createWorldSaveStore(undefined)
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          drainage: { ...sampleSnapshot.drainage, aliases: [{ broken: true }] },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'corrupt' })
+    await expect(
+      store.importSnapshot(
+        JSON.stringify({
+          ...sampleSnapshot,
+          drainage: { ...sampleSnapshot.drainage, resolverVersion: 'future' },
+        })
+      )
+    ).rejects.toMatchObject({ code: 'unsupported-version' })
+  })
+
+  it('rejects cyclic, oversized-count, and oversized-byte drainage ledgers', async () => {
+    const store = createWorldSaveStore(undefined)
+    const cycle = {
+      schemaVersion: 1,
+      resolverVersion: '1',
+      aliases: [
+        { aliasId: 'watershed:1,0:1', canonicalId: 'watershed:0,0:1' },
+        { aliasId: 'watershed:0,0:1', canonicalId: 'watershed:1,0:1' },
+      ],
+    }
+    await expect(
+      store.importSnapshot(JSON.stringify({ ...sampleSnapshot, drainage: cycle }))
+    ).rejects.toMatchObject({ code: 'corrupt' })
+
+    const overCount = {
+      schemaVersion: 1,
+      resolverVersion: '1',
+      aliases: Array.from({ length: CROSS_CHUNK_HYDROLOGY_MAX_ALIASES + 1 }, (_, index) => ({
+        aliasId: `watershed:${index + 1},0:1`,
+        canonicalId: 'watershed:0,0:1',
+      })),
+    }
+    await expect(
+      store.importSnapshot(JSON.stringify({ ...sampleSnapshot, drainage: overCount }))
+    ).rejects.toMatchObject({ code: 'quota-exceeded' })
+
+    const overBytes = {
+      schemaVersion: 1,
+      resolverVersion: '1',
+      aliases: [
+        {
+          aliasId: `watershed:${'1'.repeat(2 * 1024 * 1024)},0:1`,
+          canonicalId: 'watershed:0,0:1',
+        },
+      ],
+    }
+    await expect(
+      store.importSnapshot(JSON.stringify({ ...sampleSnapshot, drainage: overBytes }))
+    ).rejects.toMatchObject({ code: 'quota-exceeded' })
   })
 
   it('maps malformed entity lifecycle snapshots to typed recovery errors', async () => {

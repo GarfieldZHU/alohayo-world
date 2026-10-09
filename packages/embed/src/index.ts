@@ -108,7 +108,13 @@ export type {
   MountGameOptions,
   TerrainRuleDefinition,
   TerrainRulePackDefinition,
+  WorldCellCoordinate,
   WorldDefinition,
+  WorldHydrologyCellQuery,
+  WorldHydrologyChangeEvent,
+  WorldHydrologyChangeListener,
+  WorldRiverGraphSegment,
+  WorldRiverGraphSnapshot,
   WorldManifest,
   WorldWorkerCapabilities,
 } from '@alohayo/config'

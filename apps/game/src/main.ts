@@ -29,6 +29,7 @@ declare global {
     __ALOHAYO_WORLD_E2E_WORKER_CAPABILITIES__?: import('@alohayo/config').WorldWorkerCapabilities
     __ALOHAYO_WORLD_E2E_ASSET_BASE_URL__?: string
     __ALOHAYO_WORLD_E2E_UI_OPTIONS__?: boolean | import('@alohayo/config').GameUiOptions
+    __ALOHAYO_WORLD_E2E_HANDLE__?: GameHandle | null
   }
 }
 let handle: GameHandle | null = null
@@ -160,6 +161,7 @@ const launch = async (savedWorld?: WorldSaveWorldState): Promise<boolean> => {
   submitButton.textContent = uiText('surveying')
   await handle?.destroy()
   handle = null
+  if (import.meta.env.MODE === 'test') window.__ALOHAYO_WORLD_E2E_HANDLE__ = null
   try {
     const { mountGame } = await import('@alohayo/embed')
     const world = savedWorld
@@ -201,6 +203,7 @@ const launch = async (savedWorld?: WorldSaveWorldState): Promise<boolean> => {
         ...world,
       },
     })
+    if (import.meta.env.MODE === 'test') window.__ALOHAYO_WORLD_E2E_HANDLE__ = handle
     mountedWorld = nextMountedWorld
     if (savedWorld) {
       const matchingPreset = sizePresets.findIndex(

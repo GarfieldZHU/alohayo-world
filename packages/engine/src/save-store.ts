@@ -11,10 +11,13 @@ import {
 } from '@alohayo/config'
 import {
   AuthoredEntityLifecycleError,
+  CrossChunkHydrologyLedgerError,
   TopologyLedgerError,
   emptyAuthoredEntityLifecycleSnapshot,
+  emptyCrossChunkHydrologySnapshot,
   emptyTopologyLedger,
   validateAuthoredEntityLifecycleSnapshot,
+  validateCrossChunkHydrologySnapshot,
   validateTopologyLedger,
 } from '@alohayo/map'
 
@@ -606,6 +609,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     typeof migrated.discovery.discoveredCells !== 'number' ||
     !Array.isArray(migrated.discovery.discoveredChunkKeys) ||
     !migrated.topology ||
+    !migrated.drainage ||
     !migrated.authoredEntities ||
     !migrated.preferences ||
     typeof migrated.preferences.locale !== 'string' ||
@@ -630,6 +634,7 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
 
   try {
     validateTopologyLedger(migrated.topology)
+    validateCrossChunkHydrologySnapshot(migrated.drainage)
     validateAuthoredEntityLifecycleSnapshot(migrated.authoredEntities)
     if (migrated.weather !== undefined) validateWeatherState(migrated.weather)
     if (migrated.geomorphology !== undefined) validateGeomorphologyState(migrated.geomorphology)
@@ -637,6 +642,17 @@ export function validateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot 
     if (error instanceof TopologyLedgerError) {
       throw new WorldSaveError(
         error.code === 'incompatible-version' ? 'unsupported-version' : 'corrupt',
+        error.message,
+        error
+      )
+    }
+    if (error instanceof CrossChunkHydrologyLedgerError) {
+      throw new WorldSaveError(
+        error.code === 'incompatible-version'
+          ? 'unsupported-version'
+          : error.code === 'budget-exceeded'
+            ? 'quota-exceeded'
+            : 'corrupt',
         error.message,
         error
       )
@@ -700,11 +716,13 @@ function migrateWorldSaveSnapshot(snapshot: unknown): WorldSaveSnapshot {
   }
   const current = snapshot as WorldSaveSnapshot & {
     topology?: WorldSaveSnapshot['topology']
+    drainage?: WorldSaveSnapshot['drainage']
     authoredEntities?: WorldSaveSnapshot['authoredEntities']
   }
   return {
     ...current,
     topology: current.topology ?? emptyTopologyLedger(),
+    drainage: current.drainage ?? emptyCrossChunkHydrologySnapshot(),
     authoredEntities: current.authoredEntities ?? emptyAuthoredEntityLifecycleSnapshot(),
   }
 }

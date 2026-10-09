@@ -2,11 +2,14 @@
 
 ## Unreleased
 
-- Generate streamed chunk hydrology over a deterministic 16-cell world-coordinate halo,
-  including authored terrain and water overlays beyond the chunk edge, then crop all
-  numeric fields back to the stored chunk. Verify deterministic positive/negative chunks,
-  authored seam inputs, and 96x96 TypeScript/Wasm parity. Pairwise seam reconciliation and
-  canonical drainage identity remain tracked by #38.
+- Reconcile retained cardinal chunk hydrology in the worker over canonical pair windows,
+  transfer bounded eight-cell seam patches, compose corner overlaps in fixed order, ignore
+  stale results after eviction, and restore neighboring provisional patches on release.
+  Persist a bounded versioned `watershed:` alias ledger and migrate older schema-one saves.
+  Expose retained-cell queries, hydrology change events, and stable cardinal/diagonal seam
+  segments through `GameHandle`. Browser checks cover the Wasm pair path and save restart;
+  within-chunk river continuity, accumulation-delta propagation, and retained-horizon
+  performance evidence remain tracked by #38.
 
 - Add the first closeable follow-up contracts for issues #57, #60, #61, #62, #63, and
   #64: seasonal geomorphology forcing/proposals with bounded save validation, deterministic

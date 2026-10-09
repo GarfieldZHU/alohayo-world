@@ -74,10 +74,12 @@
       for the first natural-water foundation slice.
 - [x] Deterministic hydrology pass with slope, depression handling, flow direction,
       accumulation, watersheds, and flow-following river source selection.
-- [ ] Issue `#38` cross-chunk drainage: deterministic 16-cell halo generation now includes
-      neighboring authored terrain/water and crops the `96 x 96` raster to the `64 x 64`
-      chunk. Pairwise raster reconciliation, authoritative accumulation, canonical aliases,
-      river graph segments, persistence, and browser/performance proof remain open.
+- [ ] Issue `#38` cross-chunk drainage: deterministic 16-cell halo generation, worker pair
+      reconciliation, eight-cell seam patches, retained resolver aliases, save migration,
+      browser restart coverage, public retained-cell queries, change events, and stable
+      cardinal/diagonal seam segments are implemented. Within-chunk graph continuity,
+      accumulation correction, browser travel proof, and retained-horizon performance
+      evidence remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river
@@ -139,11 +141,11 @@
       ledger after the deferred creature module owns those facts.
 
 Detailed independent plans now live in `docs/modules/` for characters, weather,
-settlements, economy, combat, vehicles, creatures, and water. The next implementation
-target is global topology continuity plus drainage, with natural-water contour work
-running beside it as the main visual polish track. Gameplay plugins now wait on stable
-cross-chunk spatial queries and persistence. Dev-demo tooling should stay debug-only and
-must never weaken the public embed contract or lazy-load boundary.
+settlements, economy, combat, vehicles, creatures, and water. Cross-chunk hydrology now has
+an active worker and save foundation; stable river graph queries and gameplay consumers
+remain the next map work. Gameplay plugins still wait on stable cross-chunk spatial queries
+and persistence. Dev-demo tooling should stay debug-only and must never weaken the public
+embed contract or lazy-load boundary.
 
 The next gameplay track is a standalone character-domain expansion: derived resources,
 roles/backgrounds, inventory item instances, weapon/armor rules, terrain interactions,

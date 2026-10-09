@@ -33,14 +33,19 @@ authority, palette, motif drawing, LOD, and Pixi lifecycle. See
 
 ## Next Slice
 
-Cross-chunk drainage and rivers, minimap LOD, benchmark budgets, shared shape hints consumed by the water
-module, and a resolved content-pack overlay stream with dependency-safe provenance.
+Stable cross-chunk river graphs, minimap LOD, benchmark budgets, shared shape hints
+consumed by the water module, and a resolved content-pack overlay stream with
+dependency-safe provenance.
 
 Issue `#38` follows the staged contract in `../CROSS_CHUNK_HYDROLOGY.md`. A fixed halo is
-now generated over 16 cells of world-coordinate terrain and authored overlays, then cropped
-to the chunk interior. It reduces immediate frontier artifacts but remains provisional;
-exact seam behavior still requires deterministic pairwise reconciliation and a map-owned
-watershed/river resolver.
+generated over 16 cells of world-coordinate terrain and authored overlays, then cropped to
+the chunk interior. Retained cardinal neighbors now receive deterministic worker pair
+reconciliation, eight-cell seam patches with fixed-order corner composition, stale-result
+guards, eviction cleanup, and a persisted `watershed:` alias ledger. The halo and pair
+windows remain provisional at their outer frontiers. The resolver now exposes stable
+cardinal and target-matched diagonal seam segments through the public hydrology query surface.
+The river snapshot is seam-only; within-chunk graph links, renderer continuity, and
+downstream accumulation correction are still open.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

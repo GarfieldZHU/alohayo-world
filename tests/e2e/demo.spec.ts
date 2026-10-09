@@ -29,6 +29,10 @@ test('loads game resources only after start', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-worker-render-hints', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-terrain-texture-hints', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-hydrology', 'wasm')
+  await expect(canvas).toHaveAttribute('data-hydrology-pair-implementation', 'wasm', {
+    timeout: 20_000,
+  })
+  await expect(canvas).toHaveAttribute('data-hydrology-pair-fallback', 'none')
   await expect(canvas).toHaveAttribute('data-worker-contour-geometry', 'wasm')
   await expect(canvas).toHaveAttribute('data-worker-fallbacks', '0')
   await expect(canvas).toHaveAttribute('data-worker-transfer-bytes', /[1-9][0-9]*/)
@@ -342,6 +346,30 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
     })
   await expect.poll(readSavedAliases, { timeout: 10_000 }).toBeGreaterThan(0)
   const savedAliases = await readSavedAliases()
+  const readSavedDrainageLedger = () =>
+    page.evaluate(async () => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('alohayo-world')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => resolve(request.result)
+      })
+      return new Promise<{ resolverVersion: string; aliases: number } | null>((resolve, reject) => {
+        const transaction = database.transaction('world-saves', 'readonly')
+        const request = transaction.objectStore('world-saves').get('autosave')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const drainage = request.result?.snapshot?.drainage
+          resolve(
+            drainage
+              ? { resolverVersion: drainage.resolverVersion, aliases: drainage.aliases.length }
+              : null
+          )
+        }
+      })
+    })
+  await expect.poll(readSavedDrainageLedger, { timeout: 10_000 }).not.toBeNull()
+  const savedDrainageLedger = await readSavedDrainageLedger()
+  expect(savedDrainageLedger?.resolverVersion).toBe('1')
 
   await page.reload()
   await page.getByRole('button', { name: 'Enter the world' }).click()
@@ -351,6 +379,77 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
     String(savedAliases),
     { timeout: 20_000 }
   )
+  await expect(restoredCanvas).toHaveAttribute(
+    'data-hydrology-restored-aliases',
+    String(savedDrainageLedger?.aliases ?? 0),
+    { timeout: 20_000 }
+  )
+})
+
+test('exposes bounded hydrology queries and reconciled seam graph to downstream systems', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Enter the world' }).click()
+  const canvas = page.locator('canvas[aria-label="Alohayo World map"]')
+  await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
+    timeout: 45_000,
+  })
+  await expect(canvas).toHaveAttribute('data-hydrology-graph-coverage', 'reconciled-seams')
+  const result = await page.evaluate(() => {
+    const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+    let cell = null
+    if (handle?.queryHydrologyCell) {
+      for (let y = -256; y <= 256 && !cell; y += 8) {
+        for (let x = -256; x <= 256; x += 8) {
+          cell = handle.queryHydrologyCell(x, y)
+          if (cell) break
+        }
+      }
+    }
+    return {
+      cell,
+      unknownCell: handle ? handle.queryHydrologyCell?.(100_000, 100_000) : 'missing-handle',
+      fractionalCell: handle ? handle.queryHydrologyCell?.(0.5, 0.5) : 'missing-handle',
+      graph: handle?.getRiverGraph?.() ?? null,
+      canSubscribe: typeof handle?.subscribeHydrology === 'function',
+    }
+  })
+  expect(result.cell).toMatchObject({
+    flowDirection: expect.any(Number),
+    flowAccumulation: expect.any(Number),
+    watershedId: expect.stringMatching(/^watershed:/),
+    water: expect.any(Boolean),
+  })
+  expect(result.cell?.downstream === null || typeof result.cell?.downstream?.x === 'number').toBe(
+    true
+  )
+  expect(
+    result.cell?.downstreamLoaded === null || typeof result.cell?.downstreamLoaded === 'boolean'
+  ).toBe(true)
+  expect(result.unknownCell).toBeNull()
+  expect(result.fractionalCell).toBeNull()
+  expect(result.graph).toMatchObject({
+    schemaVersion: 1,
+    completeness: 'reconciled-seams',
+    revision: expect.any(Number),
+    segments: expect.any(Array),
+  })
+  expect(result.canSubscribe).toBe(true)
+  const finalHydrologyEvent = await page.evaluate(async () => {
+    const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+    if (!handle?.subscribeHydrology) return null
+    const events: Array<{ revision: number; type: string; chunks: unknown[] }> = []
+    const unsubscribe = handle.subscribeHydrology((event) => events.push(event))
+    await handle.destroy()
+    unsubscribe()
+    return events.at(-1) ?? null
+  })
+  expect(finalHydrologyEvent).toMatchObject({
+    revision: expect.any(Number),
+    type: 'chunk-evicted',
+    chunks: expect.any(Array),
+  })
 })
 
 const readPerformanceMetrics = (page: Page) =>

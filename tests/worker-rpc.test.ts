@@ -55,6 +55,57 @@ describe('world worker RPC', () => {
     return rejected
   })
 
+  it('round-trips pairwise hydrology requests without transferring live watershed inputs', async () => {
+    const worker = new FakeWorker()
+    const rpc = createWorkerRpc(worker as unknown as Worker)
+    const firstWatershed = new Uint32Array([1, 2, 3, 4])
+    const secondWatershed = new Uint32Array([5, 6, 7, 8])
+    const result = rpc.requestHydrologyPair({
+      seed: 'worker-test',
+      firstChunkX: -1,
+      firstChunkY: 0,
+      secondChunkX: 0,
+      secondChunkY: 0,
+      direction: 'east',
+      chunkSize: 2,
+      surveyWidth: 4,
+      surveyHeight: 4,
+      firstWatershed,
+      secondWatershed,
+    })
+    const sent = worker.sent[0] as { id: string; type: string }
+    const response = {
+      type: 'reconciled-hydrology-pair',
+      id: sent.id,
+      result: {
+        schemaVersion: 1,
+        state: 'reconciled',
+        direction: 'east',
+        firstChunk: { chunkX: -1, chunkY: 0 },
+        secondChunk: { chunkX: 0, chunkY: 0 },
+        windowWidth: 36,
+        windowHeight: 34,
+        halo: 16,
+        seamDepth: 8,
+        patches: [],
+      },
+      diagnostics: {
+        protocolVersion: 1,
+        implementation: 'typescript',
+        elapsedMs: 1,
+        transferBytes: 0,
+        wasmStartupMs: 0,
+      },
+    } as const
+
+    expect(sent.type).toBe('reconcile-hydrology-pair')
+    expect(Array.from(firstWatershed)).toEqual([1, 2, 3, 4])
+    expect(Array.from(secondWatershed)).toEqual([5, 6, 7, 8])
+    expect(worker.sent).toMatchObject([{ capabilities: DEFAULT_WORLD_WORKER_CAPABILITIES }])
+    worker.onmessage?.(new MessageEvent('message', { data: response }))
+    await expect(result).resolves.toEqual(response)
+  })
+
   it('rejects a stalled request after the startup timeout', async () => {
     vi.useFakeTimers()
     const worker = new FakeWorker()

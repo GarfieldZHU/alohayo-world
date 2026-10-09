@@ -6,6 +6,8 @@ import type {
 import {
   DEFAULT_WORLD_WORKER_CAPABILITIES,
   type GeneratedChunk,
+  type ReconcileHydrologyPairRequest,
+  type ReconciledHydrologyPairResponse,
   type WorldWorkerRequest,
   type WorldWorkerResponse,
   type WorldWorkerCapabilities,
@@ -45,9 +47,12 @@ export function createWorkerRpc(
       request.reject(new Error(`${event.data.error.code}: ${event.data.error.message}`))
       return
     }
-    if (event.data.type !== 'generated-chunk') return
-    event.data.chunk.workerDiagnostics = event.data.diagnostics
-    request.resolve(event.data.chunk)
+    if (event.data.type === 'generated-chunk') {
+      event.data.chunk.workerDiagnostics = event.data.diagnostics
+      request.resolve(event.data.chunk)
+      return
+    }
+    if (event.data.type === 'reconciled-hydrology-pair') request.resolve(event.data)
   }
 
   worker.onerror = (event) => {
@@ -67,9 +72,31 @@ export function createWorkerRpc(
           pending.delete(id)
           reject(new Error(`World worker request timed out after ${timeoutMs}ms`))
         }, timeoutMs)
-        pending.set(id, { resolve, reject, timeout })
+        pending.set(id, { resolve: (value) => resolve(value as GeneratedChunk), reject, timeout })
         worker.postMessage({
           type: 'generate-chunk',
+          id,
+          capabilities: options.capabilities ?? DEFAULT_WORLD_WORKER_CAPABILITIES,
+          ...payload,
+        })
+      })
+    },
+    requestHydrologyPair(
+      payload: Omit<ReconcileHydrologyPairRequest, 'type' | 'id' | 'capabilities'>
+    ) {
+      return new Promise<ReconciledHydrologyPairResponse>((resolve, reject) => {
+        const id = `hydrology-pair-${nextId++}`
+        const timeout = setTimeout(() => {
+          pending.delete(id)
+          reject(new Error(`World worker request timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+        pending.set(id, {
+          resolve: (value) => resolve(value as ReconciledHydrologyPairResponse),
+          reject,
+          timeout,
+        })
+        worker.postMessage({
+          type: 'reconcile-hydrology-pair',
           id,
           capabilities: options.capabilities ?? DEFAULT_WORLD_WORKER_CAPABILITIES,
           ...payload,

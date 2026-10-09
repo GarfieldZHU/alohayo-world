@@ -1,7 +1,7 @@
 # 仓库架构
 
-> **Wiki 页面版本：** zh-CN 1.6.0 · **英文源版本：** EN 1.6.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-08-09
-> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.5.0
+> **Wiki 页面版本：** zh-CN 1.7.0 · **英文源版本：** EN 1.7.0 · **产品基线：** v0.1.3 · **更新日期：** 2026-10-09
+> **English:** [Repository Architecture](Repository-Architecture) · **同步状态：** 已同步至 EN 1.7.0
 
 ## 依赖方向
 
@@ -52,6 +52,10 @@ DOM 与 GPU 资源。地图层的自定义实体由区块所有者引用计数�
 - 角色呈现已成为可替换边界：`@alohayo/character-renderer` 将确定性姿态、外观/装备/武器
   ID 解析到 shadow、aura、body、head、equipment、weapon 分层，并支持 reduced-motion 与
   debug capture。碰撞与存档权威仍在角色/引擎；精灵或 GLB 清单作为后续资产接缝（#63）。
+- 跨区水系现在通过 `GameHandle` 提供只读查询。已加载格子返回排水字段与规范流域 ID；
+  未加载格子返回 `null`。河流图快照只包含稳定的基数与按目标坐标匹配的对角接缝段，并
+  明确标记覆盖范围尚不完整。区块加载、接缝协调和驱逐会发布带版本号的事件。区块内部
+  河网与上游流量增量传播仍由 #38 跟踪。
 
 ## Rust/Wasm 边界
 

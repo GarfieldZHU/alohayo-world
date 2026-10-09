@@ -7,6 +7,12 @@ content, starts a generation worker, and initializes PixiJS. `GameHandle` owns e
 worker, event listener, animation callback, texture, and DOM node and releases them from
 `destroy`.
 
+The `GameHandle` also provides read-only retained hydrology queries for downstream gameplay
+systems. Unknown cells return `null`, watershed IDs are canonical, and the river graph snapshot
+reports `reconciled-seams` coverage so consumers can distinguish current seam links from the
+still-incomplete within-chunk river network. Hydrology change subscriptions are released by
+the handle's `destroy` lifecycle.
+
 Simulation uses a fixed 60 Hz clock. Rendering reads snapshots and may interpolate
 without mutating authoritative state. PixiJS is an adapter, never the world model.
 The day/night module derives a wrapped east-west lighting field from the simulation
@@ -78,8 +84,9 @@ See `MODULE_CATALOG.md` and `modules/` for the planned service boundaries.
 `localStorage` still mirrors lightweight UI preferences, but IndexedDB is now the
 authoritative home for autosave, manual, and imported snapshots in v0.2. Saves include schema version, engine
 version, content-pack resolution metadata, world identity, explorer state, discovery
-chunks, and compact map-owned lifecycle deltas. Topology aliases and persistent authored
-entity despawns are validated, size-bounded, and rehydrated before streamed chunks arrive.
+chunks, and compact map-owned lifecycle deltas. Topology and drainage aliases plus persistent
+authored entity despawns are validated, size-bounded, and rehydrated before streamed chunks
+arrive.
 Import/export and migration checks operate on the same snapshot contract, while
 incompatible content or unsupported schema versions fail explicitly instead of partially
 restoring stale state.

@@ -1,5 +1,6 @@
 import {
   applyMapAreas,
+  reconcileChunkHydrologyPair,
   generateChunkWithAreas,
   generateWorld,
   hashSeed,
@@ -199,7 +200,7 @@ function normalizeHydrologyCore(
 }
 
 async function buildHydrologyCoreProvider(
-  request: Extract<WorldWorkerRequest, { type: 'generate-chunk' }>
+  request: Extract<WorldWorkerRequest, { type: 'generate-chunk' | 'reconcile-hydrology-pair' }>
 ): Promise<{
   builder?: HydrologyCoreBuilder
   implementation: 'typescript' | 'wasm'
@@ -548,6 +549,64 @@ workerScope.onmessage = async (event: MessageEvent<WorldWorkerRequest>) => {
         ],
       }
     )
+    return
+  }
+
+  if (event.data.type === 'reconcile-hydrology-pair') {
+    const started = performance.now()
+    try {
+      const hydrology = await buildHydrologyCoreProvider(event.data)
+      const result = reconcileChunkHydrologyPair({
+        seedText: event.data.seed,
+        firstChunkX: event.data.firstChunkX,
+        firstChunkY: event.data.firstChunkY,
+        secondChunkX: event.data.secondChunkX,
+        secondChunkY: event.data.secondChunkY,
+        direction: event.data.direction,
+        chunkSize: event.data.chunkSize,
+        surveyWidth: event.data.surveyWidth,
+        surveyHeight: event.data.surveyHeight,
+        firstWatershed: event.data.firstWatershed,
+        secondWatershed: event.data.secondWatershed,
+        areas: event.data.mapAreas,
+        terrainCodes: event.data.terrainCodes,
+        geomorphology: event.data.geomorphology,
+        coreBuilder: hydrology.builder,
+      })
+      const transferables = result.patches.flatMap((patch) =>
+        Object.values(patch.fields).map((layer) => layer.buffer)
+      )
+      workerScope.postMessage(
+        {
+          type: 'reconciled-hydrology-pair',
+          id: event.data.id,
+          result,
+          diagnostics: {
+            protocolVersion: 1,
+            implementation: hydrology.implementation,
+            fallbackReason: hydrology.fallbackReason,
+            elapsedMs: performance.now() - started,
+            transferBytes: transferables.reduce((sum, buffer) => sum + buffer.byteLength, 0),
+            wasmStartupMs,
+          },
+        },
+        { transfer: transferables }
+      )
+    } catch (error) {
+      workerScope.postMessage(
+        {
+          type: 'worker-error',
+          id: event.data.id,
+          error: {
+            code: 'generation-failed',
+            message:
+              error instanceof Error ? error.message : 'Unknown hydrology reconciliation failure',
+            recoverable: true,
+          },
+        },
+        { transfer: [] }
+      )
+    }
     return
   }
 

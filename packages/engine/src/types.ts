@@ -8,7 +8,7 @@ import type {
   ResolvedMapAreaDefinition,
   WorldDefinition,
 } from '@alohayo/config'
-import type { GeneratedChunk } from '@alohayo/map'
+import type { GeneratedChunk, ReconciledHydrologyPairResponse } from '@alohayo/map'
 import type { Container, Graphics } from 'pixi.js'
 
 export interface EngineContent {
@@ -37,7 +37,7 @@ export interface ChunkView {
 }
 
 export interface RpcPending {
-  resolve: (value: GeneratedChunk) => void
+  resolve: (value: GeneratedChunk | ReconciledHydrologyPairResponse) => void
   reject: (reason?: unknown) => void
   timeout: ReturnType<typeof setTimeout>
 }

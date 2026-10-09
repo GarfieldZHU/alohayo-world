@@ -24,8 +24,9 @@ This package owns deterministic geography and worker-safe data.
   or conflict-failing before implementing merge code.
 - Chunk-local `region` labels are an exploration/runtime aid today, not a substitute for
   future cross-chunk global topology IDs.
-- Persist cross-chunk identity only through `TopologyIdentityLedger`. Keep aliases flat,
-  deterministic, versioned, and within the declared alias/serialized-byte budgets.
+- Persist land/water topology only through `TopologyIdentityLedger` and drainage identity
+  only through `CrossChunkHydrologySnapshot`. Keep both alias ledgers deterministic,
+  versioned, and within their declared alias/serialized-byte budgets.
 - Rehydrate topology before streamed summaries arrive. Cached consumers must subscribe to
   typed topology changes or resolve canonical IDs on demand; renderer objects never own IDs.
 - Update deterministic, connectivity, bounds, and benchmark tests after generator work.
@@ -59,9 +60,9 @@ This package owns deterministic geography and worker-safe data.
   `flowDirection`, upstream `flowAccumulation`, per-cell `watershed`, and flow-following
   river tracing. Extend that graph before adding new wetland, floodplain, lake, or
   erosion heuristics.
-- Read `docs/CROSS_CHUNK_HYDROLOGY.md` before issue `#38` work. A fixed halo is provisional,
-  not proof of seam correctness; pair reconciliation and stable resolver identities are the
-  required authority.
+- Read `docs/CROSS_CHUNK_HYDROLOGY.md` before issue `#38` work. A fixed halo is provisional;
+  the public graph currently covers validated cardinal/diagonal seam segments only and does
+  not yet prove within-chunk river continuity or upstream accumulation correction.
 - `drainage-summary.ts` is the worker-safe frontier handoff contract. Its edge samples
   describe the cropped interior of a 16-cell world-coordinate hydrology halo and must remain
   `provisional` until pair reconciliation and the resolver emit canonical aliases.

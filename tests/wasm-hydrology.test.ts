@@ -2,12 +2,18 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { performance } from 'node:perf_hooks'
 import { beforeAll, describe, expect, it } from 'vitest'
+import type { MapAreaDefinition } from '@alohayo/config'
 import {
   buildHydrologyCoreRaster,
   type HydrologyCoreBuilder,
   type HydrologyCoreRaster,
 } from '../packages/map/src/hydrology'
-import { generateChunk } from '../packages/map/src'
+import {
+  applyHydrologySeamPatch,
+  BIOME,
+  generateChunk,
+  reconcileChunkHydrologyPair,
+} from '../packages/map/src'
 
 const wasmModuleUrl = new URL('../dist/embed/wasm/world_core.js', import.meta.url)
 const wasmBinaryUrl = new URL('../dist/embed/wasm/world_core_bg.wasm', import.meta.url)
@@ -58,12 +64,14 @@ describe('Wasm hydrology raster parity', () => {
     startupMs = performance.now() - started
   })
 
-  parity('matches every TypeScript core buffer for 16/64/96/128 fixtures', () => {
+  parity('matches every TypeScript core buffer for square and rectangular fixtures', () => {
     for (const input of [
       fixture(16, 16, -3),
       fixture(64, 64, 7),
       fixture(96, 96, -11),
       fixture(128, 128, 19),
+      fixture(160, 96, -23),
+      fixture(96, 160, 31),
     ]) {
       const expected = buildHydrologyCoreRaster(input)
       const actual = normalize(
@@ -104,6 +112,161 @@ describe('Wasm hydrology raster parity', () => {
     expect(migrated.flowDirection).toEqual(reference.flowDirection)
     expect(migrated.flowAccumulation).toEqual(reference.flowAccumulation)
     expect(migrated.watershed).toEqual(reference.watershed)
+  })
+
+  parity('matches complete horizontal and vertical pair seam outputs', () => {
+    const wasmBuilder: HydrologyCoreBuilder = (input) =>
+      normalize(
+        wasm.build_hydrology_raster(input.rawElevation, input.water, input.width, input.height),
+        input
+      )
+    const seed = 'hydrology-pair-wasm-parity'
+    const areas: MapAreaDefinition[] = [
+      {
+        schemaVersion: 1,
+        id: 'test:hydrology-horizontal-seam-water',
+        name: 'Horizontal seam water',
+        description: 'Water overlay across a horizontal chunk seam.',
+        enabled: true,
+        placement: { mode: 'absolute', x: -8, y: 0 },
+        width: 16,
+        height: 64,
+        terrainPatches: [
+          {
+            x: 0,
+            y: 0,
+            width: 16,
+            height: 64,
+            shape: 'rectangle',
+            terrainId: 'core:ocean',
+            elevation: 0,
+          },
+        ],
+      },
+      {
+        schemaVersion: 1,
+        id: 'test:hydrology-vertical-seam-water',
+        name: 'Vertical seam water',
+        description: 'Water overlay across a vertical chunk seam.',
+        enabled: true,
+        placement: { mode: 'absolute', x: 128, y: -136 },
+        width: 64,
+        height: 16,
+        terrainPatches: [
+          {
+            x: 0,
+            y: 0,
+            width: 64,
+            height: 16,
+            shape: 'rectangle',
+            terrainId: 'core:ocean',
+            elevation: 0,
+          },
+        ],
+      },
+    ]
+    const fixtures = [
+      {
+        first: generateChunk(seed, -1, 0, 64),
+        second: generateChunk(seed, 0, 0, 64),
+        direction: 'east' as const,
+      },
+      {
+        first: generateChunk(seed, 2, -3, 64),
+        second: generateChunk(seed, 2, -2, 64),
+        direction: 'south' as const,
+      },
+    ]
+    for (const pair of fixtures) {
+      const args = {
+        seedText: seed,
+        firstChunkX: pair.first.chunkX,
+        firstChunkY: pair.first.chunkY,
+        secondChunkX: pair.second.chunkX,
+        secondChunkY: pair.second.chunkY,
+        direction: pair.direction,
+        chunkSize: 64,
+        surveyWidth: 192,
+        surveyHeight: 192,
+        firstWatershed: pair.first.watershed,
+        secondWatershed: pair.second.watershed,
+        areas,
+        terrainCodes: { 'core:ocean': BIOME.ocean },
+      }
+      const reference = reconcileChunkHydrologyPair(args)
+      const actual = reconcileChunkHydrologyPair({ ...args, coreBuilder: wasmBuilder })
+      expect(actual).toEqual(reference)
+    }
+  })
+
+  parity('meets bounded pair timing, transfer, and seam-apply budgets', () => {
+    const wasmBuilder: HydrologyCoreBuilder = (input) =>
+      normalize(
+        wasm.build_hydrology_raster(input.rawElevation, input.water, input.width, input.height),
+        input
+      )
+    const seed = 'hydrology-pair-budget'
+    const west = generateChunk(seed, -1, 0, 64)
+    const east = generateChunk(seed, 0, 0, 64)
+    const args = {
+      seedText: seed,
+      firstChunkX: west.chunkX,
+      firstChunkY: west.chunkY,
+      secondChunkX: east.chunkX,
+      secondChunkY: east.chunkY,
+      direction: 'east' as const,
+      chunkSize: 64,
+      surveyWidth: 128,
+      surveyHeight: 128,
+      firstWatershed: west.watershed,
+      secondWatershed: east.watershed,
+    }
+    const percentile = (values: number[], ratio: number) =>
+      [...values].sort((left, right) => left - right)[Math.ceil(values.length * ratio) - 1]!
+    const transfersBytes = (result: ReturnType<typeof reconcileChunkHydrologyPair>) =>
+      result.patches.reduce(
+        (sum, patch) =>
+          sum + Object.values(patch.fields).reduce((bytes, field) => bytes + field.byteLength, 0),
+        0
+      )
+    for (let index = 0; index < 3; index += 1) {
+      reconcileChunkHydrologyPair(args)
+      reconcileChunkHydrologyPair({ ...args, coreBuilder: wasmBuilder })
+    }
+    const typescriptMs: number[] = []
+    const wasmMs: number[] = []
+    const applyMs: number[] = []
+    let transferBytes = 0
+    let wasmResult: ReturnType<typeof reconcileChunkHydrologyPair> | undefined
+    for (let index = 0; index < 30; index += 1) {
+      let started = performance.now()
+      reconcileChunkHydrologyPair(args)
+      typescriptMs.push(performance.now() - started)
+      started = performance.now()
+      wasmResult = reconcileChunkHydrologyPair({ ...args, coreBuilder: wasmBuilder })
+      wasmMs.push(performance.now() - started)
+      transferBytes = transfersBytes(wasmResult)
+      started = performance.now()
+      for (const patch of wasmResult.patches) {
+        applyHydrologySeamPatch(patch.chunkX === west.chunkX ? west : east, patch)
+      }
+      applyMs.push(performance.now() - started)
+    }
+    const report = {
+      typescriptMedianMs: percentile(typescriptMs, 0.5),
+      typescriptP95Ms: percentile(typescriptMs, 0.95),
+      wasmMedianMs: percentile(wasmMs, 0.5),
+      wasmP95Ms: percentile(wasmMs, 0.95),
+      transferBytes,
+      seamApplyP95Ms: percentile(applyMs, 0.95),
+    }
+    console.info('pair hydrology promotion benchmark', report)
+    expect(report.typescriptMedianMs).toBeLessThanOrEqual(12)
+    expect(report.typescriptP95Ms).toBeLessThanOrEqual(24)
+    expect(report.wasmMedianMs).toBeLessThanOrEqual(12)
+    expect(report.wasmP95Ms).toBeLessThanOrEqual(24)
+    expect(report.transferBytes).toBeLessThanOrEqual(48 * 1024)
+    expect(report.seamApplyP95Ms).toBeLessThanOrEqual(2)
   })
 
   parity('beats the hydrology promotion benchmark gates', () => {

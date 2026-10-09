@@ -127,6 +127,17 @@ export interface WorldSaveTopologyLedger {
   aliases: WorldSaveTopologyAlias[]
 }
 
+export interface WorldSaveHydrologyAlias {
+  aliasId: string
+  canonicalId: string
+}
+
+export interface WorldSaveHydrologyLedger {
+  schemaVersion: 1
+  resolverVersion: '1'
+  aliases: WorldSaveHydrologyAlias[]
+}
+
 export interface WorldSaveAuthoredEntityLifecycle {
   schemaVersion: 1
   despawnedRuntimeIds: string[]
@@ -204,6 +215,7 @@ export interface WorldSaveSnapshot {
     discoveredChunkKeys: string[]
   }
   topology: WorldSaveTopologyLedger
+  drainage?: WorldSaveHydrologyLedger
   authoredEntities: WorldSaveAuthoredEntityLifecycle
   weather?: WorldSaveWeatherState
   geomorphology?: WorldSaveGeomorphologyState
@@ -974,8 +986,74 @@ export interface GameHandle {
   exportSave?(slotId?: string): Promise<string>
   importSave?(serialized: string, slotId?: string, label?: string): Promise<WorldSaveSummary>
   clearSave?(slotId?: string): Promise<void>
+  /** Returns hydrology for a retained cell, or null when the cell is not loaded. */
+  queryHydrologyCell?(x: number, y: number): WorldHydrologyCellQuery | null
+  /** Returns stable river segments for reconciled cardinal and diagonal seams. */
+  getRiverGraph?(): WorldRiverGraphSnapshot
+  /** Subscribe to retained hydrology changes; the returned function removes the listener. */
+  subscribeHydrology?(listener: WorldHydrologyChangeListener): () => void
   destroy(): Promise<void>
 }
+
+export interface WorldCellCoordinate {
+  x: number
+  y: number
+}
+
+export interface WorldHydrologyCellQuery {
+  x: number
+  y: number
+  /** D8 direction index, or -1 when this cell has no outgoing flow. */
+  flowDirection: number
+  downstream: WorldCellCoordinate | null
+  downstreamLoaded: boolean | null
+  flowAccumulation: number
+  slope: number
+  depression: number
+  water: boolean
+  watershedId: string
+  state: 'provisional' | 'reconciled'
+}
+
+export interface WorldRiverGraphSegment {
+  id: string
+  identityId: string
+  sourceNodeId: string
+  targetNodeId: string
+  sourceKind: 'source' | 'channel' | 'confluence'
+  targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth'
+  source: WorldCellCoordinate
+  target: WorldCellCoordinate
+  chunkX: number
+  chunkY: number
+  offset: number
+  direction:
+    | 'north'
+    | 'east'
+    | 'south'
+    | 'west'
+    | 'north-east'
+    | 'south-east'
+    | 'south-west'
+    | 'north-west'
+  accumulation: number
+}
+
+export interface WorldRiverGraphSnapshot {
+  schemaVersion: 1
+  /** Current graph coverage is limited to reconciled cardinal and diagonal seam links. */
+  completeness: 'reconciled-seams'
+  revision: number
+  segments: WorldRiverGraphSegment[]
+}
+
+export interface WorldHydrologyChangeEvent {
+  revision: number
+  type: 'chunk-loaded' | 'seam-reconciled' | 'chunk-evicted'
+  chunks: Array<{ chunkX: number; chunkY: number }>
+}
+
+export type WorldHydrologyChangeListener = (event: WorldHydrologyChangeEvent) => void
 
 export type { I18nCatalog, LanguageOption, LocaleCode } from './i18n'
 export type {

@@ -33,6 +33,10 @@ import type {
   WorldRoadProfileDefinition,
   WorldRoadProfileId,
   WorldRoadConditionDefinition,
+  WorldHydrologyChangeEvent,
+  WorldHydrologyChangeListener,
+  WorldHydrologyCellQuery,
+  WorldRiverGraphSnapshot,
 } from '@alohayo/config'
 import {
   formatI18n,
@@ -46,11 +50,20 @@ import {
   AuthoredEntityLifecycleRegistry,
   buildHaloShoreDistance,
   ChunkTopologyResolver,
+  CrossChunkHydrologyLedgerError,
+  CrossChunkHydrologyResolver,
   TopologyLedgerError,
   hashSeed,
+  applyHydrologySeamPatch,
+  type CardinalDirection,
+  type ChunkDrainageSummary,
+  type ChunkHydrologySeamPatch,
   type GeneratedChunk,
   type GeneratedLandmark,
+  HYDROLOGY_DIRECTIONS,
+  isWaterBiome as isWaterBiomeCode,
   advanceRegionalWeatherState,
+  emptyCrossChunkHydrologySnapshot,
   sampleRegionalWeather,
   createRegionalWeatherState,
   cloneRegionalWeatherState,
@@ -135,6 +148,58 @@ import {
 } from './save-store'
 
 extensions.add(CullerPlugin)
+
+interface HydrologyChunkBaseline {
+  slope: Uint8Array
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+  depression: Uint8Array
+  erosionPotential: Uint8Array
+  sedimentLoad: Uint8Array
+  deposition: Uint8Array
+  floodplain: Uint8Array
+  drainageSummary: ChunkDrainageSummary
+}
+
+const HYDROLOGY_PATCH_ORDER: readonly CardinalDirection[] = ['north', 'east', 'south', 'west']
+
+function cloneDrainageSummary(summary: ChunkDrainageSummary): ChunkDrainageSummary {
+  return {
+    ...summary,
+    edges: {
+      north: summary.edges.north.map((sample) => ({ ...sample })),
+      east: summary.edges.east.map((sample) => ({ ...sample })),
+      south: summary.edges.south.map((sample) => ({ ...sample })),
+      west: summary.edges.west.map((sample) => ({ ...sample })),
+    },
+  }
+}
+
+function captureHydrologyBaseline(chunk: GeneratedChunk): HydrologyChunkBaseline {
+  return {
+    slope: chunk.slope.slice(),
+    flowDirection: chunk.flowDirection.slice(),
+    flowAccumulation: chunk.flowAccumulation.slice(),
+    depression: chunk.depression.slice(),
+    erosionPotential: chunk.erosionPotential.slice(),
+    sedimentLoad: chunk.sedimentLoad.slice(),
+    deposition: chunk.deposition.slice(),
+    floodplain: chunk.floodplain.slice(),
+    drainageSummary: cloneDrainageSummary(chunk.drainageSummary),
+  }
+}
+
+function restoreHydrologyBaseline(chunk: GeneratedChunk, baseline: HydrologyChunkBaseline) {
+  chunk.slope.set(baseline.slope)
+  chunk.flowDirection.set(baseline.flowDirection)
+  chunk.flowAccumulation.set(baseline.flowAccumulation)
+  chunk.depression.set(baseline.depression)
+  chunk.erosionPotential.set(baseline.erosionPotential)
+  chunk.sedimentLoad.set(baseline.sedimentLoad)
+  chunk.deposition.set(baseline.deposition)
+  chunk.floodplain.set(baseline.floodplain)
+  chunk.drainageSummary = cloneDrainageSummary(baseline.drainageSummary)
+}
 
 export async function createGame(
   options: MountGameOptions,
@@ -272,6 +337,30 @@ export async function createGame(
   const chunks = new Map<string, GeneratedChunk>()
   const authoredEntityLifecycle = new AuthoredEntityLifecycleRegistry()
   const topologyResolver = new ChunkTopologyResolver()
+  const hydrologyResolver = new CrossChunkHydrologyResolver()
+  const hydrologyChangeListeners = new Set<WorldHydrologyChangeListener>()
+  let hydrologyRevision = 0
+  const emitHydrologyChange = (
+    type: WorldHydrologyChangeEvent['type'],
+    changedChunks: Array<{ chunkX: number; chunkY: number }>
+  ) => {
+    const chunks = Array.from(
+      new Map(changedChunks.map((chunk) => [`${chunk.chunkX},${chunk.chunkY}`, chunk])).values()
+    ).sort((left, right) => left.chunkY - right.chunkY || left.chunkX - right.chunkX)
+    if (chunks.length === 0) return
+    hydrologyRevision += 1
+    const event: WorldHydrologyChangeEvent = { revision: hydrologyRevision, type, chunks }
+    app.canvas.dataset.hydrologyRevision = String(hydrologyRevision)
+    app.canvas.dataset.hydrologyEvent = type
+    app.canvas.dataset.hydrologyGraphCoverage = 'reconciled-seams'
+    for (const listener of hydrologyChangeListeners) {
+      try {
+        listener(event)
+      } catch {
+        // A downstream observer must not interrupt deterministic world streaming.
+      }
+    }
+  }
   let unsubscribeTopology = () => {}
   const chunkViews = new Map<string, ChunkView>()
   const roadMasks = new Map<string, Uint8Array>()
@@ -279,6 +368,9 @@ export async function createGame(
   const bridgeMasks = new Map<string, Uint8Array>()
   const pendingChunks = new Map<string, Promise<GeneratedChunk>>()
   const chunkRequestQueue = createChunkRequestQueue(1)
+  const hydrologyBaselines = new Map<string, HydrologyChunkBaseline>()
+  const hydrologyPatches = new Map<string, Map<CardinalDirection, ChunkHydrologySeamPatch>>()
+  let hydrologyPairQueue: Promise<void> = Promise.resolve()
   const discovery = new Map<string, Uint8Array>()
   const dirtyFog = new Set<string>()
   let discoveredCells = 0
@@ -471,14 +563,27 @@ export async function createGame(
   const buildSaveSnapshot = (): WorldSaveSnapshot | null => {
     if (!explorer || !explorerMotion || !contentPackSaveMetadata) return null
     let topology: WorldSaveSnapshot['topology']
+    let drainage: WorldSaveSnapshot['drainage']
     let authoredEntities: WorldSaveSnapshot['authoredEntities']
     try {
       topology = topologyResolver.exportLedger()
+      drainage = hydrologyResolver.exportSnapshot()
       authoredEntities = authoredEntityLifecycle.snapshot()
     } catch (error) {
       if (error instanceof TopologyLedgerError) {
         throw new WorldSaveError(
           error.code === 'budget-exceeded' ? 'quota-exceeded' : 'corrupt',
+          error.message,
+          error
+        )
+      }
+      if (error instanceof CrossChunkHydrologyLedgerError) {
+        throw new WorldSaveError(
+          error.code === 'budget-exceeded'
+            ? 'quota-exceeded'
+            : error.code === 'incompatible-version'
+              ? 'unsupported-version'
+              : 'corrupt',
           error.message,
           error
         )
@@ -531,6 +636,7 @@ export async function createGame(
         discoveredChunkKeys: Array.from(discoveredChunks).sort(),
       },
       topology,
+      drainage,
       authoredEntities,
       weather: regionalWeatherState ? cloneRegionalWeatherState(regionalWeatherState) : undefined,
       preferences: {
@@ -628,7 +734,9 @@ export async function createGame(
       authoredEntityLifecycle.restore(snapshot.authoredEntities)
       updateAuthoredEntityDiagnostics()
       topologyResolver.rehydrate(snapshot.topology)
+      hydrologyResolver.rehydrate(snapshot.drainage ?? emptyCrossChunkHydrologySnapshot())
       app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
+      app.canvas.dataset.hydrologyRestoredAliases = String(snapshot.drainage?.aliases.length ?? 0)
       devPanel?.panel.remove()
       devPanel = buildDevPanel()
       if (devPanel) {
@@ -1885,6 +1993,118 @@ export async function createGame(
     }
   }
 
+  const applyHydrologyPatches = (chunk: GeneratedChunk) => {
+    const key = chunkKey(chunk.chunkX, chunk.chunkY)
+    const baseline = hydrologyBaselines.get(key)
+    if (!baseline) return
+    restoreHydrologyBaseline(chunk, baseline)
+    const patches = hydrologyPatches.get(key)
+    if (patches) {
+      for (const direction of HYDROLOGY_PATCH_ORDER) {
+        const patch = patches.get(direction)
+        if (patch) applyHydrologySeamPatch(chunk, patch)
+      }
+      if (patches.size > 0) chunk.drainageSummary.state = 'reconciled'
+    }
+    hydrologyResolver.add(chunk.drainageSummary)
+  }
+
+  const reconcileRetainedHydrologyDiagonals = (changedChunks: GeneratedChunk[]) => {
+    const diagonalOffsets = [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ] as const
+    const seenPairs = new Set<string>()
+    for (const chunk of changedChunks) {
+      for (const [dx, dy] of diagonalOffsets) {
+        const neighbor = chunks.get(chunkKey(chunk.chunkX + dx, chunk.chunkY + dy))
+        if (!neighbor) continue
+        const pair = [
+          `${chunk.chunkX},${chunk.chunkY}`,
+          `${neighbor.chunkX},${neighbor.chunkY}`,
+        ].sort()
+        const pairKey = pair.join('|')
+        if (seenPairs.has(pairKey)) continue
+        seenPairs.add(pairKey)
+        hydrologyResolver.reconcileDiagonal(chunk.drainageSummary, neighbor.drainageSummary)
+      }
+    }
+  }
+
+  const queueHydrologyPair = (
+    first: GeneratedChunk,
+    second: GeneratedChunk,
+    direction: 'east' | 'south'
+  ) => {
+    const run = async () => {
+      if (destroyed) return
+      const firstKey = chunkKey(first.chunkX, first.chunkY)
+      const secondKey = chunkKey(second.chunkX, second.chunkY)
+      if (chunks.get(firstKey) !== first || chunks.get(secondKey) !== second) return
+      try {
+        const response = await rpc.requestHydrologyPair({
+          seed: worldSeed,
+          firstChunkX: first.chunkX,
+          firstChunkY: first.chunkY,
+          secondChunkX: second.chunkX,
+          secondChunkY: second.chunkY,
+          direction,
+          chunkSize,
+          surveyWidth,
+          surveyHeight,
+          firstWatershed: first.watershed,
+          secondWatershed: second.watershed,
+          mapAreas,
+          terrainCodes,
+          geomorphology: content.world.geomorphology,
+          wasmBaseUrl: options.assetBaseUrl,
+        })
+        if (destroyed || chunks.get(firstKey) !== first || chunks.get(secondKey) !== second) {
+          return
+        }
+        app.canvas.dataset.hydrologyPairImplementation = response.diagnostics.implementation
+        app.canvas.dataset.hydrologyPairElapsedMs = response.diagnostics.elapsedMs.toFixed(3)
+        app.canvas.dataset.hydrologyPairTransferBytes = String(response.diagnostics.transferBytes)
+        app.canvas.dataset.hydrologyPairFallback = response.diagnostics.fallbackReason ?? 'none'
+        for (const patch of response.result.patches) {
+          const key = chunkKey(patch.chunkX, patch.chunkY)
+          const patches =
+            hydrologyPatches.get(key) ?? new Map<CardinalDirection, ChunkHydrologySeamPatch>()
+          patches.set(patch.direction, patch)
+          hydrologyPatches.set(key, patches)
+        }
+        applyHydrologyPatches(first)
+        applyHydrologyPatches(second)
+        hydrologyResolver.reconcile(first.drainageSummary, second.drainageSummary, direction)
+        reconcileRetainedHydrologyDiagonals([first, second])
+        for (const chunk of [first, second]) {
+          const key = chunkKey(chunk.chunkX, chunk.chunkY)
+          if (chunkViews.has(key)) renderChunk(chunk)
+        }
+        emitHydrologyChange('seam-reconciled', [first, second])
+        markSaveDirty()
+      } catch (error) {
+        if (destroyed) return
+        app.canvas.dataset.hydrologyPairFallback =
+          error instanceof Error ? error.message : 'unknown-error'
+      }
+    }
+    hydrologyPairQueue = hydrologyPairQueue.then(run, run)
+  }
+
+  const reconcileRetainedHydrologyNeighbors = (chunk: GeneratedChunk) => {
+    const north = chunks.get(chunkKey(chunk.chunkX, chunk.chunkY - 1))
+    const east = chunks.get(chunkKey(chunk.chunkX + 1, chunk.chunkY))
+    const south = chunks.get(chunkKey(chunk.chunkX, chunk.chunkY + 1))
+    const west = chunks.get(chunkKey(chunk.chunkX - 1, chunk.chunkY))
+    if (north) queueHydrologyPair(north, chunk, 'south')
+    if (east) queueHydrologyPair(chunk, east, 'east')
+    if (south) queueHydrologyPair(chunk, south, 'south')
+    if (west) queueHydrologyPair(west, chunk, 'east')
+  }
+
   const ensureChunk = (chunkX: number, chunkY: number) => {
     const key = chunkKey(chunkX, chunkY)
     const existing = chunks.get(key)
@@ -1914,12 +2134,16 @@ export async function createGame(
       .then((chunk) => {
         pendingChunks.delete(key)
         chunks.set(key, chunk)
+        hydrologyBaselines.set(key, captureHydrologyBaseline(chunk))
         try {
           authoredEntityLifecycle.retainChunk(key, chunk.authoredEntities)
         } finally {
           updateAuthoredEntityDiagnostics()
         }
         topologyResolver.add(chunk.topology)
+        hydrologyResolver.add(chunk.drainageSummary)
+        reconcileRetainedHydrologyDiagonals([chunk])
+        emitHydrologyChange('chunk-loaded', [chunk])
         if (!discovery.has(key))
           discovery.set(key, new Uint8Array(chunk.chunkSize * chunk.chunkSize))
         lastChunkGenerationMs = chunk.generationMs
@@ -1948,6 +2172,7 @@ export async function createGame(
           const neighbor = chunks.get(neighborKey)
           if (neighbor && chunkViews.has(neighborKey)) renderChunk(neighbor)
         }
+        reconcileRetainedHydrologyNeighbors(chunk)
         return chunk
       })
       .catch((error) => {
@@ -1993,12 +2218,33 @@ export async function createGame(
 
   const evictFarChunks = (centerChunkX: number, centerChunkY: number) => {
     let evicted = false
+    const changedHydrologyChunks: Array<{ chunkX: number; chunkY: number }> = []
     for (const [key, chunk] of chunks) {
       const distance = Math.max(
         Math.abs(chunk.chunkX - centerChunkX),
         Math.abs(chunk.chunkY - centerChunkY)
       )
       if (distance <= retainChunkRadius) continue
+      const adjacentRetained: Array<{
+        chunk: GeneratedChunk | undefined
+        direction: CardinalDirection
+      }> = [
+        { chunk: chunks.get(chunkKey(chunk.chunkX, chunk.chunkY - 1)), direction: 'south' },
+        { chunk: chunks.get(chunkKey(chunk.chunkX + 1, chunk.chunkY)), direction: 'west' },
+        { chunk: chunks.get(chunkKey(chunk.chunkX, chunk.chunkY + 1)), direction: 'north' },
+        { chunk: chunks.get(chunkKey(chunk.chunkX - 1, chunk.chunkY)), direction: 'east' },
+      ]
+      for (const adjacent of adjacentRetained) {
+        const neighbor = adjacent.chunk
+        if (!neighbor) continue
+        const neighborKey = chunkKey(neighbor.chunkX, neighbor.chunkY)
+        hydrologyPatches.get(neighborKey)?.delete(adjacent.direction)
+        applyHydrologyPatches(neighbor)
+        reconcileRetainedHydrologyDiagonals([neighbor])
+        reconcileRetainedHydrologyNeighbors(neighbor)
+        changedHydrologyChunks.push(neighbor)
+        if (chunkViews.has(neighborKey)) renderChunk(neighbor)
+      }
       const view = chunkViews.get(key)
       if (view) {
         chunkLayer.removeChild(view.container)
@@ -2006,16 +2252,23 @@ export async function createGame(
         chunkViews.delete(key)
       }
       chunks.delete(key)
+      hydrologyBaselines.delete(key)
+      hydrologyPatches.delete(key)
       authoredEntityLifecycle.releaseChunk(key)
       updateAuthoredEntityDiagnostics()
       topologyResolver.release(chunk.chunkX, chunk.chunkY)
+      hydrologyResolver.release(chunk.chunkX, chunk.chunkY)
+      changedHydrologyChunks.push(chunk)
       roadMasks.delete(key)
       riverMasks.delete(key)
       bridgeMasks.delete(key)
       dirtyFog.delete(key)
       evicted = true
     }
-    if (evicted) redrawWorldFog()
+    if (evicted) {
+      emitHydrologyChange('chunk-evicted', changedHydrologyChunks)
+      redrawWorldFog()
+    }
   }
 
   const getChunkForCell = (cellX: number, cellY: number) => {
@@ -2042,6 +2295,47 @@ export async function createGame(
       areaId: chunk.areaIds[chunk.authoredArea[index]!] ?? '',
       region: REGION_NAME[chunk.region[index]!] ?? 'frontier',
       topology: topologyResolver.resolveCell(chunk.chunkX, chunk.chunkY, index),
+    }
+  }
+
+  const queryHydrologyCell = (cellX: number, cellY: number): WorldHydrologyCellQuery | null => {
+    if (destroyed || !Number.isInteger(cellX) || !Number.isInteger(cellY)) return null
+    const data = getCellData(cellX, cellY)
+    if (!data) return null
+    const direction = data.chunk.flowDirection[data.index]!
+    const [dx, dy] = HYDROLOGY_DIRECTIONS[direction] ?? [0, 0]
+    const downstream = direction < 0 ? null : { x: cellX + dx, y: cellY + dy }
+    const localX = cellX - data.chunk.originX
+    const localY = cellY - data.chunk.originY
+    const cellKey = chunkKey(data.chunk.chunkX, data.chunk.chunkY)
+    let state: WorldHydrologyCellQuery['state'] = 'provisional'
+    for (const patch of hydrologyPatches.get(cellKey)?.values() ?? []) {
+      if (
+        localX >= patch.x &&
+        localY >= patch.y &&
+        localX < patch.x + patch.width &&
+        localY < patch.y + patch.height
+      ) {
+        state = 'reconciled'
+        break
+      }
+    }
+    return {
+      x: cellX,
+      y: cellY,
+      flowDirection: direction,
+      downstream,
+      downstreamLoaded: downstream ? Boolean(getCellData(downstream.x, downstream.y)) : null,
+      flowAccumulation: data.chunk.flowAccumulation[data.index]!,
+      slope: data.chunk.slope[data.index]! / 255,
+      depression: data.chunk.depression[data.index]! / 255,
+      water: isWaterBiomeCode(data.chunk.biomes[data.index]!),
+      watershedId: hydrologyResolver.resolveComponent(
+        data.chunk.chunkX,
+        data.chunk.chunkY,
+        data.chunk.watershed[data.index]!
+      ),
+      state,
     }
   }
 
@@ -2710,7 +3004,11 @@ export async function createGame(
           authoredEntityLifecycle.restore(snapshot.authoredEntities)
           updateAuthoredEntityDiagnostics()
           topologyResolver.rehydrate(snapshot.topology)
+          hydrologyResolver.rehydrate(snapshot.drainage ?? emptyCrossChunkHydrologySnapshot())
           app.canvas.dataset.topologyRestoredAliases = String(snapshot.topology.aliases.length)
+          app.canvas.dataset.hydrologyRestoredAliases = String(
+            snapshot.drainage?.aliases.length ?? 0
+          )
           window.localStorage.setItem('alohayo-world:locale', locale)
         }
       }
@@ -3285,6 +3583,20 @@ export async function createGame(
     closeMenu() {
       gameUi?.closeMenu()
     },
+    queryHydrologyCell,
+    getRiverGraph(): WorldRiverGraphSnapshot {
+      return {
+        schemaVersion: 1,
+        completeness: 'reconciled-seams',
+        revision: hydrologyRevision,
+        segments: destroyed ? [] : hydrologyResolver.segments(),
+      }
+    },
+    subscribeHydrology(listener) {
+      if (destroyed) return () => {}
+      hydrologyChangeListeners.add(listener)
+      return () => hydrologyChangeListeners.delete(listener)
+    },
     async listSaves() {
       return saveStore.list()
     },
@@ -3348,6 +3660,11 @@ export async function createGame(
     async destroy() {
       if (destroyed) return
       destroyed = true
+      emitHydrologyChange(
+        'chunk-evicted',
+        Array.from(chunks.values(), ({ chunkX, chunkY }) => ({ chunkX, chunkY }))
+      )
+      hydrologyChangeListeners.clear()
       emitLifecycle('destroyed')
       if (autosaveTimer !== null) {
         window.clearTimeout(autosaveTimer)
