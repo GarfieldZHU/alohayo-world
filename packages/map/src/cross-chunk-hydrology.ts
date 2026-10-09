@@ -22,8 +22,30 @@ export interface RetainedHydrologyRaster {
   water: Uint8Array
 }
 
+interface RetainedHydrologyBaseline {
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+}
+
+interface RetainedHydrologyCell {
+  key: string
+  raster: RetainedHydrologyRaster
+  index: number
+  x: number
+  y: number
+}
+
+interface AccumulationDeltaSeed {
+  x: number
+  y: number
+  amount: number
+}
+
 export interface HydrologySeamPair {
+  /** Source offset for the selected handoff; equals the left offset for left-to-right flow. */
   offset: number
+  leftOffset: number
+  rightOffset: number
   left: DrainageEdgeSample
   right: DrainageEdgeSample
   flow: 'left-to-right' | 'right-to-left' | null
@@ -278,10 +300,20 @@ function targetKind(
   return sample.upstreamCount >= 2 ? 'confluence' : 'channel'
 }
 
+function flowCrossesEdge(direction: number, edge: CardinalDirection) {
+  const [flowX, flowY] = HYDROLOGY_DIRECTIONS[direction] ?? [0, 0]
+  const [edgeX, edgeY] = ADJACENT[edge]
+  return edgeX === 0 ? flowY === edgeY : flowX === edgeX
+}
+
+function targetOffsetForEdge(sourceOffset: number, direction: number, edge: CardinalDirection) {
+  const [flowX, flowY] = HYDROLOGY_DIRECTIONS[direction] ?? [0, 0]
+  return sourceOffset + (edge === 'east' || edge === 'west' ? flowY : flowX)
+}
+
 /**
- * Reconciles one cardinal seam without looking beyond the two edge summaries. Every edge
- * cell is paired by offset; a valid handoff is one-way (an upstream sample crosses while
- * its downstream neighbor receives), never a pair of opposing frontier flows.
+ * Reconciles one cardinal seam without looking beyond the two edge summaries. Diagonal
+ * handoffs adjust the receiving edge offset so single-seam D8 flows remain connected.
  */
 export function reconcileDrainageSeam(args: {
   left: ChunkDrainageSummary
@@ -299,10 +331,41 @@ export function reconcileDrainageSeam(args: {
   }
   const tolerance = Math.max(0, args.elevationTolerance ?? 1 / 255)
   const opposite = OPPOSITE[direction]
+  const leftByOffset = samplesByOffset(left.edges[direction])
   const rightByOffset = samplesByOffset(right.edges[opposite])
-  const pairs: HydrologySeamPair[] = []
-  for (const leftSample of left.edges[direction]) {
-    const rightSample = rightByOffset.get(leftSample.localOffset)
+  const pairsByOffset = new Map<string, HydrologySeamPair>()
+  const addPair = (
+    leftOffset: number,
+    rightOffset: number,
+    leftSample: DrainageEdgeSample,
+    rightSample: DrainageEdgeSample,
+    flow: HydrologySeamPair['flow']
+  ) => {
+    const key = `${leftOffset}:${rightOffset}`
+    if (pairsByOffset.has(key)) return
+    const leftFlows = flow === 'left-to-right'
+    const source = leftFlows ? leftSample : rightSample
+    const target = leftFlows ? rightSample : leftSample
+    const targetReturnsAcross = flowCrossesEdge(target.direction, leftFlows ? opposite : direction)
+    pairsByOffset.set(key, {
+      offset: leftFlows ? leftOffset : rightOffset,
+      leftOffset,
+      rightOffset,
+      left: leftSample,
+      right: rightSample,
+      flow,
+      consistent: Boolean(
+        flow &&
+        !source.water &&
+        source.accumulation > 0 &&
+        !targetReturnsAcross &&
+        (target.water || source.accumulation <= target.accumulation) &&
+        source.filledElevation + tolerance >= target.filledElevation
+      ),
+    })
+  }
+  for (const [offset, leftSample] of leftByOffset) {
+    const rightSample = rightByOffset.get(offset)
     if (!rightSample) continue
     const leftFlowsAcross =
       leftSample.crossesFrontier && leftSample.direction === FLOW_DIRECTION[direction]
@@ -314,23 +377,42 @@ export function reconcileDrainageSeam(args: {
         : leftFlowsAcross
           ? 'left-to-right'
           : 'right-to-left'
-    const source = flow === 'left-to-right' ? leftSample : rightSample
-    const target = flow === 'left-to-right' ? rightSample : leftSample
-    pairs.push({
-      offset: leftSample.localOffset,
-      left: leftSample,
-      right: rightSample,
-      flow,
-      consistent: Boolean(
-        flow &&
-        !source.water &&
-        source.accumulation > 0 &&
-        (target.water || source.accumulation <= target.accumulation) &&
-        source.filledElevation + tolerance >= target.filledElevation
-      ),
-    })
+    addPair(offset, offset, leftSample, rightSample, flow)
   }
-  pairs.sort((a, b) => a.offset - b.offset)
+  for (const [sourceOffset, source] of leftByOffset) {
+    if (
+      !source.crossesFrontier ||
+      !DIAGONAL_DIRECTIONS[source.direction] ||
+      !flowCrossesEdge(source.direction, direction)
+    ) {
+      continue
+    }
+    const targetOffset = targetOffsetForEdge(sourceOffset, source.direction, direction)
+    const target = rightByOffset.get(targetOffset)
+    if (targetOffset < 0 || targetOffset >= left.chunkSize || !target) continue
+    addPair(sourceOffset, targetOffset, source, target, 'left-to-right')
+  }
+  for (const [sourceOffset, source] of rightByOffset) {
+    if (
+      !source.crossesFrontier ||
+      !DIAGONAL_DIRECTIONS[source.direction] ||
+      !flowCrossesEdge(source.direction, opposite)
+    ) {
+      continue
+    }
+    const targetOffset = targetOffsetForEdge(sourceOffset, source.direction, opposite)
+    const target = leftByOffset.get(targetOffset)
+    if (targetOffset < 0 || targetOffset >= left.chunkSize || !target) continue
+    addPair(targetOffset, sourceOffset, target, source, 'right-to-left')
+  }
+  const pairs = Array.from(pairsByOffset.values())
+  pairs.sort(
+    (a, b) =>
+      a.offset - b.offset ||
+      a.leftOffset - b.leftOffset ||
+      a.rightOffset - b.rightOffset ||
+      (a.flow ?? '').localeCompare(b.flow ?? '')
+  )
   return {
     leftChunk: { chunkX: left.chunkX, chunkY: left.chunkY },
     rightChunk: { chunkX: right.chunkX, chunkY: right.chunkY },
@@ -349,6 +431,10 @@ export class CrossChunkHydrologyResolver {
   private readonly parents = new Map<string, string>()
   private readonly summaries = new Map<string, ChunkDrainageSummary>()
   private readonly rasters = new Map<string, RetainedHydrologyRaster>()
+  private readonly rasterBaselines = new Map<string, RetainedHydrologyBaseline>()
+  private readonly correctedMasks = new Map<string, Uint8Array>()
+  private readonly correctedCellIndices = new Map<string, Uint32Array>()
+  private readonly propagatedAccumulationDeltas = new Map<string, number>()
   private retainedRasterChunkSize: number | null = null
   private readonly seams = new Map<string, HydrologySeamResult>()
   private readonly diagonalSegments = new Map<
@@ -386,7 +472,196 @@ export class CrossChunkHydrologyResolver {
       throw new RangeError('retained hydrology chunks must use matching dimensions')
     }
     this.retainedRasterChunkSize = raster.chunkSize
-    this.rasters.set(`${raster.chunkX},${raster.chunkY}`, raster)
+    const key = `${raster.chunkX},${raster.chunkY}`
+    this.rasters.set(key, raster)
+    if (!this.rasterBaselines.has(key)) {
+      this.rasterBaselines.set(key, {
+        flowDirection: raster.flowDirection.slice(),
+        flowAccumulation: raster.flowAccumulation.slice(),
+      })
+    }
+    if (!this.correctedMasks.has(key)) this.correctedMasks.set(key, new Uint8Array(size))
+  }
+
+  setCorrectedMask(chunkX: number, chunkY: number, mask: Uint8Array) {
+    const key = `${chunkX},${chunkY}`
+    const raster = this.rasters.get(key)
+    if (!raster || mask.length !== raster.chunkSize * raster.chunkSize) {
+      throw new RangeError('hydrology corrected mask must match a retained chunk')
+    }
+    this.correctedMasks.set(key, mask)
+    const correctedIndices: number[] = []
+    for (let index = 0; index < mask.length; index += 1) {
+      if (mask[index]) correctedIndices.push(index)
+    }
+    this.correctedCellIndices.set(key, Uint32Array.from(correctedIndices))
+  }
+
+  revertRetainedAccumulationDeltas() {
+    for (const [token, amount] of this.propagatedAccumulationDeltas) {
+      const separator = token.lastIndexOf(':')
+      const key = token.slice(0, separator)
+      const index = Number(token.slice(separator + 1))
+      const raster = this.rasters.get(key)
+      if (
+        !raster ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= raster.flowAccumulation.length
+      ) {
+        continue
+      }
+      raster.flowAccumulation[index] = Math.max(
+        0,
+        Math.min(0xffff_ffff, raster.flowAccumulation[index]! - amount)
+      )
+    }
+    this.propagatedAccumulationDeltas.clear()
+  }
+
+  recomputeRetainedAccumulationDeltas() {
+    this.revertRetainedAccumulationDeltas()
+    const currentSeeds: AccumulationDeltaSeed[] = []
+    const baselineSeeds: AccumulationDeltaSeed[] = []
+    let correctedCells = 0
+    for (const [key, raster] of this.rasters) {
+      const mask = this.correctedMasks.get(key)
+      const correctedIndices = this.correctedCellIndices.get(key)
+      const baseline = this.rasterBaselines.get(key)
+      if (!mask || !correctedIndices || !baseline) continue
+      correctedCells += correctedIndices.length
+      const originX = raster.chunkX * raster.chunkSize
+      const originY = raster.chunkY * raster.chunkSize
+      for (const index of correctedIndices) {
+        const x = originX + (index % raster.chunkSize)
+        const y = originY + Math.floor(index / raster.chunkSize)
+        const currentDirection = raster.flowDirection[index]!
+        const baselineDirection = baseline.flowDirection[index]!
+        if (currentDirection >= 0) {
+          const [dx, dy] = HYDROLOGY_DIRECTIONS[currentDirection] ?? [0, 0]
+          const target = this.retainedCellAt(x + dx, y + dy)
+          if (
+            target &&
+            !this.correctedMasks.get(target.key)?.[target.index] &&
+            raster.flowAccumulation[index]! > 0
+          ) {
+            currentSeeds.push({
+              x: target.x,
+              y: target.y,
+              amount: raster.flowAccumulation[index]!,
+            })
+          }
+        }
+        if (baselineDirection >= 0) {
+          const [dx, dy] = HYDROLOGY_DIRECTIONS[baselineDirection] ?? [0, 0]
+          const target = this.retainedCellAt(x + dx, y + dy)
+          if (
+            target &&
+            !this.correctedMasks.get(target.key)?.[target.index] &&
+            baseline.flowAccumulation[index]! > 0
+          ) {
+            baselineSeeds.push({
+              x: target.x,
+              y: target.y,
+              amount: -baseline.flowAccumulation[index]!,
+            })
+          }
+        }
+      }
+    }
+    const currentVisited = this.propagateAccumulationSeeds(
+      currentSeeds,
+      (cell) => cell.raster.flowDirection[cell.index]!
+    )
+    const baselineVisited = this.propagateAccumulationSeeds(baselineSeeds, (cell) => {
+      return this.rasterBaselines.get(cell.key)?.flowDirection[cell.index] ?? -1
+    })
+    for (const [token, amount] of this.propagatedAccumulationDeltas) {
+      if (amount === 0) this.propagatedAccumulationDeltas.delete(token)
+    }
+    return {
+      correctedCells,
+      seedCount: currentSeeds.length + baselineSeeds.length,
+      visitedCells: currentVisited + baselineVisited,
+      changedCells: this.propagatedAccumulationDeltas.size,
+    }
+  }
+
+  private retainedCellAt(x: number, y: number): RetainedHydrologyCell | null {
+    const chunkSize = this.retainedRasterChunkSize
+    if (chunkSize === null) return null
+    const chunkX = Math.floor(x / chunkSize)
+    const chunkY = Math.floor(y / chunkSize)
+    const key = `${chunkX},${chunkY}`
+    const raster = this.rasters.get(key)
+    if (!raster) return null
+    const localX = x - chunkX * chunkSize
+    const localY = y - chunkY * chunkSize
+    return { key, raster, index: localY * chunkSize + localX, x, y }
+  }
+
+  private propagateAccumulationSeeds(
+    seeds: AccumulationDeltaSeed[],
+    directionAt: (cell: RetainedHydrologyCell) => number
+  ) {
+    if (seeds.length === 0) return 0
+    seeds.sort((a, b) => a.y - b.y || a.x - b.x || a.amount - b.amount)
+    const nodes = new Map<string, { cell: RetainedHydrologyCell; downstream: string | null }>()
+    const pendingCells = seeds.flatMap((seed) => {
+      const cell = this.retainedCellAt(seed.x, seed.y)
+      return cell ? [cell] : []
+    })
+    for (let cursor = 0; cursor < pendingCells.length; cursor += 1) {
+      const cell = pendingCells[cursor]!
+      const token = `${cell.key}:${cell.index}`
+      if (nodes.has(token)) continue
+      const direction = directionAt(cell)
+      const vector = HYDROLOGY_DIRECTIONS[direction]
+      const downstreamCell = vector
+        ? this.retainedCellAt(cell.x + vector[0], cell.y + vector[1])
+        : null
+      const downstream = downstreamCell ? `${downstreamCell.key}:${downstreamCell.index}` : null
+      nodes.set(token, { cell, downstream })
+      if (downstreamCell) pendingCells.push(downstreamCell)
+    }
+
+    const indegree = new Map(Array.from(nodes.keys(), (token) => [token, 0]))
+    for (const node of nodes.values()) {
+      if (node.downstream && nodes.has(node.downstream)) {
+        indegree.set(node.downstream, (indegree.get(node.downstream) ?? 0) + 1)
+      }
+    }
+    const pendingDeltas = new Map<string, number>()
+    for (const seed of seeds) {
+      const cell = this.retainedCellAt(seed.x, seed.y)
+      if (!cell) continue
+      const token = `${cell.key}:${cell.index}`
+      pendingDeltas.set(token, (pendingDeltas.get(token) ?? 0) + seed.amount)
+    }
+    const ready = Array.from(nodes.keys()).filter((token) => indegree.get(token) === 0)
+    let processedCells = 0
+    for (let cursor = 0; cursor < ready.length; cursor += 1) {
+      const token = ready[cursor]!
+      const node = nodes.get(token)!
+      processedCells += 1
+      const requestedDelta = pendingDeltas.get(token) ?? 0
+      const current = node.cell.raster.flowAccumulation[node.cell.index]!
+      const next = Math.max(0, Math.min(0xffff_ffff, current + requestedDelta))
+      const appliedDelta = next - current
+      node.cell.raster.flowAccumulation[node.cell.index] = next
+      if (appliedDelta !== 0) {
+        this.propagatedAccumulationDeltas.set(
+          token,
+          (this.propagatedAccumulationDeltas.get(token) ?? 0) + appliedDelta
+        )
+      }
+      if (!node.downstream || !nodes.has(node.downstream)) continue
+      pendingDeltas.set(node.downstream, (pendingDeltas.get(node.downstream) ?? 0) + appliedDelta)
+      const remainingIndegree = (indegree.get(node.downstream) ?? 1) - 1
+      indegree.set(node.downstream, remainingIndegree)
+      if (remainingIndegree === 0) ready.push(node.downstream)
+    }
+    return processedCells
   }
 
   reconcile(left: ChunkDrainageSummary, right: ChunkDrainageSummary, direction: CardinalDirection) {
@@ -502,9 +777,13 @@ export class CrossChunkHydrologyResolver {
   }
 
   release(chunkX: number, chunkY: number) {
+    this.revertRetainedAccumulationDeltas()
     const key = `${chunkX},${chunkY}`
     this.summaries.delete(key)
     this.rasters.delete(key)
+    this.rasterBaselines.delete(key)
+    this.correctedMasks.delete(key)
+    this.correctedCellIndices.delete(key)
     if (this.rasters.size === 0) this.retainedRasterChunkSize = null
     for (const [seamKey, seam] of this.seams) {
       if (
@@ -550,10 +829,12 @@ export class CrossChunkHydrologyResolver {
         const targetChunk = leftFlows ? seam.rightChunk : seam.leftChunk
         const sourceSample = leftFlows ? pair.left : pair.right
         const targetSample = leftFlows ? pair.right : pair.left
+        const sourceOffset = leftFlows ? pair.leftOffset : pair.rightOffset
+        const targetOffset = leftFlows ? pair.rightOffset : pair.leftOffset
         const sourceDirection = leftFlows ? seam.direction : OPPOSITE[seam.direction]
         const targetDirection = OPPOSITE[sourceDirection]
-        const source = edgeCellWorld(sourceChunk, sourceDirection, pair.offset, seam.chunkSize)
-        const target = edgeCellWorld(targetChunk, targetDirection, pair.offset, seam.chunkSize)
+        const source = edgeCellWorld(sourceChunk, sourceDirection, sourceOffset, seam.chunkSize)
+        const target = edgeCellWorld(targetChunk, targetDirection, targetOffset, seam.chunkSize)
         const identity = this.resolve(sourceChunk.chunkX, sourceChunk.chunkY, sourceSample)
         if (!identity) continue
         const fromKind = sourceKind(sourceSample)
@@ -571,8 +852,8 @@ export class CrossChunkHydrologyResolver {
           target,
           chunkX: sourceChunk.chunkX,
           chunkY: sourceChunk.chunkY,
-          offset: pair.offset,
-          direction: sourceDirection,
+          offset: sourceOffset,
+          direction: GRAPH_DIRECTIONS[sourceSample.direction] ?? sourceDirection,
           accumulation: targetSample.accumulation,
         })
       }

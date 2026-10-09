@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import {
   DEFAULT_DYNAMIC_GEOMORPHOLOGY_CONFIG,
+  CrossChunkHydrologyResolver,
   createDynamicGeomorphologyCorridor,
   createDynamicGeomorphologyState,
   generateChunk,
@@ -98,4 +99,64 @@ it('steps a representative active geomorphology corridor within its broad CI bud
   expect(result.accounting.sedimentResidual).toBe(0)
   expect(result.accounting.waterResidual).toBe(0)
   expect(elapsed).toBeLessThan(100)
+})
+
+it('propagates seam accumulation deltas within a retained downstream corridor budget', () => {
+  const chunkSize = 64
+  const chunkRadius = 24
+  const sourceIndex = 32 * chunkSize + (chunkSize - 1)
+  const resolver = new CrossChunkHydrologyResolver()
+  let sourceRaster: {
+    flowDirection: Int8Array
+    flowAccumulation: Uint32Array
+  } | null = null
+  let farAccumulation: Uint32Array | null = null
+  for (let chunkX = -chunkRadius; chunkX <= chunkRadius; chunkX += 1) {
+    const flowDirection = new Int8Array(chunkSize * chunkSize).fill(-1)
+    const flowAccumulation = new Uint32Array(chunkSize * chunkSize).fill(1)
+    const maxWorldX = chunkRadius * chunkSize + chunkSize - 1
+    for (let localX = 0; localX < chunkSize; localX += 1) {
+      if (chunkX * chunkSize + localX < maxWorldX) {
+        flowDirection[32 * chunkSize + localX] = 0
+      }
+    }
+    if (chunkX === 0) {
+      flowDirection[sourceIndex] = -1
+      sourceRaster = { flowDirection, flowAccumulation }
+    }
+    if (chunkX === chunkRadius) farAccumulation = flowAccumulation
+    resolver.addRaster({
+      chunkX,
+      chunkY: 0,
+      chunkSize,
+      flowDirection,
+      flowAccumulation,
+      watershed: new Uint32Array(chunkSize * chunkSize),
+      water: new Uint8Array(chunkSize * chunkSize),
+    })
+  }
+  if (!sourceRaster) throw new Error('accumulation benchmark source raster was not created')
+  sourceRaster.flowDirection[sourceIndex] = 0
+  sourceRaster.flowAccumulation[sourceIndex] = 1024
+  const correctedMask = new Uint8Array(chunkSize * chunkSize)
+  correctedMask[sourceIndex] = 1
+  resolver.setCorrectedMask(0, 0, correctedMask)
+
+  const samples: number[] = []
+  for (let sample = 0; sample < 12; sample += 1) {
+    const started = performance.now()
+    resolver.recomputeRetainedAccumulationDeltas()
+    const elapsed = performance.now() - started
+    if (sample >= 2) samples.push(elapsed)
+  }
+  samples.sort((a, b) => a - b)
+  const p95 = samples[Math.ceil(samples.length * 0.95) - 1]!
+  console.info('retained accumulation delta benchmark', {
+    retainedChunks: chunkRadius * 2 + 1,
+    downstreamCells: chunkRadius * chunkSize,
+    p95Ms: p95,
+  })
+
+  expect(p95).toBeLessThan(100)
+  expect(farAccumulation?.[32 * chunkSize + (chunkSize - 1)]).toBe(1025)
 })

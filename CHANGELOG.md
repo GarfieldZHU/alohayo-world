@@ -4,8 +4,11 @@
 
 - Expand the retained hydrology graph from seam links to threshold-selected per-cell D8
   segments for loaded chunks, with explicit unloaded-frontier endpoints and a 16,384 segment
-  cap. Keep the public query surface read-only; upstream accumulation-delta propagation and
-  river graph consumers remain tracked by #38.
+  cap. Keep the public query surface read-only; river graph consumers remain tracked by #38.
+
+- Propagate signed accumulation changes from corrected seam patches along only the affected
+  retained D8 downstream paths, with saturating `Uint32` updates and idempotent recomposition.
+  The correction stops at unloaded frontiers; graph consumers remain tracked by #38.
 
 - Reconcile retained cardinal chunk hydrology in the worker over canonical pair windows,
   transfer bounded eight-cell seam patches, compose corner overlaps in fixed order, ignore
@@ -13,8 +16,8 @@
   Persist a bounded versioned `watershed:` alias ledger and migrate older schema-one saves.
   Expose retained-cell queries, hydrology change events, and stable cardinal/diagonal seam
   segments through `GameHandle`. Browser checks cover the Wasm pair path and save restart;
-  within-chunk river continuity, accumulation-delta propagation, and retained-horizon
-  performance evidence remain tracked by #38.
+  global frontier continuity, gameplay consumers, streamed-travel identity, and
+  retained-horizon browser performance evidence remain tracked by #38.
 
 - Add the first closeable follow-up contracts for issues #57, #60, #61, #62, #63, and
   #64: seasonal geomorphology forcing/proposals with bounded save validation, deterministic

@@ -343,6 +343,17 @@ export async function createGame(
   let hydrologyRevision = 0
   let hydrologyGraphCache: WorldRiverGraphSnapshot | null = null
   let hydrologyGraphBuildCount = 0
+  const recomputeRetainedHydrologyAccumulation = () => {
+    const startedAt = performance.now()
+    const diagnostics = hydrologyResolver.recomputeRetainedAccumulationDeltas()
+    hydrologyCanvas.dataset.hydrologyAccumulationPropagationMs = Math.max(
+      0,
+      performance.now() - startedAt
+    ).toFixed(2)
+    hydrologyCanvas.dataset.hydrologyAccumulationCorrectedCells = String(diagnostics.correctedCells)
+    hydrologyCanvas.dataset.hydrologyAccumulationVisitedCells = String(diagnostics.visitedCells)
+    hydrologyCanvas.dataset.hydrologyAccumulationChangedCells = String(diagnostics.changedCells)
+  }
   const emitHydrologyChange = (
     type: WorldHydrologyChangeEvent['type'],
     changedChunks: Array<{ chunkX: number; chunkY: number }>
@@ -2001,15 +2012,23 @@ export async function createGame(
     const key = chunkKey(chunk.chunkX, chunk.chunkY)
     const baseline = hydrologyBaselines.get(key)
     if (!baseline) return
+    hydrologyResolver.revertRetainedAccumulationDeltas()
     restoreHydrologyBaseline(chunk, baseline)
     const patches = hydrologyPatches.get(key)
+    const correctedMask = new Uint8Array(chunk.chunkSize * chunk.chunkSize)
     if (patches) {
       for (const direction of HYDROLOGY_PATCH_ORDER) {
         const patch = patches.get(direction)
-        if (patch) applyHydrologySeamPatch(chunk, patch)
+        if (!patch) continue
+        applyHydrologySeamPatch(chunk, patch)
+        for (let row = 0; row < patch.height; row += 1) {
+          const start = (patch.y + row) * chunk.chunkSize + patch.x
+          correctedMask.fill(1, start, start + patch.width)
+        }
       }
       if (patches.size > 0) chunk.drainageSummary.state = 'reconciled'
     }
+    hydrologyResolver.setCorrectedMask(chunk.chunkX, chunk.chunkY, correctedMask)
     hydrologyResolver.add(chunk.drainageSummary)
   }
 
@@ -2083,6 +2102,7 @@ export async function createGame(
         applyHydrologyPatches(second)
         hydrologyResolver.reconcile(first.drainageSummary, second.drainageSummary, direction)
         reconcileRetainedHydrologyDiagonals([first, second])
+        recomputeRetainedHydrologyAccumulation()
         for (const chunk of [first, second]) {
           const key = chunkKey(chunk.chunkX, chunk.chunkY)
           if (chunkViews.has(key)) renderChunk(chunk)
@@ -2155,6 +2175,7 @@ export async function createGame(
           watershed: chunk.watershed,
           water: Uint8Array.from(chunk.biomes, (biome) => Number(isWaterBiomeCode(biome))),
         })
+        recomputeRetainedHydrologyAccumulation()
         reconcileRetainedHydrologyDiagonals([chunk])
         emitHydrologyChange('chunk-loaded', [chunk])
         if (!discovery.has(key))
@@ -2238,6 +2259,7 @@ export async function createGame(
         Math.abs(chunk.chunkY - centerChunkY)
       )
       if (distance <= retainChunkRadius) continue
+      if (!evicted) hydrologyResolver.revertRetainedAccumulationDeltas()
       const adjacentRetained: Array<{
         chunk: GeneratedChunk | undefined
         direction: CardinalDirection
@@ -2279,6 +2301,7 @@ export async function createGame(
       evicted = true
     }
     if (evicted) {
+      recomputeRetainedHydrologyAccumulation()
       emitHydrologyChange('chunk-evicted', changedHydrologyChunks)
       redrawWorldFog()
     }

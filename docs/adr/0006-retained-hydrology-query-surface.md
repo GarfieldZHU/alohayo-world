@@ -17,11 +17,14 @@ Expose read-only hydrology through optional `GameHandle` methods:
 
 Canonical watershed identities come from the map-owned resolver. Local array labels and
 renderer state do not escape through these queries. The graph is complete for selected river
-links in loaded chunks; accumulation propagation and source-to-mouth traversal beyond the
-retained horizon remain open. Consumers must not treat a frontier as proof that a river ends.
+links in loaded chunks. Signed corrections propagate along loaded downstream paths; globally
+authoritative inflow/outflow and source-to-mouth traversal beyond the retained horizon remain
+open. Consumers must not treat a frontier as proof that a river ends.
 
-`GameHandle.destroy()` clears subscriptions with the rest of the runtime. The API is
-read-only; it does not add network persistence or let consumers mutate hydrology.
+The resolver propagates signed seam accumulation deltas through loaded downstream D8 paths
+and stops at explicit unknown frontiers. `GameHandle.destroy()` clears subscriptions with the
+rest of the runtime. The API is read-only; it does not add network persistence or let
+consumers mutate hydrology.
 
 ## Consequences
 

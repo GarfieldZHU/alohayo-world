@@ -105,14 +105,16 @@ Current behavior:
 - persistent cross-chunk land/water aliases with deterministic merge events;
 - halo-aware hydrology with worker-based cardinal pair reconciliation, bounded seam patches,
   and a persisted watershed alias ledger;
+- stable retained-chunk D8 river graph links, single-seam diagonal handoffs, explicit unloaded
+  frontiers, and signed accumulation correction through loaded downstream paths;
 - zoom-dependent chunk detail layers;
 - per-cell discovery tracked only for loaded chunks;
 - minimap summaries built from discovered chunk data.
 
 Still pending:
 
-- stable cross-chunk river graph identity, target-aware diagonal handoffs, and upstream
-  accumulation-delta propagation;
+- renderer and gameplay consumers for the retained river graph, plus global outlet continuity
+  beyond the loaded horizon;
 - optional generated-chunk payload caching beyond compact topology, drainage, discovery,
   and lifecycle save state;
 - benchmarked memory budgets for larger retention radii;
@@ -135,10 +137,11 @@ Streamed chunks run this raster over a 16-cell world-coordinate halo and keep on
 terrain/water patches, reducing false chunk-edge outlets and undercounted inflow. Its outer
 edge is still provisional. Retained cardinal neighbors now reconcile through a canonical
 two-chunk worker window and bounded patches; watershed aliases persist in saves. The map
-resolver emits stable cardinal and target-matched diagonal seam segments, and `GameHandle`
-exposes retained cell queries, seam-graph snapshots, and change notifications. Full
-within-chunk graph links, renderer integration, and upstream discharge propagation remain in
-issue `#38`.
+resolver emits stable retained-cell D8 links, offsets diagonal flows that cross one cardinal
+seam, and labels unloaded targets as frontiers. `GameHandle` exposes retained cell queries,
+bounded graph snapshots, and change notifications. Signed accumulation corrections propagate
+through loaded downstream paths; global frontier continuity and renderer integration remain
+in issue `#38`.
 
 Issue `#38` owns cross-chunk watershed identity and river graph continuity. Issue `#41`
 completed the halo-aware shoreline and GPU fog presentation baseline. Static erosion and

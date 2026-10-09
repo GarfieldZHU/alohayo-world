@@ -61,8 +61,9 @@ This package owns deterministic geography and worker-safe data.
   river tracing. Extend that graph before adding new wetland, floodplain, lake, or
   erosion heuristics.
 - Read `docs/CROSS_CHUNK_HYDROLOGY.md` before issue `#38` work. A fixed halo is provisional;
-  the public graph currently covers validated cardinal/diagonal seam segments only and does
-  not yet prove within-chunk river continuity or upstream accumulation correction.
+  the public graph covers threshold-selected D8 links across retained chunks, with explicit
+  unknown frontiers. Signed seam accumulation corrections propagate through loaded downstream
+  paths, but global frontier continuity and gameplay/render consumers remain open.
 - `drainage-summary.ts` is the worker-safe frontier handoff contract. Its edge samples
   describe the cropped interior of a 16-cell world-coordinate hydrology halo and must remain
   `provisional` until pair reconciliation and the resolver emit canonical aliases.

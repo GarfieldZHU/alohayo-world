@@ -107,6 +107,81 @@ describe('cross-chunk hydrology resolver', () => {
     expect(result.pairs[0]?.consistent).toBe(false)
   })
 
+  it('reconciles a diagonal D8 handoff that crosses only one cardinal seam', () => {
+    const left = cornerSummary(-1, 0, 7, {
+      edge: 'east',
+      offset: 0,
+      sample: { direction: -1, upstreamCount: 0, accumulation: 24 },
+    })
+    const right = cornerSummary(0, 0, 3, {
+      edge: 'west',
+      offset: 1,
+      sample: {
+        direction: 7,
+        upstreamCount: 1,
+        accumulation: 12,
+        crossesFrontier: true,
+      },
+    })
+    const resolver = new CrossChunkHydrologyResolver()
+    const result = resolver.reconcile(left, right, 'east')
+    const handoff = result.pairs.find((pair) => pair.flow === 'right-to-left')
+
+    expect(handoff).toMatchObject({
+      leftOffset: 0,
+      rightOffset: 1,
+      consistent: true,
+    })
+    expect(resolver.segments()).toContainEqual(
+      expect.objectContaining({
+        id: 'river:segment:0,1>-1,0',
+        source: { x: 0, y: 1 },
+        target: { x: -1, y: 0 },
+        direction: 'north-west',
+        identityId: resolver.resolveComponent(0, 0, 3),
+      })
+    )
+    expect(resolver.resolveComponent(0, 0, 3)).toBe(resolver.resolveComponent(-1, 0, 7))
+  })
+
+  it('rejects opposing diagonal D8 handoffs across a cardinal seam', () => {
+    const left = cornerSummary(-1, 0, 7, {
+      edge: 'east',
+      offset: 0,
+      sample: {
+        direction: 4,
+        upstreamCount: 1,
+        accumulation: 12,
+        crossesFrontier: true,
+      },
+    })
+    const right = cornerSummary(0, 0, 3, {
+      edge: 'west',
+      offset: 1,
+      sample: {
+        direction: 7,
+        upstreamCount: 1,
+        accumulation: 12,
+        crossesFrontier: true,
+      },
+    })
+    const resolver = new CrossChunkHydrologyResolver()
+
+    const result = resolver.reconcile(left, right, 'east')
+
+    const opposingHandoff = result.pairs.find(
+      (pair) => pair.leftOffset === 0 && pair.rightOffset === 1
+    )
+    expect(opposingHandoff).toMatchObject({
+      leftOffset: 0,
+      rightOffset: 1,
+      flow: 'left-to-right',
+      consistent: false,
+    })
+    expect(resolver.resolveComponent(-1, 0, 7)).not.toBe(resolver.resolveComponent(0, 0, 3))
+    expect(resolver.segments()).toEqual([])
+  })
+
   it('does not alias a diagonal corner handoff to the wrong cardinal receiver', () => {
     const left = summary(-2, 4, 7)
     const right = summary(-1, 4, 3)
@@ -319,5 +394,52 @@ describe('cross-chunk hydrology resolver', () => {
       targetKind: 'frontier',
       accumulation: 6,
     })
+  })
+
+  it('propagates only the corrected accumulation delta through retained downstream cells', () => {
+    const leftDirection = new Int8Array(9).fill(-1)
+    const leftAccumulation = new Uint32Array(9)
+    leftDirection[5] = 3
+    leftAccumulation[5] = 2
+    const rightDirection = new Int8Array(9).fill(-1)
+    rightDirection[3] = 0
+    rightDirection[4] = 0
+    const rightAccumulation = Uint32Array.from([0, 0, 0, 5, 6, 7, 0, 0, 0])
+    const resolver = new CrossChunkHydrologyResolver()
+    resolver.addRaster({
+      chunkX: -1,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: leftDirection,
+      flowAccumulation: leftAccumulation,
+      watershed: new Uint32Array(9),
+      water: new Uint8Array(9),
+    })
+    resolver.addRaster({
+      chunkX: 0,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: rightDirection,
+      flowAccumulation: rightAccumulation,
+      watershed: new Uint32Array(9),
+      water: new Uint8Array(9),
+    })
+
+    leftDirection[5] = 0
+    leftAccumulation[2] = 5
+    leftAccumulation[5] = 10
+    const correctedMask = new Uint8Array(9)
+    correctedMask[5] = 1
+    resolver.setCorrectedMask(-1, 0, correctedMask)
+    resolver.recomputeRetainedAccumulationDeltas()
+
+    expect(leftAccumulation[2]).toBe(3)
+    expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([15, 16, 17])
+    resolver.recomputeRetainedAccumulationDeltas()
+    expect(leftAccumulation[2]).toBe(3)
+    expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([15, 16, 17])
+    resolver.revertRetainedAccumulationDeltas()
+    expect(leftAccumulation[2]).toBe(5)
+    expect(Array.from(rightAccumulation.slice(3, 6))).toEqual([5, 6, 7])
   })
 })

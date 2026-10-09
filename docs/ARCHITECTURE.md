@@ -10,8 +10,9 @@ worker, event listener, animation callback, texture, and DOM node and releases t
 The `GameHandle` also provides read-only retained hydrology queries for downstream gameplay
 systems. Unknown cells return `null`, watershed IDs are canonical, and the river graph snapshot
 reports `retained-chunks` coverage with a bounded segment list and explicit frontier nodes for
-unloaded downstream cells. Upstream accumulation propagation remains incomplete. Hydrology
-change subscriptions are released by the handle's `destroy` lifecycle.
+unloaded downstream cells. Signed accumulation corrections follow affected retained D8 paths
+and stop at unknown frontiers. Hydrology change subscriptions are released by the handle's
+`destroy` lifecycle.
 
 Simulation uses a fixed 60 Hz clock. Rendering reads snapshots and may interpolate
 without mutating authoritative state. PixiJS is an adapter, never the world model.

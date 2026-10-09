@@ -45,8 +45,9 @@ guards, eviction cleanup, and a persisted `watershed:` alias ledger. The halo an
 windows remain provisional at their outer frontiers. The resolver now exposes stable
 cardinal and target-matched diagonal seam segments through the public hydrology query surface.
 The graph now includes threshold-selected D8 links throughout retained chunks, explicit
-frontier targets for unloaded downstream cells, and a 16,384 segment response cap.
-Downstream accumulation correction and graph-driven rendering are still open.
+frontier targets for unloaded downstream cells, and a 16,384 segment response cap. Corrected
+seam accumulation deltas now propagate through loaded downstream D8 paths with saturating,
+idempotent updates. Graph-driven rendering and other gameplay consumers remain open.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

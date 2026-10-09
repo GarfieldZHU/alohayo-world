@@ -76,10 +76,10 @@
       accumulation, watersheds, and flow-following river source selection.
 - [ ] Issue `#38` cross-chunk drainage: deterministic 16-cell halo generation, worker pair
       reconciliation, eight-cell seam patches, retained resolver aliases, save migration,
-      browser restart coverage, public retained-cell queries, change events, and stable
-      cardinal/diagonal seam segments are implemented. Within-chunk graph continuity,
-      accumulation correction, browser travel proof, and retained-horizon performance
-      evidence remain open.
+      browser restart coverage, public retained-cell queries, change events, stable
+      retained-chunk D8 graph links, and signed downstream accumulation deltas are implemented.
+      Consumer integration, graph identity across streamed travel, and retained-horizon
+      browser performance evidence remain open.
 - [x] Deterministic erosion-risk, sediment-load, deposition, and floodplain metadata over
       the drainage graph.
 - [x] Halo-aware natural fog, coastline, lake, estuary/delta material, and downstream river

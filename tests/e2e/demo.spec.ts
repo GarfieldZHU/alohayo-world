@@ -325,18 +325,35 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
   await expect(canvas).toHaveAttribute('data-initial-presentation', 'complete', {
     timeout: 20_000,
   })
+  await expect(canvas).toHaveAttribute('data-hydrology-pair-elapsed-ms', /\d/)
   const initialHydrologyIdentity = await page.evaluate(() => {
     const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
-    if (!handle?.queryHydrologyCell) return null
-    for (let y = -256; y <= 256; y += 8) {
-      for (let x = -256; x <= 256; x += 8) {
-        const cell = handle.queryHydrologyCell(x, y)
-        if (cell) return { x, y, watershedId: cell.watershedId }
-      }
+    const segment = handle
+      ?.getRiverGraph?.()
+      .segments.find(
+        (candidate) =>
+          candidate.targetKind !== 'frontier' &&
+          (Math.floor(candidate.source.x / 64) !== Math.floor(candidate.target.x / 64) ||
+            Math.floor(candidate.source.y / 64) !== Math.floor(candidate.target.y / 64))
+      )
+    if (!handle?.queryHydrologyCell || !segment) return null
+    const source = handle.queryHydrologyCell(segment.source.x, segment.source.y)
+    const target = handle.queryHydrologyCell(segment.target.x, segment.target.y)
+    if (!source || !target) return null
+    return {
+      source: segment.source,
+      target: segment.target,
+      sourceWatershedId: source.watershedId,
+      targetWatershedId: target.watershedId,
+      graphIdentityId: segment.identityId,
     }
-    return null
   })
-  if (!initialHydrologyIdentity) throw new Error('initial hydrology query is unavailable')
+  if (!initialHydrologyIdentity)
+    throw new Error('initial cross-chunk hydrology graph is unavailable')
+  expect(initialHydrologyIdentity.sourceWatershedId).toBe(
+    initialHydrologyIdentity.targetWatershedId
+  )
+  expect(initialHydrologyIdentity.graphIdentityId).toBe(initialHydrologyIdentity.sourceWatershedId)
   await expect
     .poll(async () => Number((await canvas.getAttribute('data-topology-aliases')) ?? 0))
     .toBeGreaterThan(0)
@@ -396,17 +413,36 @@ test('rehydrates topology aliases before streamed chunks after a browser restart
     String(savedDrainageLedger?.aliases ?? 0),
     { timeout: 20_000 }
   )
+  await expect(restoredCanvas).toHaveAttribute('data-hydrology-pair-elapsed-ms', /\d/)
   await expect
     .poll(
       () =>
-        page.evaluate(
-          ({ x, y }) =>
-            window.__ALOHAYO_WORLD_E2E_HANDLE__?.queryHydrologyCell?.(x, y)?.watershedId ?? null,
-          initialHydrologyIdentity
-        ),
+        page.evaluate(({ source, target }) => {
+          const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
+          const sourceWatershedId = handle?.queryHydrologyCell?.(source.x, source.y)?.watershedId
+          const targetWatershedId = handle?.queryHydrologyCell?.(target.x, target.y)?.watershedId
+          const segment = handle
+            ?.getRiverGraph?.()
+            .segments.find(
+              (candidate) =>
+                candidate.source.x === source.x &&
+                candidate.source.y === source.y &&
+                candidate.target.x === target.x &&
+                candidate.target.y === target.y
+            )
+          return {
+            sourceWatershedId: sourceWatershedId ?? null,
+            targetWatershedId: targetWatershedId ?? null,
+            graphIdentityId: segment?.identityId ?? null,
+          }
+        }, initialHydrologyIdentity),
       { timeout: 20_000 }
     )
-    .toBe(initialHydrologyIdentity.watershedId)
+    .toEqual({
+      sourceWatershedId: initialHydrologyIdentity.sourceWatershedId,
+      targetWatershedId: initialHydrologyIdentity.targetWatershedId,
+      graphIdentityId: initialHydrologyIdentity.graphIdentityId,
+    })
 })
 
 test('exposes bounded hydrology queries and retained hydrology graph to downstream systems', async ({
@@ -419,6 +455,8 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
     timeout: 45_000,
   })
   await expect(canvas).toHaveAttribute('data-hydrology-graph-coverage', 'retained-chunks')
+  await expect(canvas).toHaveAttribute('data-hydrology-accumulation-propagation-ms', /\d/)
+  await expect(canvas).toHaveAttribute('data-hydrology-pair-elapsed-ms', /\d/)
   const result = await page.evaluate(() => {
     const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__
     const canvas = document.querySelector<HTMLCanvasElement>(
@@ -434,6 +472,38 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       }
     }
     const graph = handle?.getRiverGraph?.() ?? null
+    const seamSegment =
+      graph?.segments.find(
+        (segment) =>
+          segment.targetKind !== 'frontier' &&
+          (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
+            Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
+      ) ?? null
+    const seamSource = seamSegment
+      ? (handle?.queryHydrologyCell?.(seamSegment.source.x, seamSegment.source.y) ?? null)
+      : null
+    const seamTarget = seamSegment
+      ? (handle?.queryHydrologyCell?.(seamSegment.target.x, seamSegment.target.y) ?? null)
+      : null
+    const seamEvidence = seamSegment
+      ? {
+          exactDownstream:
+            seamSource?.downstream?.x === seamSegment.target.x &&
+            seamSource?.downstream?.y === seamSegment.target.y &&
+            seamSource.downstreamLoaded === true,
+          accumulationMatches: seamTarget?.flowAccumulation === seamSegment.accumulation,
+          targetReceivesAtLeastSource:
+            (seamTarget?.flowAccumulation ?? 0) >= (seamSource?.flowAccumulation ?? 0),
+          watershedIdentityMatches:
+            seamSource?.watershedId === seamTarget?.watershedId &&
+            seamSource?.watershedId === seamSegment.identityId,
+          sourceWatershedId: seamSource?.watershedId ?? null,
+          targetWatershedId: seamTarget?.watershedId ?? null,
+          graphIdentityId: seamSegment.identityId,
+          source: seamSegment.source,
+          target: seamSegment.target,
+        }
+      : null
     const graphBuildCount = canvas?.dataset.hydrologyGraphBuildCount ?? null
     const repeatedGraph = handle?.getRiverGraph?.() ?? null
     return {
@@ -441,6 +511,14 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
       unknownCell: handle ? handle.queryHydrologyCell?.(100_000, 100_000) : 'missing-handle',
       fractionalCell: handle ? handle.queryHydrologyCell?.(0.5, 0.5) : 'missing-handle',
       graph,
+      loadedCrossChunkLinks:
+        graph?.segments.filter(
+          (segment) =>
+            segment.targetKind !== 'frontier' &&
+            (Math.floor(segment.source.x / 64) !== Math.floor(segment.target.x / 64) ||
+              Math.floor(segment.source.y / 64) !== Math.floor(segment.target.y / 64))
+        ).length ?? 0,
+      seamEvidence,
       graphCacheStable: graph === repeatedGraph,
       graphBuildCountStable: graphBuildCount === canvas?.dataset.hydrologyGraphBuildCount,
       graphFrozen:
@@ -454,6 +532,10 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
         ),
       graphBuildMs: canvas?.dataset.hydrologyGraphBuildMs ?? null,
       graphSegmentCount: canvas?.dataset.hydrologyGraphSegmentCount ?? null,
+      accumulationPropagationMs: canvas?.dataset.hydrologyAccumulationPropagationMs ?? null,
+      accumulationCorrectedCells: canvas?.dataset.hydrologyAccumulationCorrectedCells ?? null,
+      accumulationVisitedCells: canvas?.dataset.hydrologyAccumulationVisitedCells ?? null,
+      accumulationChangedCells: canvas?.dataset.hydrologyAccumulationChangedCells ?? null,
       canSubscribe: typeof handle?.subscribeHydrology === 'function',
     }
   })
@@ -479,11 +561,24 @@ test('exposes bounded hydrology queries and retained hydrology graph to downstre
     segments: expect.any(Array),
   })
   expect(result.graph?.segments.length).toBeGreaterThan(0)
+  expect(result.loadedCrossChunkLinks).toBeGreaterThan(0)
+  expect(result.seamEvidence).toMatchObject({
+    exactDownstream: true,
+    accumulationMatches: true,
+    targetReceivesAtLeastSource: true,
+    watershedIdentityMatches: true,
+  })
   expect(result.graphCacheStable).toBe(true)
   expect(result.graphBuildCountStable).toBe(true)
   expect(result.graphFrozen).toBe(true)
   expect(Number(result.graphBuildMs)).toBeGreaterThanOrEqual(0)
   expect(Number(result.graphSegmentCount)).toBe(result.graph?.segments.length)
+  expect(Number(result.accumulationPropagationMs)).toBeGreaterThanOrEqual(0)
+  expect(Number(result.accumulationPropagationMs)).toBeLessThan(100)
+  expect(Number(result.accumulationCorrectedCells)).toBeGreaterThanOrEqual(0)
+  expect(Number(result.accumulationVisitedCells)).toBeGreaterThanOrEqual(0)
+  expect(Number(result.accumulationVisitedCells)).toBeGreaterThan(0)
+  expect(Number(result.accumulationChangedCells)).toBeGreaterThanOrEqual(0)
   expect(result.canSubscribe).toBe(true)
   const finalHydrologyEvent = await page.evaluate(async () => {
     const handle = window.__ALOHAYO_WORLD_E2E_HANDLE__

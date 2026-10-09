@@ -988,7 +988,7 @@ export interface GameHandle {
   clearSave?(slotId?: string): Promise<void>
   /** Returns hydrology for a retained cell, or null when the cell is not loaded. */
   queryHydrologyCell?(x: number, y: number): WorldHydrologyCellQuery | null
-  /** Returns stable river segments for reconciled cardinal and diagonal seams. */
+  /** Returns a bounded retained-chunk D8 graph with explicit unknown frontiers. */
   getRiverGraph?(): WorldRiverGraphSnapshot
   /** Subscribe to retained hydrology changes; the returned function removes the listener. */
   subscribeHydrology?(listener: WorldHydrologyChangeListener): () => void
