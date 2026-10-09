@@ -10,6 +10,17 @@ export const CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION = '1' as const
 export const CROSS_CHUNK_HYDROLOGY_MAX_ALIASES = 20_000
 export const CROSS_CHUNK_HYDROLOGY_MAX_SEAMS = 8_192
 export const CROSS_CHUNK_HYDROLOGY_MAX_BYTES = 2 * 1024 * 1024
+export const CROSS_CHUNK_HYDROLOGY_MAX_RIVER_SEGMENTS = 16_384
+
+export interface RetainedHydrologyRaster {
+  chunkX: number
+  chunkY: number
+  chunkSize: number
+  flowDirection: Int8Array
+  flowAccumulation: Uint32Array
+  watershed: Uint32Array
+  water: Uint8Array
+}
 
 export interface HydrologySeamPair {
   offset: number
@@ -55,7 +66,7 @@ export interface CrossChunkRiverSegment {
   sourceNodeId: string
   targetNodeId: string
   sourceKind: 'source' | 'channel' | 'confluence'
-  targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth'
+  targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth' | 'frontier'
   source: { x: number; y: number }
   target: { x: number; y: number }
   chunkX: number
@@ -91,6 +102,14 @@ const DIAGONAL_DIRECTIONS: Record<number, CrossChunkRiverSegment['direction']> =
   5: 'north-east',
   6: 'south-west',
   7: 'north-west',
+}
+
+const GRAPH_DIRECTIONS: Record<number, CrossChunkRiverSegment['direction']> = {
+  0: 'east',
+  1: 'west',
+  2: 'south',
+  3: 'north',
+  ...DIAGONAL_DIRECTIONS,
 }
 
 const EDGE_ORDER: readonly CardinalDirection[] = ['north', 'east', 'south', 'west']
@@ -242,13 +261,19 @@ function riverNodeId(kind: string, point: { x: number; y: number }) {
   return `river:${kind}:${point.x},${point.y}`
 }
 
-function sourceKind(sample: DrainageEdgeSample): CrossChunkRiverSegment['sourceKind'] {
+function sourceKind(
+  sample: Pick<DrainageEdgeSample, 'upstreamCount' | 'accumulation'>
+): CrossChunkRiverSegment['sourceKind'] {
   if (sample.upstreamCount === 0 && sample.accumulation <= 1) return 'source'
   return sample.upstreamCount >= 2 ? 'confluence' : 'channel'
 }
 
-function targetKind(sample: DrainageEdgeSample): CrossChunkRiverSegment['targetKind'] {
+function targetKind(
+  sample: Pick<DrainageEdgeSample, 'water' | 'direction' | 'upstreamCount'>,
+  loaded = true
+): CrossChunkRiverSegment['targetKind'] {
   if (sample.water) return 'mouth'
+  if (!loaded) return 'frontier'
   if (sample.direction < 0) return 'outlet'
   return sample.upstreamCount >= 2 ? 'confluence' : 'channel'
 }
@@ -323,6 +348,8 @@ export function reconcileDrainageSeam(args: {
 export class CrossChunkHydrologyResolver {
   private readonly parents = new Map<string, string>()
   private readonly summaries = new Map<string, ChunkDrainageSummary>()
+  private readonly rasters = new Map<string, RetainedHydrologyRaster>()
+  private retainedRasterChunkSize: number | null = null
   private readonly seams = new Map<string, HydrologySeamResult>()
   private readonly diagonalSegments = new Map<
     string,
@@ -338,6 +365,28 @@ export class CrossChunkHydrologyResolver {
     for (const samples of Object.values(summary.edges)) {
       for (const sample of samples) this.ensure(sampleKey(summary.chunkX, summary.chunkY, sample))
     }
+  }
+
+  addRaster(raster: RetainedHydrologyRaster) {
+    const size = raster.chunkSize * raster.chunkSize
+    if (
+      !Number.isInteger(raster.chunkSize) ||
+      raster.chunkSize < 1 ||
+      raster.flowDirection.length !== size ||
+      raster.flowAccumulation.length !== size ||
+      raster.watershed.length !== size ||
+      raster.water.length !== size
+    ) {
+      throw new RangeError('retained hydrology raster buffers must match the chunk dimensions')
+    }
+    if (
+      this.retainedRasterChunkSize !== null &&
+      this.retainedRasterChunkSize !== raster.chunkSize
+    ) {
+      throw new RangeError('retained hydrology chunks must use matching dimensions')
+    }
+    this.retainedRasterChunkSize = raster.chunkSize
+    this.rasters.set(`${raster.chunkX},${raster.chunkY}`, raster)
   }
 
   reconcile(left: ChunkDrainageSummary, right: ChunkDrainageSummary, direction: CardinalDirection) {
@@ -455,6 +504,8 @@ export class CrossChunkHydrologyResolver {
   release(chunkX: number, chunkY: number) {
     const key = `${chunkX},${chunkY}`
     this.summaries.delete(key)
+    this.rasters.delete(key)
+    if (this.rasters.size === 0) this.retainedRasterChunkSize = null
     for (const [seamKey, seam] of this.seams) {
       if (
         (seam.leftChunk.chunkX === chunkX && seam.leftChunk.chunkY === chunkY) ||
@@ -528,6 +579,120 @@ export class CrossChunkHydrologyResolver {
     }
     segments.push(...Array.from(this.diagonalSegments.values()).flatMap((pair) => pair.segments))
     return segments.sort((a, b) => a.id.localeCompare(b.id))
+  }
+
+  retainedRiverGraph(
+    minimumAccumulation = 1,
+    maxSegments = CROSS_CHUNK_HYDROLOGY_MAX_RIVER_SEGMENTS
+  ) {
+    if (!Number.isFinite(minimumAccumulation) || minimumAccumulation < 0) {
+      throw new RangeError('minimum river accumulation must be a finite non-negative number')
+    }
+    const segmentLimit = Math.max(
+      0,
+      Math.min(
+        CROSS_CHUNK_HYDROLOGY_MAX_RIVER_SEGMENTS,
+        Number.isFinite(maxSegments)
+          ? Math.floor(maxSegments)
+          : CROSS_CHUNK_HYDROLOGY_MAX_RIVER_SEGMENTS
+      )
+    )
+    const upstreamCounts = new Map<string, Uint8Array>()
+    for (const [key, raster] of this.rasters) {
+      upstreamCounts.set(key, new Uint8Array(raster.chunkSize * raster.chunkSize))
+    }
+    for (const raster of this.rasters.values()) {
+      const originX = raster.chunkX * raster.chunkSize
+      const originY = raster.chunkY * raster.chunkSize
+      for (let index = 0; index < raster.flowDirection.length; index += 1) {
+        const direction = raster.flowDirection[index]!
+        const [dx, dy] = HYDROLOGY_DIRECTIONS[direction] ?? [0, 0]
+        if (direction < 0 || (dx === 0 && dy === 0)) continue
+        const targetX = originX + (index % raster.chunkSize) + dx
+        const targetY = originY + Math.floor(index / raster.chunkSize) + dy
+        const targetChunkX = Math.floor(targetX / raster.chunkSize)
+        const targetChunkY = Math.floor(targetY / raster.chunkSize)
+        const targetKey = `${targetChunkX},${targetChunkY}`
+        const targetRaster = this.rasters.get(targetKey)
+        const targetCounts = upstreamCounts.get(targetKey)
+        if (!targetRaster || !targetCounts) continue
+        const localX = targetX - targetChunkX * raster.chunkSize
+        const localY = targetY - targetChunkY * raster.chunkSize
+        const targetIndex = localY * raster.chunkSize + localX
+        const targetCount = targetCounts[targetIndex] ?? 0
+        if (targetCount < 255) targetCounts[targetIndex] = targetCount + 1
+      }
+    }
+
+    const byId = new Map(this.segments().map((segment) => [segment.id, segment]))
+    for (const [key, raster] of this.rasters) {
+      const originX = raster.chunkX * raster.chunkSize
+      const originY = raster.chunkY * raster.chunkSize
+      const counts = upstreamCounts.get(key)!
+      for (let index = 0; index < raster.flowDirection.length; index += 1) {
+        const direction = raster.flowDirection[index]!
+        const vector = HYDROLOGY_DIRECTIONS[direction]
+        const accumulation = raster.flowAccumulation[index]!
+        if (!vector || direction < 0 || raster.water[index] || accumulation < minimumAccumulation) {
+          continue
+        }
+        const [dx, dy] = vector
+        const source = {
+          x: originX + (index % raster.chunkSize),
+          y: originY + Math.floor(index / raster.chunkSize),
+        }
+        const target = { x: source.x + dx, y: source.y + dy }
+        const targetChunkX = Math.floor(target.x / raster.chunkSize)
+        const targetChunkY = Math.floor(target.y / raster.chunkSize)
+        const targetKey = `${targetChunkX},${targetChunkY}`
+        const targetRaster = this.rasters.get(targetKey)
+        const targetIndex =
+          (target.y - targetChunkY * raster.chunkSize) * raster.chunkSize +
+          (target.x - targetChunkX * raster.chunkSize)
+        const targetDirection = targetRaster?.flowDirection[targetIndex] ?? -1
+        const targetUpstreamCount = upstreamCounts.get(targetKey)?.[targetIndex] ?? 0
+        const loaded = Boolean(targetRaster)
+        const fromKind = sourceKind({ upstreamCount: counts[index]!, accumulation })
+        const toKind = targetKind(
+          {
+            water: Boolean(targetRaster?.water[targetIndex]),
+            direction: targetDirection,
+            upstreamCount: targetUpstreamCount,
+          },
+          loaded
+        )
+        const identityId = this.resolveComponent(
+          raster.chunkX,
+          raster.chunkY,
+          raster.watershed[index]!
+        )
+        const sourceNodeId = riverNodeId(fromKind, source)
+        const targetNodeId = riverNodeId(toKind, target)
+        const id = `river:segment:${source.x},${source.y}>${target.x},${target.y}`
+        byId.set(id, {
+          id,
+          identityId,
+          sourceNodeId,
+          targetNodeId,
+          sourceKind: fromKind,
+          targetKind: toKind,
+          source,
+          target,
+          chunkX: raster.chunkX,
+          chunkY: raster.chunkY,
+          offset: index,
+          direction: GRAPH_DIRECTIONS[direction]!,
+          accumulation: targetRaster?.flowAccumulation[targetIndex] ?? accumulation,
+        })
+      }
+    }
+    const segments = Array.from(byId.values()).sort(
+      (a, b) => a.source.y - b.source.y || a.source.x - b.source.x || a.id.localeCompare(b.id)
+    )
+    return {
+      segments: segments.slice(0, segmentLimit),
+      truncated: segments.length > segmentLimit,
+    }
   }
 
   exportSnapshot(): CrossChunkHydrologySnapshot {

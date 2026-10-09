@@ -254,4 +254,70 @@ describe('cross-chunk hydrology resolver', () => {
     expect(resolver.resolveComponent(-3, 2, 11)).toBe('watershed:-3,2:11')
     expect(resolver.exportSnapshot()).toEqual(before)
   })
+
+  it('builds stable retained-cell D8 river links and leaves unknown outlets as frontiers', () => {
+    const leftDirection = new Int8Array(9).fill(-1)
+    const leftAccumulation = new Uint32Array(9)
+    const leftWatershed = new Uint32Array(9).fill(7)
+    const leftWater = new Uint8Array(9)
+    leftDirection[5] = 0
+    leftAccumulation[5] = 6
+    const rightDirection = new Int8Array(9).fill(-1)
+    const rightAccumulation = new Uint32Array(9)
+    const rightWatershed = new Uint32Array(9).fill(3)
+    const rightWater = new Uint8Array(9)
+    rightDirection[3] = 0
+    rightAccumulation[3] = 7
+    rightAccumulation[4] = 7
+
+    const leftRaster = {
+      chunkX: -1,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: leftDirection,
+      flowAccumulation: leftAccumulation,
+      watershed: leftWatershed,
+      water: leftWater,
+    }
+    const rightRaster = {
+      chunkX: 0,
+      chunkY: 0,
+      chunkSize: 3,
+      flowDirection: rightDirection,
+      flowAccumulation: rightAccumulation,
+      watershed: rightWatershed,
+      water: rightWater,
+    }
+    const first = new CrossChunkHydrologyResolver()
+    first.addRaster(rightRaster)
+    first.addRaster(leftRaster)
+    const second = new CrossChunkHydrologyResolver()
+    second.addRaster(leftRaster)
+    second.addRaster(rightRaster)
+    const graph = first.retainedRiverGraph(4)
+
+    expect(graph.truncated).toBe(false)
+    expect(graph.segments).toEqual(second.retainedRiverGraph(4).segments)
+    expect(graph.segments).toContainEqual(
+      expect.objectContaining({
+        id: 'river:segment:-1,1>0,1',
+        sourceNodeId: 'river:channel:-1,1',
+        targetNodeId: 'river:channel:0,1',
+        direction: 'east',
+        targetKind: 'channel',
+        accumulation: 7,
+      })
+    )
+    expect(first.retainedRiverGraph(4, 1)).toMatchObject({ truncated: true })
+    expect(first.retainedRiverGraph(4, -1)).toMatchObject({ segments: [], truncated: true })
+    expect(() => first.retainedRiverGraph(Number.NaN)).toThrow(RangeError)
+
+    const frontier = new CrossChunkHydrologyResolver()
+    frontier.addRaster(leftRaster)
+    expect(frontier.retainedRiverGraph(4).segments[0]).toMatchObject({
+      id: 'river:segment:-1,1>0,1',
+      targetKind: 'frontier',
+      accumulation: 6,
+    })
+  })
 })

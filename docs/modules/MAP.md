@@ -44,8 +44,9 @@ reconciliation, eight-cell seam patches with fixed-order corner composition, sta
 guards, eviction cleanup, and a persisted `watershed:` alias ledger. The halo and pair
 windows remain provisional at their outer frontiers. The resolver now exposes stable
 cardinal and target-matched diagonal seam segments through the public hydrology query surface.
-The river snapshot is seam-only; within-chunk graph links, renderer continuity, and
-downstream accumulation correction are still open.
+The graph now includes threshold-selected D8 links throughout retained chunks, explicit
+frontier targets for unloaded downstream cells, and a 16,384 segment response cap.
+Downstream accumulation correction and graph-driven rendering are still open.
 
 ## Issue #12: Cross-Chunk Topology Delivery Stages
 

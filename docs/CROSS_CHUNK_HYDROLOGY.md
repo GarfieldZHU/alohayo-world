@@ -2,10 +2,10 @@
 
 **Tracking issue:** `#38`  
 **Status:** the provisional halo, worker pair reconciliation, retained seam patch lifecycle,
-bounded persisted alias ledger, public cell queries/change events, and stable cardinal plus
-target-matched diagonal seam segments are implemented. The graph still covers seam links
-only; interior graph construction, accumulation-delta propagation, and full continuity
-proof remain open.
+bounded persisted alias ledger, public cell queries/change events, and stable retained-chunk
+D8 river links are implemented. Unknown downstream cells remain explicit frontier nodes and
+the snapshot is capped at 16,384 segments. Accumulation-delta propagation, full continuity
+proof, and consumer integration remain open.
 
 ## Goal
 
@@ -62,11 +62,12 @@ X, and component number:
 
 - provisional watershed component: `watershed:<chunkX>,<chunkY>:<localComponent>`;
 
-Coordinate-derived cross-chunk segment, source, confluence, outlet, and mouth IDs are emitted
-for validated seam handoffs. The optional `GameHandle` hydrology surface exposes retained
-cell fields, canonical watershed IDs, a `reconciled-seams` graph snapshot, and change events.
-The graph snapshot is explicitly partial; it is not yet a network of every within-chunk cell.
-Split handling and full graph ownership remain pending.
+Coordinate-derived segment and node IDs are emitted for retained D8 links, including source,
+confluence, outlet, mouth, and unloaded-frontier identities. The optional `GameHandle`
+hydrology surface exposes retained cell fields, canonical watershed IDs, a bounded
+`retained-chunks` graph snapshot, and change events. The graph is complete for selected river
+links in loaded chunks; hydrology beyond the retained frontier is unknown. Split handling,
+accumulation propagation, and consumer ownership remain pending.
 
 ## Implemented Foundation
 
@@ -171,14 +172,14 @@ A map-owned resolver consumes summaries and:
 - preserves canonical `watershed:` aliases across eviction/reload using a bounded versioned
   ledger in the world save;
 - releases retained summaries and seam records on eviction while preserving required aliases;
-- exposes canonical watershed lookup and deterministic cardinal/diagonal seam segment
-  summaries inside the map package;
+- exposes canonical watershed lookup and deterministic D8 river links for retained chunk
+  cells, including cardinal and diagonal seams;
 - exposes `GameHandle.queryHydrologyCell`, `getRiverGraph`, and `subscribeHydrology` for
-  downstream systems. Unloaded cells return `null`; graph snapshots declare seam-only
-  coverage; listeners are cleared by `destroy`.
+  downstream systems. Unloaded cells return `null`; graph snapshots declare retained-chunk
+  coverage and cap output at 16,384 segments; listeners are cleared by `destroy`.
 
-Frontier inflow/outflow records, accumulation-delta propagation, split events, full
-within-chunk graph construction, and graph-driven renderer integration are still pending.
+Frontier inflow/outflow records, accumulation-delta propagation, split events, and graph-driven
+renderer integration are still pending.
 
 The resolver may report `provisional` at the retained horizon. It must never call that
 frontier a mouth unless the target is a water cell or a known world outlet.
@@ -199,9 +200,10 @@ from source/confluence/mouth coordinates, not chunk IDs. A segment crossing a se
 for storage but keeps one graph identity and explicit upstream/downstream links.
 
 The renderer can smooth segment points, but collision, bridge placement, flooding, and
-skills should query the unsmoothed graph corridor. The current public graph contains only
-reconciled seam edges; per-cell interior links and source-to-mouth traversal are still
-required before those consumers can treat it as complete.
+skills should query the unsmoothed graph corridor. The current public graph contains per-cell
+D8 links only for retained chunks and marks unloaded downstream cells as frontiers. It does
+not yet propagate corrected discharge through several retained chunks or provide
+source-to-mouth traversal beyond that horizon.
 
 ## Worker Protocol
 
@@ -282,20 +284,23 @@ budgets; hardware/browser-matrix variance and full stream-travel measurements re
 ## Delivery Stages
 
 1. **Contracts and red fixtures.** Summary, pair result, resolver, and load-order fixtures
-   are implemented; stable graph/event/query contracts remain open.
+   plus the seam graph, event, and cell-query contracts are implemented. Interior graph
+   continuity and downstream consumers remain open.
 2. **Provisional halo generation.** Add global-coordinate halo input and interior cropping
    in TypeScript, then preserve Wasm parity.
 3. **Pair reconciliation.** Worker request, deterministic pair bounds, seam patch apply,
-   bounded queue, stale-result guards, and eviction cleanup are implemented; browser
-   performance evidence remains open.
+   stale-result guards, and eviction cleanup are implemented. Browser coverage verifies the
+   Wasm pair path and public API; retained-horizon travel and performance evidence remain
+   open.
 4. **Watershed resolver.** Canonical aliases, bounded persistence, lookup, and eviction
-   cleanup are implemented; public events and downstream cell queries remain open.
-5. **River graph.** Stable nodes/segments, confluences, mouths, accumulation deltas, and
-   downstream consumer queries.
+   cleanup are implemented, with revisioned events and downstream cell queries. Alias
+   splits and consumer integration remain open.
+5. **River graph.** Stable retained-cell nodes/segments, confluences, mouths, frontier
+   identities, accumulation deltas, and downstream consumer queries.
 6. **Runtime/browser proof.** Streamed travel, minimap/inspection refresh, context cleanup,
    performance budgets, CI, Pages, and live verification.
 
-Do not close issue `#38` yet. Closure still requires graph continuity through chunk interiors,
-upstream accumulation-delta propagation, consumers using the query surface, eviction/restart
-graph identity, browser travel proof, and retained-horizon performance evidence in addition to
-the implemented halo, seam lifecycle, and target-aware diagonal segment contracts.
+Do not close issue `#38` yet. Closure still requires upstream accumulation-delta propagation,
+consumer integration, eviction/restart graph identity, browser travel proof, and
+retained-horizon performance evidence in addition to the implemented halo, seam lifecycle,
+and retained-chunk D8 graph.

@@ -1,7 +1,7 @@
 # Repository Architecture
 
-> **Wiki page version:** EN 1.7.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-10-09
-> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.7.0
+> **Wiki page version:** EN 1.8.0 · **Product baseline:** v0.1.3 · **Updated:** 2026-10-09
+> **中文:** [仓库架构](Repository-Architecture-zh-CN) · **Translation status:** synced with EN 1.8.0
 
 ## Dependency Direction
 
@@ -68,9 +68,9 @@ small lazy API. The blog or standalone app is a host, not a gameplay authority.
   remain an additive asset seam for the next visual phase (#63).
 - Cross-chunk hydrology now has a read-only `GameHandle` query surface. Loaded cells return
   drainage fields with canonical watershed IDs; unknown cells return `null`. River graph
-  snapshots contain stable cardinal and target-matched diagonal seam links and declare their
-  partial coverage. Chunk load, seam reconciliation, and eviction emit revisioned events.
-  Interior graph links and upstream discharge propagation remain in #38.
+  snapshots contain stable D8 links for retained chunks, cap output at 16,384 segments, and
+  mark unloaded downstream cells as frontiers. Chunk load, seam reconciliation, and eviction
+  emit revisioned events. Upstream discharge propagation remains in #38.
 
 ## Rust/Wasm Boundary
 

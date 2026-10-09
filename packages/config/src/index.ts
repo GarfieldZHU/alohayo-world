@@ -1016,18 +1016,18 @@ export interface WorldHydrologyCellQuery {
 }
 
 export interface WorldRiverGraphSegment {
-  id: string
-  identityId: string
-  sourceNodeId: string
-  targetNodeId: string
-  sourceKind: 'source' | 'channel' | 'confluence'
-  targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth'
-  source: WorldCellCoordinate
-  target: WorldCellCoordinate
-  chunkX: number
-  chunkY: number
-  offset: number
-  direction:
+  readonly id: string
+  readonly identityId: string
+  readonly sourceNodeId: string
+  readonly targetNodeId: string
+  readonly sourceKind: 'source' | 'channel' | 'confluence'
+  readonly targetKind: 'channel' | 'confluence' | 'outlet' | 'mouth' | 'frontier'
+  readonly source: Readonly<WorldCellCoordinate>
+  readonly target: Readonly<WorldCellCoordinate>
+  readonly chunkX: number
+  readonly chunkY: number
+  readonly offset: number
+  readonly direction:
     | 'north'
     | 'east'
     | 'south'
@@ -1036,15 +1036,16 @@ export interface WorldRiverGraphSegment {
     | 'south-east'
     | 'south-west'
     | 'north-west'
-  accumulation: number
+  readonly accumulation: number
 }
 
 export interface WorldRiverGraphSnapshot {
-  schemaVersion: 1
-  /** Current graph coverage is limited to reconciled cardinal and diagonal seam links. */
-  completeness: 'reconciled-seams'
-  revision: number
-  segments: WorldRiverGraphSegment[]
+  readonly schemaVersion: 1
+  /** The graph covers retained chunk rasters; unknown downstream frontiers stay explicit. */
+  readonly completeness: 'retained-chunks'
+  readonly truncated: boolean
+  readonly revision: number
+  readonly segments: readonly WorldRiverGraphSegment[]
 }
 
 export interface WorldHydrologyChangeEvent {

@@ -157,6 +157,7 @@ export {
 export {
   CROSS_CHUNK_HYDROLOGY_MAX_BYTES,
   CROSS_CHUNK_HYDROLOGY_MAX_ALIASES,
+  CROSS_CHUNK_HYDROLOGY_MAX_RIVER_SEGMENTS,
   CROSS_CHUNK_HYDROLOGY_MAX_SEAMS,
   CROSS_CHUNK_HYDROLOGY_RESOLVER_VERSION,
   CROSS_CHUNK_HYDROLOGY_SCHEMA_VERSION,
@@ -171,6 +172,7 @@ export {
   type CrossChunkRiverSegment,
   type HydrologySeamPair,
   type HydrologySeamResult,
+  type RetainedHydrologyRaster,
 } from './cross-chunk-hydrology'
 export {
   modifierStrengthAt,

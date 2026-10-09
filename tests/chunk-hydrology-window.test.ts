@@ -6,7 +6,9 @@ import {
   generateChunk,
   generateChunkWithAreas,
   reconcileChunkHydrologyPair,
+  reconcileDrainageSeam,
 } from '@alohayo/map'
+import type { HydrologyCoreBuilder } from '../packages/map/src/hydrology'
 
 describe('streamed chunk hydrology halo', () => {
   it('is deterministic at positive and negative chunk coordinates', () => {
@@ -133,6 +135,91 @@ describe('streamed chunk hydrology halo', () => {
     const patchedWest = applyHydrologySeamPatch(west, eastward.patches[0]!)
     expect(patchedWest.slope.slice(56, 64)).toEqual(eastward.patches[0]!.fields.slope.slice(0, 8))
     expect(patchedWest.drainageSummary.edges.east).toEqual(eastward.patches[0]!.edgeSamples)
+  })
+
+  it('keeps actual pair seam direction and accumulation consistent on both sides', () => {
+    const seed = 'hydrology-pair-seam-flow'
+    const west = generateChunk(seed, -1, 0, 64)
+    const east = generateChunk(seed, 0, 0, 64)
+    const landOverlay: MapAreaDefinition = {
+      schemaVersion: 1,
+      id: 'test:hydrology-pair-land',
+      name: 'Hydrology pair land',
+      description: 'A land-only fixture for cross-seam accumulation checks.',
+      enabled: true,
+      placement: { mode: 'absolute', x: -80, y: -16 },
+      width: 160,
+      height: 96,
+      terrainPatches: [
+        {
+          x: 0,
+          y: 0,
+          width: 160,
+          height: 96,
+          shape: 'rectangle',
+          terrainId: 'core:grassland',
+          elevation: 0.75,
+        },
+      ],
+    }
+    const eastFlowCore: HydrologyCoreBuilder = ({ width, height, rawElevation }) => {
+      const size = width * height
+      const filledElevation = new Float32Array(size)
+      const slope = new Uint8Array(size)
+      const flowDirection = new Int8Array(size)
+      const flowAccumulation = new Uint32Array(size)
+      const watershed = new Uint32Array(size)
+      const depression = new Uint8Array(size)
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const index = y * width + x
+          filledElevation[index] = 1 - x / width
+          flowDirection[index] = x === width - 1 ? -1 : 0
+          flowAccumulation[index] = x + 1
+          watershed[index] = 1
+          slope[index] = 1
+        }
+      }
+      return {
+        width,
+        height,
+        rawElevation,
+        filledElevation,
+        water: new Uint8Array(size),
+        slope,
+        flowDirection,
+        flowAccumulation,
+        watershed,
+        depression,
+      }
+    }
+    const result = reconcileChunkHydrologyPair({
+      seedText: seed,
+      firstChunkX: -1,
+      firstChunkY: 0,
+      secondChunkX: 0,
+      secondChunkY: 0,
+      direction: 'east',
+      chunkSize: 64,
+      surveyWidth: 128,
+      surveyHeight: 128,
+      firstWatershed: west.watershed,
+      secondWatershed: east.watershed,
+      areas: [landOverlay],
+      terrainCodes: { 'core:grassland': BIOME.grassland },
+      coreBuilder: eastFlowCore,
+    })
+    const patchedWest = applyHydrologySeamPatch(west, result.patches[0])
+    const patchedEast = applyHydrologySeamPatch(east, result.patches[1])
+    const seam = reconcileDrainageSeam({
+      left: patchedWest.drainageSummary,
+      right: patchedEast.drainageSummary,
+      direction: 'east',
+    })
+    expect(seam.pairs).toHaveLength(64)
+    expect(seam.pairs.every((pair) => pair.flow === 'left-to-right')).toBe(true)
+    expect(seam.pairs.every((pair) => pair.consistent)).toBe(true)
+    expect(seam.pairs.every((pair) => pair.right.accumulation >= pair.left.accumulation)).toBe(true)
   })
 
   it('uses a 96x160 window for vertical pairs and rejects non-neighbors', () => {

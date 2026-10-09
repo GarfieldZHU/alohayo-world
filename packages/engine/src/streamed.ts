@@ -222,6 +222,7 @@ export async function createGame(
     background: palette().containerBackground,
     preference: 'webgl',
   })
+  const hydrologyCanvas = app.canvas
   if (getComputedStyle(options.container).position === 'static') {
     options.container.style.position = 'relative'
   }
@@ -340,6 +341,8 @@ export async function createGame(
   const hydrologyResolver = new CrossChunkHydrologyResolver()
   const hydrologyChangeListeners = new Set<WorldHydrologyChangeListener>()
   let hydrologyRevision = 0
+  let hydrologyGraphCache: WorldRiverGraphSnapshot | null = null
+  let hydrologyGraphBuildCount = 0
   const emitHydrologyChange = (
     type: WorldHydrologyChangeEvent['type'],
     changedChunks: Array<{ chunkX: number; chunkY: number }>
@@ -349,10 +352,11 @@ export async function createGame(
     ).sort((left, right) => left.chunkY - right.chunkY || left.chunkX - right.chunkX)
     if (chunks.length === 0) return
     hydrologyRevision += 1
+    hydrologyGraphCache = null
     const event: WorldHydrologyChangeEvent = { revision: hydrologyRevision, type, chunks }
     app.canvas.dataset.hydrologyRevision = String(hydrologyRevision)
     app.canvas.dataset.hydrologyEvent = type
-    app.canvas.dataset.hydrologyGraphCoverage = 'reconciled-seams'
+    app.canvas.dataset.hydrologyGraphCoverage = 'retained-chunks'
     for (const listener of hydrologyChangeListeners) {
       try {
         listener(event)
@@ -2142,6 +2146,15 @@ export async function createGame(
         }
         topologyResolver.add(chunk.topology)
         hydrologyResolver.add(chunk.drainageSummary)
+        hydrologyResolver.addRaster({
+          chunkX: chunk.chunkX,
+          chunkY: chunk.chunkY,
+          chunkSize: chunk.chunkSize,
+          flowDirection: chunk.flowDirection,
+          flowAccumulation: chunk.flowAccumulation,
+          watershed: chunk.watershed,
+          water: Uint8Array.from(chunk.biomes, (biome) => Number(isWaterBiomeCode(biome))),
+        })
         reconcileRetainedHydrologyDiagonals([chunk])
         emitHydrologyChange('chunk-loaded', [chunk])
         if (!discovery.has(key))
@@ -3585,12 +3598,36 @@ export async function createGame(
     },
     queryHydrologyCell,
     getRiverGraph(): WorldRiverGraphSnapshot {
-      return {
+      if (hydrologyGraphCache?.revision === hydrologyRevision) return hydrologyGraphCache
+      const startedAt = performance.now()
+      const { segments, truncated } = destroyed
+        ? { segments: [], truncated: false }
+        : hydrologyResolver.retainedRiverGraph(
+            Math.max(4, Math.floor((content.world.rivers?.generation.minLength ?? 6) * 0.75))
+          )
+      const immutableSegments = segments.map((segment) =>
+        Object.freeze({
+          ...segment,
+          source: Object.freeze({ ...segment.source }),
+          target: Object.freeze({ ...segment.target }),
+        })
+      )
+      hydrologyGraphCache = Object.freeze({
         schemaVersion: 1,
-        completeness: 'reconciled-seams',
+        completeness: 'retained-chunks',
+        truncated,
         revision: hydrologyRevision,
-        segments: destroyed ? [] : hydrologyResolver.segments(),
-      }
+        segments: Object.freeze(immutableSegments),
+      })
+      hydrologyGraphBuildCount += 1
+      hydrologyCanvas.dataset.hydrologyGraphBuildCount = String(hydrologyGraphBuildCount)
+      hydrologyCanvas.dataset.hydrologyGraphBuildMs = Math.max(
+        0,
+        performance.now() - startedAt
+      ).toFixed(2)
+      hydrologyCanvas.dataset.hydrologyGraphSegmentCount = String(immutableSegments.length)
+      hydrologyCanvas.dataset.hydrologyGraphTruncated = String(truncated)
+      return hydrologyGraphCache
     },
     subscribeHydrology(listener) {
       if (destroyed) return () => {}

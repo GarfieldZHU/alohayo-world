@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Expand the retained hydrology graph from seam links to threshold-selected per-cell D8
+  segments for loaded chunks, with explicit unloaded-frontier endpoints and a 16,384 segment
+  cap. Keep the public query surface read-only; upstream accumulation-delta propagation and
+  river graph consumers remain tracked by #38.
+
 - Reconcile retained cardinal chunk hydrology in the worker over canonical pair windows,
   transfer bounded eight-cell seam patches, compose corner overlaps in fixed order, ignore
   stale results after eviction, and restore neighboring provisional patches on release.
